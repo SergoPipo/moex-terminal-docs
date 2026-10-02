@@ -1,6 +1,6 @@
 # Deployment Guide — MOEX Trading Terminal
 
-> **Версия:** v1.2 (2026-10-01 — фиксы аудита `S8R-AUDIT-NNN` до 043 и `S8R-FIX-029`: корень НУЦ Минцифры (§6б), привязка ключей `rebind-encrypted-secrets` и права бэкапов (§6, §6а), старт backend — dummy-хеш, очистка `revoked_tokens`, дисклеймер (§3.3), head миграций `7fe0fae4293c` (§7); v1.1 — 2026-09-24…26, до 037; v1.0 — 2026-05-13, Sprint 8 W3, M4 Production-ready).
+> **Версия:** v1.2 (2026-10-01 — фиксы аудита `S8R-AUDIT-NNN` до 043 и `S8R-FIX-029`: корень НУЦ Минцифры (§6б), привязка ключей `rebind-encrypted-secrets` и права бэкапов (§6, §6а), старт backend — dummy-хеш, очистка `revoked_tokens`, дисклеймер (§3.3), head миграций `c04dc4f891a2` (§7, 2026-10-02 — S8R-FIX-056 индекс `upper(ticker)`, S8R-FIX-049 комиссия по сторонам); v1.1 — 2026-09-24…26, до 037; v1.0 — 2026-05-13, Sprint 8 W3, M4 Production-ready).
 > **Целевая платформа:** Mac mini + Docker compose + launchd + Cloudflare Tunnel.
 > Утверждено заказчиком 2026-05-12 (arch_design_s8 §7.2, batch 3 п.10).
 
@@ -130,7 +130,7 @@ curl -fsS http://localhost/api/v1/health     # {"status":"ok", "cb_state":"ok", 
 с моделями (forward model drift) уже приводило к неработающему входу:
 
 ```bash
-docker compose exec backend alembic current   # ожидается: fb26c08f99c8 (head)
+docker compose exec backend alembic current   # ожидается: c04dc4f891a2 (head)
 docker compose exec backend alembic heads     # та же ревизия — расхождений нет
 ```
 
@@ -389,8 +389,10 @@ docker compose ps            # проверить healthy
 После апдейта сверьте, что миграции доехали до головы:
 
 ```bash
-docker compose exec backend alembic current   # ожидается: fb26c08f99c8 (head)
+docker compose exec backend alembic current   # ожидается: c04dc4f891a2 (head)
 ```
+
+> **ℹ️ Обновление с версии старше `c04dc4f891a2` (S8R-FIX-049, 2026-10-02).** Комиссия по сторонам в `live_trades` (`entry_/exit_commission`, источник и время каждой стороны, `commission_legacy`, `commission_checked_at`). Открытые сделки: сторона входа = итог, факт `broker` переносится как провизорный `broker_partial` (досверщик перечитает его у брокера один раз). Закрытые до ревизии: `commission_legacy=1` — стороны не раскладываются, досверщик их не трогает, налоговый отчёт делит их комиссию 50/50, как раньше. Обратима (`alembic downgrade -1` снимает колонки, итоговая `commission` сохраняется).
 
 > **ℹ️ Обновление с версии старше `fb26c08f99c8` (S8R-FIX-056, 2026-10-02).** Индекс `ix_instruments_ticker_upper` по выражению `upper(ticker)` — поиск справочника без учёта регистра. Создаётся мгновенно, данные не меняются; `alembic downgrade -1` удаляет индекс. `alembic check` пишет предупреждение, что индекс по выражению на SQLite не читается обратно, — это ожидаемо.
 

@@ -300,8 +300,10 @@ git push origin docs/s5r2-skeleton-track4   # ветка опережает remo
 После мержа PR LOW: вкладка GitHub → Insights → Dependency graph → Dependabot — проверить, что `backend/pyproject.toml` с git-зависимостью SDK разбирается без ошибки.
 
 ## Следующий шаг
-**Обновлено 2026-10-02.** BLOCKER/HIGH/MEDIUM/LOW смёржены (develop `2d460cf`, PR #28–#32). Worktree: A `wt-s8r-fixes` (detached), C `wt-s8r-fixes-c` (`s8r/fix-low`, смёржена) — использовать под пакет S8R-FIX (новая ветка от develop, напр. `s8r/fix-findings`), убрать в конце цикла.
-Пакет S8R-FIX: открытые 030–039, 041–046, 048–053, 055–057 (047 и 054 закрыты, 040 → дубль 086); требует решения заказчика — 052 (предложение: 409 при stopped-сессии с открытыми позициями — вопрос задан 2026-10-02, ответа нет). Решения заказчика уже есть: 033 AI_MODEL=`claude-opus-5-5`, 043 ПФИ отдельной строкой вне базы ЦБ.
+**Обновлено 2026-10-02 (вечер).** BLOCKER/HIGH/MEDIUM/LOW смёржены (develop `2d460cf`, PR #28–#32). Пакет S8R-FIX — ветка `s8r/fix-findings` (worktree C `wt-s8r-fixes-c`, запушена до `145d125`; локально `cdcacd0`): закрыты 047, 049, 051, 054, 055, 056, 035, 036, 057. Полный гейт на `145d125`: pytest 5259/1 (time-of-day флейк → 060), vitest 1188/2 (`StrategyEditPageDelete` под нагрузкой, изолированно зелёный), ruff/mypy/bandit/typecheck/lint/build — 0, head `c04dc4f891a2`. Документация 049 и пачки бэктеста внесена (ФТ §6.2, ТЗ §4 `/rerun`, §5.4, §5.6, §5.13, гайд §7).
+В работе: DEV-FIX-TST (060 + 050) в worktree A (detached `0519c65`) — затем cherry-pick в C.
+Открыты: low-пачки торговля (048, 041, 042, 037, 039), брокер (030, 032, 053, 045), настройки/AI/health (031, 033, 034, 046), фронт (038), налоги (043), WS (044), бэктест 059. Требует решения заказчика — 052 (вопрос 2026-10-02), 058 (фьючерсы в поиске). Решения заказчика уже есть: 033 AI_MODEL=`claude-opus-5-5`, 043 ПФИ отдельной строкой вне базы ЦБ.
+После пакета: E2E на стенде, ревью по трём осям, PR `s8r/fix-findings` → develop.
 Флейки к перепроверке: S8R-FIX-050 (зависание полного pytest при параллельных прогонах), vitest `StrategyEditPageDelete` (таймаут 5 с под нагрузкой, S8R-FIX-005).
 Правило гейтов: `-o faulthandler_timeout=240`, лог в файл; bandit — `-ll -c .bandit`.
 Инструменты: `s8r-evidence/fixes/tools/` (compose.py + card.sh; для FIX-карточек — cfg с полем CARD из backlog; adhoc.py — находки ревью/CI; stand.sh — E2E-стенд; review_compose.py + rcfg_*.json — ревью по осям).
