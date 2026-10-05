@@ -242,13 +242,13 @@ PR #27 (доказательные тесты) смёржен в `develop` пе�
 Как исправить (предложение оркестратора): 409 с перечнем сессий с открытыми позициями (как у стратегий — S8R-FIX-026); ФТ — уточнить.
 Связанные: S8R-AUDIT-064, S8R-AUDIT-099.
 
-### S8R-FIX-068 — Флейк `test_commission_settle.py::TestRaceAndLock::test_extension_between_read_and_lock_skips_pass` под нагрузкой
+### S8R-FIX-068 — Флейк `test_commission_settle.py::TestRaceAndLock::test_extension_between_read_and_lock_skips_pass` под нагрузкой — ✅ `f339ee5` (2026-10-05; asyncio.Event + gc.collect в фикстуре; заодно флейк test_adapter_released_when_cancelled_waiting_trade_lock — 40/40)
 Аспект: Q | Severity: low | Объём: S
 Где: `backend/tests/test_trading/test_commission_settle.py` — тест ждёт рандеву по реальному времени (найдено DEV-FIX-TB, 2026-10-05: 1 падение в полном прогоне при параллельном исполнителе, изолированно 3/3).
 Как исправить: рандеву через события (`asyncio.Event`), без порогов реального времени; проверка — полный прогон под нагрузкой.
 Связанные: S8R-FIX-005, S8R-FIX-050, S8R-FIX-049.
 
-### S8R-FIX-067 — Тип инструмента не дозапрашивается для фонового скана облигаций `corporate_actions`
+### S8R-FIX-067 — Тип инструмента не дозапрашивается для фонового скана облигаций `corporate_actions` — ✅ `f339ee5` (2026-10-05; бюджет по реальным запросам, счёт владельца, порог дедлайна)
 Аспект: K | Severity: low | Объём: S
 Где: `app/corporate_actions/*::_bond_tickers_with_open_positions` (`Instrument.type`) — после S8R-FIX-043 дозапрос типа есть только в налоговом отчёте (найдено DEV-FIX-TB, 2026-10-05).
 Что не так: облигации с `type=unknown` (записи до S8R-AUDIT-095) не попадают в скан купонов/погашений, пока пользователь не сгенерирует налоговый отчёт.
