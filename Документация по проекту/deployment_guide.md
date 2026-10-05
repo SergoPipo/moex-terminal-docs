@@ -87,7 +87,7 @@ cp .env.example backend/.env.production
 
 > ℹ️ **SPA собирается с относительными адресами** (`/api/v1`, `wss://<host>`, S8R-AUDIT-055): `VITE_*` задавать не нужно, nginx проксирует `/api` и `/ws`. `ARG VITE_API_BASE_URL` в `frontend/Dockerfile` — только для нестандартной раскладки. Локально (`scripts/start.sh`) ту же роль играет dev-proxy Vite (`/api`, `/ws` → :8000).
 
-> ℹ️ **Остановка контейнера backend** (S8R-AUDIT-074): graceful shutdown рантайма укладывается в 45 с (дожидается записи id отправленного ордера, останавливает сессии, прогоняет recovery). Поэтому в `docker-compose.yml` для `backend` задан `stop_grace_period: 60s` — не уменьшайте его: при значении Docker по умолчанию (10 с) процесс получает SIGKILL посреди записи ответа брокера.
+> ℹ️ **Остановка контейнера backend** (S8R-AUDIT-074): graceful shutdown рантайма укладывается в 45 с (дожидается записи id отправленного ордера, останавливает сессии, прогоняет recovery). Поэтому в `docker-compose.yml` для `backend` задан `stop_grace_period: 90s` (S8R-FIX-065: 10 + 45 + 6 + 15 = 76 с) — не уменьшайте его: при значении Docker по умолчанию (10 с) процесс получает SIGKILL посреди записи ответа брокера.
 
 > ⚠️ **`.env.production` НЕ коммитится в git!** Файл уже включён в `.gitignore` (`.env.*`). Перед `git commit` проверьте `git status` — никаких `.env*` в diff не должно быть.
 
@@ -674,7 +674,9 @@ docker compose logs --since 1h         # за последний час, оба 
 
 Логи контейнеров — драйвер `json-file` с ротацией **10 МБ × 5 файлов** на сервис (S8R-AUDIT-051, `docker-compose.yml`). Нативный запуск `scripts/start.sh`: при `DEBUG≠true` сначала preflight production-настроек (`scripts/check_production_env.sh`, значения из `.env`), `backend/logs/dev.log` ротируется copytruncate по 50 МБ × 5 (при старте и раз в минуту).
 
-**Остановка backend** (S8R-AUDIT-051, gotcha-80): uvicorn запущен с `--timeout-graceful-shutdown 10` — сначала до 10 с на закрытие соединений, **затем** graceful shutdown торговли (до 45 с); сумма обязана быть меньше `stop_grace_period: 60s`.
+**Остановка backend** (S8R-AUDIT-051, gotcha-80): uvicorn запущен с `--timeout-graceful-shutdown 10` — сначала до 10 с на закрытие соединений, **затем** graceful shutdown торговли (до 45 с); сумма вместе с ожиданием фоновых задач outbox (до 6 с) и внешней доставки Telegram/Email (до 15 с) обязана быть меньше `stop_grace_period: 90s`.
+
+> ℹ️ **Доставка уведомлений о закрытиях (S8R-FIX-065).** Lifespan: после `configure_outbox_factory` подключается доставщик outbox (`configure_outbox_deliverer`). Уведомления о закрытиях пишутся в `pending_events` вместе с закрытием и доставляются фоновой задачей сразу после commit — без ожидания слушателя сессии, в том числе при „Стопе“ и shutdown. Не доставленное к остановке досылает повтор при старте (окно 1 с — 1 ч). Shutdown после рантайма ждёт фоновые задачи outbox (до 6 с), затем внешнюю доставку Telegram/Email (до 15 с). `stop_grace_period` backend — 90 с (10 + 45 + 6 + 15 = 76): не уменьшайте.» Сюда же: в §3.3 и строках 90/677 гайда заменить «60 с» на «90 с
 
 ### 8.4 Метрики Performance baseline (Sprint 8 W2)
 
