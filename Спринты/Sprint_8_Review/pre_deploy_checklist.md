@@ -33,7 +33,7 @@
 Карточка осталась в backlog незакрытой и создавала ложное впечатление срочной
 задачи. Пометить закрытой при обновлении учёта (раздел D).
 
-### A1. Mock-курс USD в виджете баланса (`S9-MULTICURRENCY-CBR-RATE`)
+### A1. ✅ Mock-курс USD в виджете баланса (`S9-MULTICURRENCY-CBR-RATE`) — закрыто 2026-08-10 (курс ЦБ РФ, backlog «Блок 3»)
 
 **Проверено на `develop`:** `BalanceWidget.tsx:42` — `const USD_RUB_MOCK_RATE = 90`.
 Переключатель RUB/USD работает на **захардкоженном курсе**, помеченном
@@ -51,7 +51,7 @@
 
 Не задача разработки — задача сделать это заранее, а не в момент выкатки.
 
-### A3. `S7R-SESSION-RERUN-PAYLOAD-BROKEN` (medium) — «Запустить заново» ломает sandbox/real
+### A3. ✅ `S7R-SESSION-RERUN-PAYLOAD-BROKEN` (medium) — «Запустить заново» ломает sandbox/real — закрыто 2026-08-10 (backlog «Блок 1»)
 
 **Подтверждено на `develop`**, `SessionDashboard.tsx:190-200`: payload rerun не
 содержит ни `broker_account_id`, ни `timeframe`, а `mode` приводится к
@@ -64,7 +64,7 @@ Backend требует оба поля через `model_validator` (`schemas.py
 пользователь чаще будет останавливать и перезапускать сессии — прямо на этот
 сценарий.
 
-### A4. `S8R-DELETE-ACCOUNT-ORPHANS-SESSIONS` — в проде это уже не low
+### A4. ✅ `S8R-DELETE-ACCOUNT-ORPHANS-SESSIONS` — в проде это уже не low — закрыто 2026-08-10 (backlog «Блок 2»); расширение на stopped-сессии с открытыми позициями — S8R-FIX-052 (решение заказчика 2026-10-07: запретить)
 
 Заведена как low, но в бою меняет вес. **Подтверждено на `develop`**: тело
 `BrokerService.delete_account` — три строки (`get_account` → `db.delete` →
