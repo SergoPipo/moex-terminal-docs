@@ -242,7 +242,7 @@ PR #27 (доказательные тесты) смёржен в `develop` пе�
 Как исправить (предложение оркестратора): 409 с перечнем сессий с открытыми позициями (как у стратегий — S8R-FIX-026); ФТ — уточнить.
 Связанные: S8R-AUDIT-064, S8R-AUDIT-099.
 
-### S8R-FIX-072 — База, прошедшая старый путь миграций, без колонок `ai_provider_configs.daily_limit/monthly_limit/usage_today/usage_month`: после S8R-AUDIT-004 запросы к настройкам AI падают
+### S8R-FIX-072 — База, прошедшая старый путь миграций, без колонок `ai_provider_configs.daily_limit/monthly_limit/usage_today/usage_month`: после S8R-AUDIT-004 запросы к настройкам AI падают — ✅ PR #46 (2026-10-08; ревизия `606214dc5ccf`, проверена на копии рабочей БД)
 Аспект: J | Severity: high | Объём: S
 Где: `app/common/models.py::AIProviderConfig` (колонки возвращены в модель в `9597055`, S8R-AUDIT-004, «схема БД не меняется»); рабочая БД заказчика (`a7b8c9d0e1f2`) этих колонок не содержит, хотя миграция `a1b2c3d4e5f6` их добавляет (найдено оркестратором при пробном обновлении стенда на копии БД, 2026-10-08: `alembic check` → add_column ×4).
 Что не так: после обновления кода любой SELECT `AIProviderConfig` → `no such column ai_provider_configs.daily_limit` → AI-чат, настройки AI, health `ai_configured` ломаются на таких базах. Чистая установка не затронута.

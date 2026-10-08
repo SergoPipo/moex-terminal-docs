@@ -1,6 +1,6 @@
 # Deployment Guide — MOEX Trading Terminal
 
-> **Версия:** v1.2 (2026-10-01 — фиксы аудита `S8R-AUDIT-NNN` до 043 и `S8R-FIX-029`: корень НУЦ Минцифры (§6б), привязка ключей `rebind-encrypted-secrets` и права бэкапов (§6, §6а), старт backend — dummy-хеш, очистка `revoked_tokens`, дисклеймер (§3.3), head миграций `752ae89f7ec2` (§7, 2026-10-02…03 — S8R-FIX-056 индекс `upper(ticker)`, S8R-FIX-049 комиссия по сторонам, S8R-FIX-039 журнал CB); v1.1 — 2026-09-24…26, до 037; v1.0 — 2026-05-13, Sprint 8 W3, M4 Production-ready).
+> **Версия:** v1.2 (2026-10-01 — фиксы аудита `S8R-AUDIT-NNN` до 043 и `S8R-FIX-029`: корень НУЦ Минцифры (§6б), привязка ключей `rebind-encrypted-secrets` и права бэкапов (§6, §6а), старт backend — dummy-хеш, очистка `revoked_tokens`, дисклеймер (§3.3), head миграций `606214dc5ccf` (§7, 2026-10-02…08 — S8R-FIX-056 индекс `upper(ticker)`, S8R-FIX-049 комиссия по сторонам, S8R-FIX-039 журнал CB, S8R-FIX-072 догоняющая ревизия `ai_provider_configs`); v1.1 — 2026-09-24…26, до 037; v1.0 — 2026-05-13, Sprint 8 W3, M4 Production-ready).
 > **Целевая платформа:** Mac mini + Docker compose + launchd + Cloudflare Tunnel.
 > Утверждено заказчиком 2026-05-12 (arch_design_s8 §7.2, batch 3 п.10).
 
@@ -130,7 +130,7 @@ curl -fsS http://localhost/api/v1/health     # {"status":"ok", "cb_state":"ok", 
 с моделями (forward model drift) уже приводило к неработающему входу:
 
 ```bash
-docker compose exec backend alembic current   # ожидается: 752ae89f7ec2 (head)
+docker compose exec backend alembic current   # ожидается: 606214dc5ccf (head)
 docker compose exec backend alembic heads     # та же ревизия — расхождений нет
 ```
 
@@ -389,8 +389,10 @@ docker compose ps            # проверить healthy
 После апдейта сверьте, что миграции доехали до головы:
 
 ```bash
-docker compose exec backend alembic current   # ожидается: 752ae89f7ec2 (head)
+docker compose exec backend alembic current   # ожидается: 606214dc5ccf (head)
 ```
+
+> **ℹ️ Обновление с версии старше `606214dc5ccf` (S8R-FIX-072, 2026-10-08).** Догоняющая ревизия для баз, прошедших старый путь миграций: добавляет в `ai_provider_configs` колонки `daily_limit` (100), `monthly_limit` (3000), `usage_today` (0), `usage_month` (0), **только если их нет**; на базе, созданной миграциями с нуля, ничего не делает. Без неё на такой базе после обновления падают запросы к настройкам AI («no such column»). `downgrade` — без изменений схемы (колонки принадлежат более ранней ревизии `a1b2c3d4e5f6`). Перед обновлением существующей базы — прогон `alembic upgrade head` и `alembic check` на копии (снимок `sqlite3.Connection.backup`).
 
 > **ℹ️ Обновление с версии старше `752ae89f7ec2` (S8R-FIX-039, 2026-10-03).** Колонки журнала Circuit Breaker `trigger_value`/`limit_value` становятся `Numeric(18,4)` и допускают NULL (проверки без числа); старые строки не меняются. Обратима: `downgrade` пишет 0 вместо NULL и возвращает `Numeric(18,2) NOT NULL`.
 
