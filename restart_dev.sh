@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Перезапуск backend (FastAPI/uvicorn) + frontend (Vite) для локальной разработки.
 # Использование: ./restart_dev.sh   или   bash restart_dev.sh
+#   DEV_MODE=false ./restart_dev.sh — с отправкой Telegram/Email
 
 set -u
 
@@ -20,7 +21,14 @@ kill_port() {
   if [ -n "$pids" ]; then
     echo "  останавливаю PID(s) $pids на порту $port"
     kill $pids 2>/dev/null || true
-    sleep 1
+    # Корректное завершение backend (сессии → suspended, доставка уведомлений)
+    # укладывается в ~60 с (SHUTDOWN_TOTAL_TIMEOUT_SEC 45 + outbox + dispatch);
+    # kill -9 раньше времени обрывал его на середине.
+    for _ in $(seq 1 60); do
+      pids=$(lsof -ti tcp:"$port" -sTCP:LISTEN 2>/dev/null || true)
+      [ -z "$pids" ] && break
+      sleep 1
+    done
     pids=$(lsof -ti tcp:"$port" -sTCP:LISTEN 2>/dev/null || true)
     if [ -n "$pids" ]; then
       echo "  принудительно (-9): $pids"
@@ -44,7 +52,10 @@ echo "==> 3/4 Запускаю backend (uvicorn) на http://127.0.0.1:$BACK_POR
 # system_shutdown / session_stopped при graceful shutdown через runtime.shutdown()
 # (на каждый ./restart_dev.sh раньше приходило 3 Telegram-сообщения,
 # теперь — 0). В production переменная не задаётся → DEV_MODE=false.
-export DEV_MODE=true
+# S8R-AUDIT-084: DEV_MODE=true гасит ВСЮ внешнюю доставку (Telegram/Email).
+# Для проверок с Telegram: DEV_MODE=false ./restart_dev.sh
+export DEV_MODE="${DEV_MODE:-true}"
+echo "    DEV_MODE=$DEV_MODE (true — Telegram/Email не отправляются)"
 nohup uvicorn app.main:app --reload --host 127.0.0.1 --port "$BACK_PORT" \
   > "$LOG_DIR/backend.log" 2>&1 &
 BACK_PID=$!
