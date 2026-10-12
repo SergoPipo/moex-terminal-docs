@@ -1,6 +1,6 @@
 # Deployment Guide — MOEX Trading Terminal
 
-> **Версия:** v1.2 (2026-10-01 — фиксы аудита `S8R-AUDIT-NNN` до 043 и `S8R-FIX-029`: корень НУЦ Минцифры (§6б), привязка ключей `rebind-encrypted-secrets` и права бэкапов (§6, §6а), старт backend — dummy-хеш, очистка `revoked_tokens`, дисклеймер (§3.3), head миграций `606214dc5ccf` (§7, 2026-10-02…08 — S8R-FIX-056 индекс `upper(ticker)`, S8R-FIX-049 комиссия по сторонам, S8R-FIX-039 журнал CB, S8R-FIX-072 догоняющая ревизия `ai_provider_configs`); v1.1 — 2026-09-24…26, до 037; v1.0 — 2026-05-13, Sprint 8 W3, M4 Production-ready).
+> **Версия:** v1.2 (2026-10-01 — фиксы аудита `S8R-AUDIT-NNN` до 043 и `S8R-FIX-029`: корень НУЦ Минцифры (§6б), привязка ключей `rebind-encrypted-secrets` и права бэкапов (§6, §6а), старт backend — dummy-хеш, очистка `revoked_tokens`, дисклеймер (§3.3), head миграций `fd3492233bc0` (§7, 2026-10-02…10 — S8R-FIX-056 индекс `upper(ticker)`, S8R-FIX-049 комиссия по сторонам, S8R-FIX-039 журнал CB, S8R-FIX-072 догоняющая ревизия `ai_provider_configs`, S8R-FIX-071 `live_trades.close_reason`); v1.1 — 2026-09-24…26, до 037; v1.0 — 2026-05-13, Sprint 8 W3, M4 Production-ready).
 > **Целевая платформа:** Mac mini + Docker compose + launchd + Cloudflare Tunnel.
 > Утверждено заказчиком 2026-05-12 (arch_design_s8 §7.2, batch 3 п.10).
 
@@ -130,7 +130,7 @@ curl -fsS http://localhost/api/v1/health     # {"status":"ok", "cb_state":"ok", 
 с моделями (forward model drift) уже приводило к неработающему входу:
 
 ```bash
-docker compose exec backend alembic current   # ожидается: 606214dc5ccf (head)
+docker compose exec backend alembic current   # ожидается: fd3492233bc0 (head)
 docker compose exec backend alembic heads     # та же ревизия — расхождений нет
 ```
 
@@ -367,6 +367,16 @@ docker compose start backend
 - Замена: новый PEM в тот же путь, обновить `EXPECTED_SHA256` в `tests/unit/test_broker/test_grpc_trusted_roots.py`, пересобрать образ. Тест падает за 180 дней до истечения.
 - В журнале: `grpc_trusted_roots_configured` (набор собран), `grpc_trusted_roots_preset` (переменная задана оператором), `grpc_trusted_roots_setup_failed` (сбой — брокер будет недоступен).
 
+## 6в. Резолвер DNS для gRPC (S8R-FIX-083)
+
+gRPC разрешает имена **не системным резолвером**, а встроенным c-ares. На машине заказчика (macOS, 2026-10-12) это занимало **10–11 с** при дедлайне unary-вызова `TINVEST_UNARY_TIMEOUT_SEC` = 10 с: каждый вызов к брокеру падал по таймауту, при этом стрим свечей оставался живым (мультиплексор держит один долгий канал, а адаптер создаёт новый на каждый вызов). Снаружи это выглядело как «брокер не отвечает» и держалось пять дней.
+
+- Терминал при старте выставляет `GRPC_DNS_RESOLVER=native` — тот же путь разрешения имён, что у остальных клиентов процесса. Ручная настройка не нужна.
+- Если оператор задал `GRPC_DNS_RESOLVER` сам — терминал её не меняет. Так можно вернуть `ares`, если на конкретной машине он быстрее.
+- Переменная читается gRPC один раз на процесс, при первом канале, поэтому выставляется первым шагом lifespan, рядом с корнями (§6б). После старта менять бесполезно — нужен перезапуск.
+- В журнале: `grpc_dns_resolver_configured` (выставлено терминалом), `grpc_dns_resolver_preset` (задано оператором).
+- **Диагностика при «брокер не отвечает»:** сравнить время готовности gRPC-канала по имени и по IP. Если по IP быстро, а по имени ~10 с — причина здесь, а не у брокера и не в TLS.
+
 ## 7. Обновление до новой версии
 
 ```bash
@@ -389,8 +399,18 @@ docker compose ps            # проверить healthy
 После апдейта сверьте, что миграции доехали до головы:
 
 ```bash
-docker compose exec backend alembic current   # ожидается: 606214dc5ccf (head)
+docker compose exec backend alembic current   # ожидается: fd3492233bc0 (head)
 ```
+
+> **ℹ️ Ревизия `fd3492233bc0` (S8R-FIX-071, 2026-10-10).** Добавляет
+> `live_trades.close_reason` (nullable, String(40)) — причину закрытия, когда
+> закрывал не терминал (`closed_outside_terminal`, `…_by_user`,
+> `sandbox_account_reopened`). По ней сделка получает «P&L не определён» вместо
+> `pnl = 0`: результат позиции, закрытой в приложении брокера, неизвестен, и
+> выдуманный ноль уходил в журнал, дневную статистику, дневной лимит Circuit
+> Breaker и налоговый раздел. Существующие строки получают NULL — история не
+> меняется. `downgrade` снимает колонку (round-trip тест
+> `tests/unit/test_migration.py::test_live_trades_close_reason_round_trip`).
 
 > **ℹ️ Обновление с версии старше `606214dc5ccf` (S8R-FIX-072, 2026-10-08).** Догоняющая ревизия для баз, прошедших старый путь миграций: добавляет в `ai_provider_configs` колонки `daily_limit` (100), `monthly_limit` (3000), `usage_today` (0), `usage_month` (0), **только если их нет**; на базе, созданной миграциями с нуля, ничего не делает. Без неё на такой базе после обновления падают запросы к настройкам AI («no such column»). `downgrade` — без изменений схемы (колонки принадлежат более ранней ревизии `a1b2c3d4e5f6`). Перед обновлением существующей базы — прогон `alembic upgrade head` и `alembic check` на копии (снимок `sqlite3.Connection.backup`).
 
@@ -613,6 +633,139 @@ cd Develop && docker compose build && docker compose down && docker compose up -
 # Если миграция уже применилась — откатить вручную:
 docker compose exec backend alembic downgrade -1
 ```
+
+---
+
+## 7а. Обновление dev-стенда (голый venv, без Docker) — S8R-FIX-086
+
+§7 выше — про production: там зависимости ставятся **внутрь образа** при
+`docker compose build`, и отдельного шага установки нет. На машине разработки Docker
+не используется (`Develop/CLAUDE.md`: «Docker на машине разработки отсутствует»),
+backend и frontend работают из `backend/.venv` и `frontend/node_modules` напрямую,
+поэтому после `git pull` зависимости надо доставить руками — **тем же рецептом**, что
+в `Dockerfile.backend` и в CI (`.github/workflows/ci.yml`, шаг «Install dependencies
+(lock + хэши, S8R-AUDIT-050)»). Первичная установка окружения с нуля —
+`Develop/backend/INSTALL.md`.
+
+### 7а.1 Когда нужен полный путь
+
+Полный путь нужен, только если `git pull` принёс изменения в lock-файлы или в
+`pyproject.toml`. Сразу после pull посмотрите, что приехало:
+
+```bash
+cd <repo>/Develop            # код — отдельный git, своя ветка (develop)
+git pull origin develop
+git diff --stat HEAD@{1} HEAD -- backend/requirements.lock backend/requirements-dev.lock \
+    backend/pyproject.toml frontend/pnpm-lock.yaml frontend/package.json
+```
+
+| Что изменилось в pull | Что делать |
+|---|---|
+| `backend/requirements.lock`, `backend/requirements-dev.lock` | шаг 7а.3 (п. 1, 3, 4) |
+| строка `tinkoff-investments @ git+…@<sha>` в `backend/pyproject.toml` | шаг 7а.3 целиком, включая п. 2 (SDK) |
+| прочее в `backend/pyproject.toml` (версия, extras, scripts) | шаг 7а.3 без п. 2 |
+| `frontend/pnpm-lock.yaml`, `frontend/package.json` | шаг 7а.3, п. 5 (`pnpm install --frozen-lockfile`) |
+| только `.py` / `.ts` / миграции | ничего не ставить — сразу шаг 7а.4 (перезапуск) |
+
+Переустанавливать SDK T-Invest **не нужно**, если его commit-hash в
+`backend/pyproject.toml` не менялся: скрипт просто склонирует тот же коммит заново.
+Текущий sha, на который указывает репозиторий, — `sh scripts/install_tinvest_sdk.sh --print-sha`.
+
+### 7а.2 ⚠️ Почему `pip install -r backend/requirements.lock` не работает
+
+Очевидная команда падает ещё до скачивания пакетов (проверено 2026-10-12):
+
+```
+ERROR: Can't verify hashes for these requirements because we don't have a way to hash
+version control repositories:
+    tinkoff-investments @ git+https://github.com/RussianInvestments/invest-python.git@<sha>
+```
+
+`requirements.lock` сгенерирован **с хэшами** sha256 для каждой строки
+(`backend/scripts/lock_deps.sh`), а SDK T-Invest закреплён git-зависимостью по
+commit-hash — у VCS-ссылки хэша артефакта нет и быть не может. pip, увидев хэши,
+переключается в режим `--require-hashes`, где хэш обязателен у **каждого** требования,
+и отказывается от файла целиком, а не только от строки SDK. Поэтому установка
+разделена на две части: PyPI-часть lock — с хэшами, SDK — отдельным скриптом по sha
+(`backend/scripts/install_tinvest_sdk.sh`, единственное место, где SDK берётся из git).
+
+### 7а.3 Последовательность
+
+```bash
+# --- backend (из <repo>/Develop/backend; venv стенда — ./.venv) ---
+cd <repo>/Develop/backend
+
+# 1. PyPI-часть lock: вырезаем строку SDK (git, без хэша — п. 2) и строки `-r`.
+#    requirements-dev.lock нужен для гейтов (pytest/ruff/mypy/bandit); стенду без
+#    прогона тестов достаточно одного requirements.lock.
+T="${TMPDIR:-/tmp}"
+grep -v -e '^tinkoff-investments @ ' -e '^-r ' requirements.lock > "$T/req.txt"
+grep -v -e '^-r ' requirements-dev.lock > "$T/req-dev.txt"
+.venv/bin/pip install --no-deps --require-hashes -r "$T/req.txt" -r "$T/req-dev.txt"
+
+# 2. SDK T-Invest — по commit-hash из pyproject.toml, с патчем битой зависимости
+#    `tinkoff`. ПРОПУСТИТЬ, если sha не менялся (см. 7а.1).
+PYTHON=.venv/bin/python sh scripts/install_tinvest_sdk.sh
+
+# 3. Сам backend — без зависимостей и без изоляции сборки (setuptools из lock).
+.venv/bin/pip install --no-deps --no-build-isolation -e .
+
+# 4. Проверки — ОТДЕЛЬНЫМИ строками, НЕ через `&&` (см. 7а.5).
+.venv/bin/pip check
+.venv/bin/python scripts/verify_install.py requirements.lock requirements-dev.lock
+
+# --- frontend ---
+cd ../frontend
+# 5. Ровно то, что в pnpm-lock.yaml; расхождение с package.json — ошибка,
+#    а не тихое обновление лока.
+pnpm install --frozen-lockfile
+```
+
+`verify_install.py` — финальный гейт: сверяет, что каждая строка lock установлена именно
+той версией, и что доехали пакеты extras (`uvicorn[standard]` → `uvloop`/`httptools`,
+`sqlalchemy[asyncio]` → `greenlet`, `fonttools[woff]` → `brotli`), которых `pip check`
+не видит. Код возврата 1 и список проблем = окружение собрано не полностью.
+
+Если установка ведёт себя не так, как в CI, первым делом сверьте версию pip:
+CI и `Dockerfile.backend` её закрепляют (`python -m pip install pip==26.0.1`),
+в venv стенда она может быть другой (`.venv/bin/pip --version`).
+
+### 7а.4 Перезапуск (миграции применяются здесь)
+
+Приложение миграции само не применяет — их выполняет стартовая строка. В Docker это
+`command:` backend-контейнера (`alembic upgrade head && exec uvicorn …`), на dev-стенде —
+та же пара команд:
+
+```bash
+# остановить прежние процессы uvicorn/vite, затем, с теми же переменными окружения,
+# с которыми стенд поднимался (DATABASE_URL, DEBUG, SECRET_KEY, ENCRYPTION_KEY, …):
+cd <repo>/Develop/backend
+.venv/bin/alembic upgrade head
+.venv/bin/uvicorn app.main:app --port 8000
+
+cd ../frontend && pnpm dev     # Vite видит новые пакеты только после рестарта
+```
+
+Проверка, что миграции доехали до головы: `.venv/bin/alembic current` (ожидается та же
+ревизия, что в §7). Про сами ревизии и разовые процедуры — §7, они не зависят от того,
+Docker это или venv. Если после обновления frontend показывает старую сборку — кэш Vite
+сносить только при остановленном dev-сервере (gotcha-46).
+
+### 7а.5 `pip check`: сообщение про `tinkoff` — штатное
+
+```
+tinkoff-investments 0.2.0b117 requires tinkoff, which is not installed
+```
+
+Метаданные установленного SDK сохраняют `Requires-Dist: tinkoff (>=0.1.1,<0.2.0)` —
+дистрибутива с таким именем на PyPI нет (у upstream это ошибка в его `pyproject.toml`).
+Сам SDK работает: его код лежит в пакете `tinkoff/invest/`, поставленном вместе с ним.
+Это зафиксировано как норма в `Develop/CLAUDE.md`.
+
+Практическое следствие: из-за этой строки **`pip check` возвращает ненулевой код**.
+Если склеить проверки через `&&`, следующая команда (`verify_install.py`) молча не
+выполнится — поэтому в 7а.3 они идут отдельными строками, а вывод `pip check` читается
+глазами: любая другая строка, кроме этой, — реальная рассогласованность версий.
 
 ---
 
