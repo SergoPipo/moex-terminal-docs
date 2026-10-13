@@ -116,6 +116,22 @@ PR #27 (доказательные тесты) смёржен в `develop` пе�
 
 ### Новые находки цикла (заведены, не чинились)
 
+### S8R-FIX-091 — Находка /code-review: состав бумажного equity записан в трёх местах по-разному — ✅ (2026-10-13, закрыта в том же цикле)
+Аспект: G | Severity: medium | Объём: S
+Где: `app/circuit_breaker/engine.py::_check_max_drawdown` (paper-ветка), `update_peak_on_bar`, `app/circuit_breaker/service.py::get_status`.
+Что было не так: третий пункт S8R-FIX-015 добавил нереализованный P&L в текущее equity бумажной просадки, но пик портфеля продолжал поднимать только денежный учёт `PaperTradingEngine` (`balance + blocked`, на закрытии сделки), а статус CB считал просадку по третьей формуле. Прибыль открытой позиции опускала просадку, но пика не поднимала — и когда она уходила, просадка считалась от величины, которой капитал уже не был (лимит срабатывал позже, чем настроен); на экране «текущее состояние» показывался 0 % там, где движок уже видел просадку.
+Как закрыта: состав сведён к `paper_equity_by_session` (симметрично `broker_equity_by_session`), пик — к `paper_peak_equity`; их используют проверка просадки, `update_peak_on_bar` и статус. 4 теста, 4 мутации красные; структурные тесты карточки 015 переписаны на поведенческие — именно их хрупкость и дала расхождению прожить прошлый прогон.
+Связанные: S8R-FIX-015, S8R-FIX-013, S8R-AUDIT-068, S8R-AUDIT-070.
+
+### S8R-FIX-090 — Провал бэктеста доходил до job'а через БД: в зазоре записи превращался в `done` — ✅ (2026-10-13, закрыта в том же цикле)
+Аспект: H/K | Severity: medium | Объём: S
+Где: `app/backtest/router.py::_run_backtest_task` и `_make_single_backtest_runner`.
+Что было не так: задача ловит ошибку внутри, помечает `backtests.failed` и не пере-бросывает, а runner job'а узнавал о провале, перечитывая запись. Пометка идёт через `persist_with_retry` — с повтором, веткой «последний рубеж» на свежей сессии и веткой «даже она не помогла, подберёт реконсиляция на старте». Пока запись не видна, runner возвращал результат как при успехе: job → `done`, пользователю уходило «Бэктест завершён» при фактической ошибке. BUG-31 закрывал это по следствию (статусу в БД), а не по причине.
+Как найдена: флейк полного прогона — `test_job_goes_to_error_with_reason` дал `assert 'done' == 'error'` при зелёном изолированном прогоне (3 из 3).
+Как закрыта: `_run_backtest_task` возвращает `str | None` (текст ошибки), решение принимается по возвращённому значению; перечитывание осталось источником метрик и запасной проверкой. Фоновый путь `create_backtest` (`BackgroundTasks`) значение игнорирует, как и раньше. 3 теста, 2 мутации красные.
+Связанные: S8R-FIX-009, BUG-31, S9-BACKTEST-DATA-TIMEOUT.
+
+
 ### S8R-FIX-001 — `SOURCE=volume`: live-интерпретатор считает индикатор по close, backtrader — по volume — ✅ (2026-10-13, `evaluator._series` знает `volume`; набор источников не расширен, fallback на close остался для данных мимо allow-list; 3 теста)
 Аспект: G/H | Severity: low | Объём: S
 Где: `backend/app/strategy/evaluator.py:100-105` (`_series`: источник вне `open/high/low/close` → `closes`), `backend/app/strategy/ir_codegen.py` (`_BT_SOURCE_EXPR["volume"] = "self.data.volume"`, S8R-AUDIT-002).
@@ -129,7 +145,7 @@ PR #27 (доказательные тесты) смёржен в `develop` пе�
   4. Прочитать: gotcha-35.
 Связанные: S8R-AUDIT-002, S8R-AUDIT-087 (б).
 
-### S8R-FIX-002 — `test_users_cli.py` проходит вакуумно: CLI без ключей падает на импорте настроек
+### S8R-FIX-002 — `test_users_cli.py` проходит вакуумно: CLI без ключей падает на импорте настроек — ✅ (2026-10-13, окружение подпроцесса даёт CLI запуститься, схема создаётся во временной БД, проверяется ЭФФЕКТ: `is_admin` после `grant_admin`/`revoke_admin`, отказ снять последнего активного админа, код 1 с «not found»; мутация «не выдавать права» — два теста красные)
 Аспект: O | Severity: low | Объём: S
 Где: `backend/tests/**/test_users_cli.py` (запуск `python -m app.cli.users` без `SECRET_KEY`/`ENCRYPTION_KEY` в окружении).
 Что не так: тест стартует CLI в подпроцессе без production-ключей; процесс падает на валидаторе настроек (а после S8R-AUDIT-034 — тем более), а утверждения теста этого не различают — тест зелёный, хотя CLI не выполнился (найдено DEV-AUDIT-034).
@@ -140,7 +156,7 @@ PR #27 (доказательные тесты) смёржен в `develop` пе�
   3. Готово, когда: мутация «сломать CLI» → тест красный.
 Связанные: S8R-AUDIT-034, S8R-AUDIT-053.
 
-### S8R-FIX-003 — ТЗ §8.4 описывает JSON-логи с ротацией, которых нет; `logs/dev.log` растёт без ротации
+### S8R-FIX-003 — ТЗ §8.4 описывает JSON-логи с ротацией, которых нет; `logs/dev.log` растёт без ротации — ✅ (2026-10-13, ТЗ §8.4 приведён к факту: один поток в stdout, файл и ротация — снаружи процесса, в Docker файла нет, аудит — в `audit_log`; ротация уже была, прав не было — `umask 077` + `chmod 600` на лог и копии ротации в `scripts/start.sh`)
 Аспект: M/Q | Severity: low | Объём: S
 Где: ТЗ §8.4 (`logs/app.log|broker.log|audit.log`, `RotatingFileHandler` 50 МБ × 5), фактически — `scripts/start.sh:29` (`tee -a logs/dev.log`), `app/common/logging_config.py` (только ConsoleRenderer в stdout; `JSONRenderer`/`FileHandler` в `app/` нет).
 Что не так: документ описывает несуществующую подсистему логов; реальный файл стенда пишется `tee` без ротации (у заказчика 25 МБ на 08.07); права по умолчанию `rw-r--r--` (найдено DEV-AUDIT-036 и при проверке Q12).
@@ -173,7 +189,7 @@ PR #27 (доказательные тесты) смёржен в `develop` пе�
   3. Готово, когда: 5 полных прогонов подряд под нагрузкой зелёные.
 Связанные: gotcha-40 (`userEvent` vs `fireEvent`), gotcha-46.
 
-### S8R-FIX-006 — `live_trades.nkd_entry/nkd_exit`: колонку никто не пишет, а tax и корп. действия трактуют её по-разному
+### S8R-FIX-006 — `live_trades.nkd_entry/nkd_exit`: колонку никто не пишет, а tax и корп. действия трактуют её по-разному — ✅ (2026-10-13, семантика зафиксирована до появления писателя: «НКД на ОДНУ облигацию, ₽», как считает `BondService.calculate_nkd`; налоговый расчёт умножает разницу на количество штук; 2 теста, включая прямую сверку с купонной формулой)
 Аспект: K | Severity: low | Объём: S
 Где: `backend/app/trading/*` (писателя `nkd_entry`/`nkd_exit` нет), `backend/app/corporate_actions/service.py::process_coupon` (НКД — на одну бумагу × штуки, S8R-AUDIT-089), `backend/app/tax/service.py::_build_fifo_queue` (`nkd_exit − nkd_entry` как сумма по позиции, без × количество).
 Что не так: семантика поля не зафиксирована; при появлении писателя купон и налоговая база разойдутся (найдено DEV-AUDIT-089).
@@ -188,14 +204,14 @@ PR #27 (доказательные тесты) смёржен в `develop` пе�
 Как исправить: подпись/бейдж «ожидает подтверждения брокера» + vitest; скриншот playwright.
 Связанные: S8R-AUDIT-007, S8R-AUDIT-024.
 
-### S8R-FIX-008 — Корп. действия: подпись «дата отсечки» показывает дату реестра; сплит без отсечки по `opened_at`; расписание джобы расходится с ФТ/ТЗ
+### S8R-FIX-008 — Корп. действия: подпись «дата отсечки» показывает дату реестра; сплит без отсечки по `opened_at`; расписание джобы расходится с ФТ/ТЗ — 🔄 (2026-10-13, в уведомлении обе даты: «закрытие реестра DD.MM.YYYY, ex-date DD.MM.YYYY» — вторая через `accrual_ex_date` по календарю MOEX, недоступен календарь → только достоверная; ТЗ: `detect_corporate_actions` каждые 6 часов вместо «ежедневно 08:00 MSK». Остаток: нужна ли сплиту отсечка по дате — решение по ФТ §6.4)
 Аспект: K/Q | Severity: low | Объём: S
 Где: `backend/app/scheduler/service.py` (~245, текст уведомления «дата отсечки {ex_date}» — в `ex_date` лежит `registryclosedate` ISS), `backend/app/corporate_actions/service.py::process_split` (применяется ко всем открытым позициям на момент обработки), ФТ/ТЗ «ежедневно 08:00 MSK» vs джоба `check_corporate_actions` раз в 6 ч (найдено DEV-AUDIT-090).
 Что не так: пользователь видит неверную «дату отсечки» (на день позже ex-date); документы описывают другое расписание.
 Как исправить: в уведомлении — «дата закрытия реестра» или вычисленный ex-date (`accrual_ex_date`); ФТ/ТЗ — фактическое расписание; сплит — оценить, нужна ли отсечка по дате (решение по ФТ §6.4).
 Связанные: S8R-AUDIT-090, S8R-AUDIT-091.
 
-### S8R-FIX-009 — `BacktestJobManager.shutdown()` ждёт задачи без таймаута; второй grid при занятых слотах висит в `running/0%`
+### S8R-FIX-009 — `BacktestJobManager.shutdown()` ждёт задачи без таймаута; второй grid при занятых слотах висит в `running/0%` — ✅ (2026-10-13, `SHUTDOWN_WAIT_SEC = 10` — общий бюджет остановки, остаток задач одним WARNING; grid без worker-слотов остаётся `queued` и получает событие `waiting` с причиной, отмена работает; 5 тестов, мутация красная — 3,03 с против 0,23 с)
 Аспект: M/H | Severity: low | Объём: S
 Где: `backend/app/backtest/jobs.py::shutdown` (ожидание задач без предела — gotcha-48), `backend/app/backtest/grid.py::GridWorkerSlots` (ожидание слотов без события прогресса) — найдено DEV-AUDIT-078.
 Что не так: shutdown может затянуться до конца долгого job; пользователь не видит, что его grid ждёт свободных слотов.
@@ -216,7 +232,7 @@ PR #27 (доказательные тесты) смёржен в `develop` пе�
 Как исправить: повтор REST-подписки на `auth_ok`/reconnect во фронте (+ vitest); ключ стрима — с учётом счёта/токена (или явное правило «один токен на процесс» в ТЗ).
 Связанные: S8R-AUDIT-061, S8R-AUDIT-003.
 
-### S8R-FIX-012 — События сессии теряются после снятия слушателя (часть про recovery частичного выхода закрыта `fdfbb5c`)
+### S8R-FIX-012 — События сессии теряются после снятия слушателя (часть про recovery частичного выхода закрыта `fdfbb5c`) — ✅ (2026-10-13, оба дефекта закрыты более поздней работой и закреплены инвариантными тестами: решение о выходе в exit-recovery — только по терминальному состоянию ордера (S8R-AUDIT-025), инциденты идут в outbox в той же транзакции и доставляются по владельцу (S8R-AUDIT-086), живой слушатель им не нужен)
 Аспект: G | Severity: low | Объём: S
 Где: `backend/app/trading/runtime.py` (exit-recovery: при активном `partially_filled` P&L считается на всю позицию); публикации событий сессии после `stop()` (слушатель снят — `position.mismatch`/`order.*` не доходит до уведомлений) — найдено DEV-AUDIT-025.
 Как исправить: recovery не закрывает сделку на активном частичном ордере (ждёт терминала, как движок); уведомления об инцидентах остановленной сессии — прямым `create_notification`, не через шину сессии.
@@ -315,14 +331,14 @@ PR #27 (доказательные тесты) смёржен в `develop` пе�
 `/code-review` (xhigh, обязателен по правилу: правки в `components/trading/` и PR > 10 файлов) — 9 находок. Починено в цикле: наполнение редактора откатывается на кэш стора при сбое `fetchStrategy` (со сверкой `id`) — иначе пустая форма при живой копии в памяти и запись версии без блоков; задержка маркеров сделок на 250 мс, которую внёс сам перенос `useTradeMarkers` (первые итерации ожидания серии сделаны короткими); `setDescription` убран из зависимостей эффекта, сбрасывающего `initialLoadDoneRef`; сняты две недостижимые ветки в `SparklineWidget`; дописаны ФТ и ТЗ. Инвариант синхронизации ref'ов закрыт тестом `CandlestickChart.refSync.test.tsx` — он же показал, что `useLayoutEffect` здесь страховка от перестановки эффектов, а не необходимость (блок объявлен выше читающего эффекта), комментарий в коде поправлен. Дублирование приёма в 8 компонентах вынесено в **S8R-FIX-089**.
 Связанные: S8R-FIX-079, S8R-FIX-089, Dependabot #39.
 
-### S8R-FIX-079 — Обновление `@tanstack/react-table` 8 → 9 требует переписать две таблицы на новый API
+### S8R-FIX-079 — Обновление `@tanstack/react-table` 8 → 9 требует переписать две таблицы на новый API — ✅ (2026-10-13, `@tanstack/react-table` 9.3.1: фичи перечисляются явно через `tableFeatures({…})`, модели строк — фабриками `create*RowModel`, состояние читается `table.state`, ячейки — `getAllCells()`, `sortingFn` → `sortFn`. `PositionsTable` (сортировка) и `BacktestTrades` (сортировка + фильтр + пагинация) переведены; подавление `react-hooks/incompatible-library` больше не нужно — правило v9-таблицу не трогает. Проверено Playwright: 7 сценариев на живом фронте — пагинация по 10 строк, сброс страницы фильтром, оба направления сортировки, `sortFn: 'datetime'` по дате, рендер всех ячеек)
 Аспект: R | Severity: low | Объём: M | **нужно решение заказчика** (вынесено из цикла Dependabot 2026-10-10)
 Где: `frontend/src/components/account/PositionsTable.tsx`, `frontend/src/components/backtest/BacktestTrades.tsx` (Dependabot PR #41, версия 9.2.4+).
 Что не так: v9 — не бамп, а переписанный API: `useReactTable` → `useTable`, `getCoreRowModel`/`getSortedRowModel`/`getFilteredRowModel`/`getPaginationRowModel` → `create*RowModel` с регистрацией «фич», у всех типов появился генерик `TFeatures` (`ColumnDef<TFeatures, TData, TValue>` — 3 аргумента вместо 1). `tsc -b` на 9.2.8: 32 ошибки в двух файлах. Сортировка, фильтры и пагинация этих таблиц — поведение, которое проверяется глазами (UI-чеклист S8.49, S8.53), а не только типами.
 Как исправить: отдельный цикл — миграция обоих компонентов на `useTable` с регистрацией фич, прогон vitest + скриншоты Playwright обеих страниц, затем пункты UI-чеклиста по сортировке/пагинации. До этого в `package.json` остаётся `^8.21.3`; PR #41 закрыть как «отложен до цикла миграции».
 Связанные: S8R-FIX-078, S8R-AUDIT-050, Dependabot #41.
 
-### S8R-FIX-078 — `protobuf` нельзя обновить, пока SDK T-Invest требует `<5.0.0`
+### S8R-FIX-078 — `protobuf` нельзя обновить, пока SDK T-Invest требует `<5.0.0` — ⏸ заблокировано апстримом (проверено 2026-10-13): обновление физически невозможно до релиза SDK с `protobuf>=5`; работы исполнителя здесь нет, Dependabot PR #38 закрыть как неприменимый
 Аспект: R | Severity: low | Объём: S | **нужно решение заказчика** (вынесено из цикла Dependabot 2026-10-10)
 Где: `backend/pyproject.toml` (`protobuf==4.25.9`), SDK `tinkoff-investments` 0.2.0-beta117 (`protobuf = "^4.25.1"`); Dependabot PR #38 (protobuf 4.25.9 → 7.36.2).
 Что не так: обновление физически невозможно — `pip-compile` даёт `ResolutionImpossible` (`protobuf==7.36.2` против `protobuf<5.0.0,>=4.25.1` из SDK). Апстрим SDK на 2026-10-10 всё ещё на `0.2.0-beta117` (ветка `main`, `protobuf = "^4.25.1"`), более новых релизов нет — значит обновление требует либо нового релиза SDK, либо своей сборки/форка с перегенерацией protobuf-классов, либо отказа от SDK в пользу собственного gRPC-клиента.
@@ -573,7 +589,7 @@ PR #27 (доказательные тесты) смёржен в `develop` пе�
 Как исправить: множитель сделки `derive_lot_size`/`LiveTrade.lot_size`, как в остальных путях после 063.
 Связанные: S8R-AUDIT-063, S8R-AUDIT-025.
 
-### S8R-FIX-040 — ⤴ дубль S8R-AUDIT-086 (outbox `pending_events` входит в её рецепт) — Гарантированная доставка критических событий (`pending_events`) не реализована; мёртвый `dispatchers.py`
+### S8R-FIX-040 — ✅ закрыта S8R-AUDIT-086 — ⤴ дубль S8R-AUDIT-086 (outbox `pending_events` входит в её рецепт) — Гарантированная доставка критических событий (`pending_events`) не реализована; мёртвый `dispatchers.py`
 Аспект: K | Severity: medium | Объём: M
 Где: таблица `pending_events` (ТЗ §2.4/§3.20) — есть, но никто не пишет `processed_at` и не переобрабатывает при старте; `app/notification/dispatchers.py` — мёртвый дубль `dispatch_external` (только тесты) (найдено DEV-AUDIT-083).
 Что не так: ТЗ обещает гарантию доставки `order.placed`/`order.filled`/`cb.triggered`/`connection.lost` через outbox; при переполнении очереди EventBus или падении процесса событие теряется (с 083 — хотя бы видно в логе и метрике).
@@ -686,7 +702,7 @@ PR #27 (доказательные тесты) смёржен в `develop` пе�
 Как исправить (решение заказчика 2026-09-30 — «разрешить по расписанию ISS»): торговые дни и часы выходного дня — из ISS (расписание/`dailytable`, признак инструмента, торгуемого в выходные); вход разрешён только для таких инструментов в часы сессии выходного дня; защитные закрытия — как сейчас; ФТ §1.6/1.7, ТЗ §5.9.
 Связанные: S8R-AUDIT-072, S8R-AUDIT-093.
 
-### S8R-FIX-024 — Флейки полного прогона: SIGABRT при fork с живыми потоками gRPC; разовое зависание гейта
+### S8R-FIX-024 — Флейки полного прогона: SIGABRT при fork с живыми потоками gRPC; разовое зависание гейта — ✅ (2026-10-13, `GRPC_ENABLE_FORK_SUPPORT=0` выставляется в `tests/conftest.py` ДО импортов, тянущих grpc — в окружении подпроцесса переменная бесполезна; `faulthandler_timeout=400` переехал в `addopts` `pyproject.toml`, зависание даёт стеки, а не вечное ожидание)
 Аспект: Q | Severity: medium | Объём: S
 Где: `backend/tests/unit/test_config.py::test_preflight_*` (подпроцесс `scripts/check_production_env.sh` через fork, пока в процессе тестов живы потоки gRPC: `fork_posix.cc: Other threads are currently calling into gRPC` → SIGABRT, разные параметры в разных прогонах; найдено DEV-AUDIT-071); 2026-09-26 полный прогон в wt B (после S8R-AUDIT-015) завис на 30 мин без роста CPU, повтор с `-o faulthandler_timeout=300` прошёл за 3 мин — причина не установлена (вероятно тот же класс).
 Что не так: полный pytest на машине/в CI может случайно падать или зависать; зависание без таймаута блокирует гейт.
@@ -694,48 +710,48 @@ PR #27 (доказательные тесты) смёржен в `develop` пе�
 Наблюдение 2026-09-26: оба зависания полного прогона (wt B и wt A, каждое ~30+ мин без роста CPU) случились при **одновременных** прогонах pytest на машине, в случае A — в том же worktree, где работал DEV; изолированные повторы с `-o faulthandler_timeout` проходят за 3 мин. Вероятная причина — общий ресурс файловой системы/локов между параллельными прогонами (проверить фиксированные пути в тестах: BACKUP_DIR/flock, файлы в `backend/data/`, `/tmp/<fixed>`). Правило оркестратора: полный гейт — только когда в этом worktree не идёт прогон DEV. 2026-09-30: также `test_stream_figi_from_ensure_figi.py::test_silent_source_one_network_wait_per_session_start` (0.406 < 0.4) под нагрузкой; под нагрузкой параллельных прогонов падает тайминг-тест `test_runtime.py::TestSignalToOrderFullMetric::test_existing_metric_is_blind_to_cb_wait` (301 мс > 150), отдельно 3×3 зелёный.
 Связанные: S8R-FIX-005, S8R-AUDIT-038, S8R-AUDIT-040.
 
-### S8R-FIX-023 — Хвосты S8R-AUDIT-015: тесты идут без FK; audit_log SET NULL конфликтует с append-only триггером
+### S8R-FIX-023 — Хвосты S8R-AUDIT-015: тесты идут без FK; audit_log SET NULL конфликтует с append-only триггером — ✅ (2026-10-13, `PRAGMA foreign_keys=ON` на каждое соединение тестового движка, снимается только на teardown — `drop_all` не удовлетворяет циклу strategies↔strategy_versions; предсказанных 162 падений не оказалось, было 5 ошибок teardown. Конфликт `audit_log` с append-only триггерами закреплён тестом на конфигурации боя; менять FK — перестройка таблицы с историей, решение заказчика)
 Аспект: J | Severity: low | Объём: M
 Где: `backend/tests/conftest.py` (тестовые БД без `PRAGMA foreign_keys=ON` — при включении падает 162 теста: фиктивные `user_id`, `drop_all` при цикле strategies↔strategy_versions); `app/common/models.py` (`audit_log.user_id` ON DELETE SET NULL) + триггер `prevent_audit_log_update` (найдено DEV-AUDIT-015, /code-review).
 Что не так: регресс-тесты не видят нарушений FK, которые получит прод; удаление пользователя с записями аудита абортится триггером (пути удаления пользователя в приложении нет — риск для ручных операций и будущего эндпоинта); удаление `backtest_jobs` уменьшает счётчики `admin/metrics` за прошлые периоды.
 Как исправить: включить FK в фикстурах и починить 162 теста (реальные пользователи, порядок teardown); для audit_log — ondelete NO ACTION + запрет удаления пользователя с аудитом (или анонимизация через специальный путь).
 Связанные: S8R-AUDIT-015.
 
-### S8R-FIX-022 — Хвосты S8R-AUDIT-012: график не исправляет не-последний бар; бары целиком в обрыве не публикуются; выходные — REST на каждые сутки — 🔄 фронт закрыт (2026-10-13): `upsertLiveCandle` правит бар в любом месте окна — двоичный поиск, замена или вставка с сохранением порядка (иначе lightweight-charts бросает «Cannot update oldest data»); свеча старше окна не добавляется. 5 тестов. Остаток: публикация пропущенных баров из дозагрузки на backend
+### S8R-FIX-022 — Хвосты S8R-AUDIT-012: график не исправляет не-последний бар; бары целиком в обрыве не публикуются; выходные — REST на каждые сутки — ✅ (2026-10-13): фронт — `upsertLiveCandle` правит бар в любом месте окна (двоичный поиск, замена или вставка с сохранением порядка, иначе lightweight-charts бросает «Cannot update oldest data»), свеча старше окна не добавляется, 5 тестов; backend — периоды, целиком накрытые обрывом, собираются из дозагруженных минут и публикуются с `bar_complete=True`, предел `GAP_REPUBLISH_MAX_BARS = 60` (дальше одна строка в лог, график перечитает REST'ом). Торговлю это не включает: закрывающая свеча нового поколения стрима отбрасывается `_closed_bar_verdict` (`gen_changed` → SKIP). Остаток: REST на каждые сутки в выходные — не дефект, оставлено как есть
 Аспект: H | Severity: low | Объём: S
 Где: `frontend` `upsertLiveCandle` (обновляет только последнюю свечу по timestamp, более старые игнорирует); `app/market_data/stream_manager.py` (раунд обрыва публикует только затронутые бары; дозагрузка длинного окна — по запросу на сутки) (найдено DEV-AUDIT-012).
 Что не так: исправленная после дозагрузки версия бара, пережившего обрыв, видна на графике только после перезагрузки страницы, если бар уже не последний; бары, целиком попавшие в обрыв, на графике отсутствуют до перезагрузки.
 Как исправить: фронт — обновление свечи по timestamp в пределах окна; бэкенд — публикация пропущенных баров из дозагрузки.
 Связанные: S8R-AUDIT-012.
 
-### S8R-FIX-021 — Хвосты S8R-AUDIT-041: шифртекст не привязан к строке; alembic разрешает путь БД от cwd; проверка живого сервера только по двум адресам
+### S8R-FIX-021 — Хвосты S8R-AUDIT-041: шифртекст не привязан к строке; alembic разрешает путь БД от cwd; проверка живого сервера только по двум адресам — 🔄 (2026-10-13, `alembic/env.py` нормализует `DATABASE_URL` той же функцией, что настройки (S8R-AUDIT-041): `alembic upgrade head` из корня репозитория больше не создаёт свой файл БД, оставляя рабочую без миграции. Остаток: AAD по (таблица, колонка, id) — миграция-перешифровка боевых ключей брокера, решение заказчика; `app/cli/secrets_rotation.py` закрыт permission-правилом репозитория, обходить не стал)
 Аспект: C | Severity: low | Объём: S
 Где: `app/common/crypto.py` (AAD = только заголовок `MTK\x01` + key_id); `alembic/env.py` (берёт `DATABASE_URL` из env мимо `Settings.normalize_sqlite_url`); `app/cli/secrets_rotation.py` (живой backend ищется только на 127.0.0.1:8000 и `backend:8000`) (найдено DEV-AUDIT-041, /code-review).
 Что не так: пару шифртекст+IV можно перенести между строками/таблицами с правом записи в БД — расшифруется в чужом контексте; миграции из другого cwd пишут в другой файл БД; backend на ином хосте/порту CLI не обнаружит.
 Как исправить: AAD = заголовок + (таблица, колонка, id) с миграцией-перешифровкой; alembic — через ту же нормализацию пути; флаг `--i-have-stopped-backend` обязательным при нестандартной топологии.
 Связанные: S8R-AUDIT-041, S8R-AUDIT-092.
 
-### S8R-FIX-020 — Фоновая сверка счетов идёт последовательно
+### S8R-FIX-020 — Фоновая сверка счетов идёт последовательно — ✅ (2026-10-13, отбор сессий выделен в `_sessions_to_reconcile` (только БД), портфели счетов греются параллельно под одним бюджетом тем же `_prefetch_restore_portfolios`, что на старте; `log_prefix` отличает периодический проход от restore; структурные тесты + проверка, что `gather` не вырождается в сумму задержек)
 Аспект: G/M | Severity: medium | Объём: M
 Где: `app/trading/runtime.py::_reconcile_active_sessions` в `_periodic_recovery_loop` (найдено DEV-AUDIT-011, /code-review).
 Что не так: при устойчиво неполном sandbox-портфеле или молчащем брокере каждый счёт тратит до ~55 с; N счетов — N × 55 с на проход, всё это время стоят watchdog стримов (BUG-27) и доучёт осиротевших pending/exit-ордеров. Не регресс (до S8R-AUDIT-011 было N × 60 с).
 Как исправить: параллельная предзагрузка портфелей счетов под общим бюджетом, как `_prefetch_restore_portfolios` (S8R-AUDIT-009), либо вынести сверку в отдельную задачу, не блокирующую watchdog; ~80–120 строк и ~8 тестов с последовательными фейками.
 Связанные: S8R-AUDIT-009, S8R-AUDIT-011, S8R-FIX-019.
 
-### S8R-FIX-019 — Хвосты S8R-AUDIT-009: `start()` ходит в сеть до поднятия HTTP; фоновая сверка на `wait_for` поверх записей в БД
+### S8R-FIX-019 — Хвосты S8R-AUDIT-009: `start()` ходит в сеть до поднятия HTTP; фоновая сверка на `wait_for` поверх записей в БД — ✅ (2026-10-13, `restore_all` обёрнут общим дедлайном `RESTORE_TOTAL_BUDGET_SEC = 45` с запасом 15 с на миграции, превышение — в лог; вариант «restore фоновой задачей после yield» отклонён — меняет семантику готовности и требует правок `/health` и UI; фоновая сверка закрыта карточкой 020; 4 теста)
 Аспект: G/M | Severity: low | Объём: M
 Где: `app/main.py` lifespan (`restore_all` до `yield`), `SessionRuntime.start()` → `_preload_history`/`stream_manager.subscribe` (сеть, по ~10 с на унарный вызов, 030); `app/trading/runtime.py::_reconcile_active_sessions` — `asyncio.wait_for` + `except asyncio.TimeoutError` (gotcha-74: чужой TimeoutError выдаётся за свой бюджет) и бюджет поверх commit/уведомлений (gotcha-75); resume не снимает пометку «сверка не выполнена» (снимает фоновая сверка ≤ 15 мин) (найдено DEV-AUDIT-009, /code-review).
 Что не так: при молчащем брокере и многих сессиях без позиций старт HTTP всё ещё может превысить `start_period` healthcheck; фоновая сверка при зависшем счёте ждёт последовательно по каждой сессии.
 Как исправить: `restore_all` фоновой задачей после `yield` (с флагом «восстановление идёт» для /health и UI) или общий дедлайн на весь restore; фоновая сверка — на `_load_portfolio(deadline)` с кэшем счёта и записями вне бюджета.
 Связанные: S8R-AUDIT-009, S8R-AUDIT-030, S8R-AUDIT-074.
 
-### S8R-FIX-018 — Хвосты S8R-AUDIT-008: доучёт частичного выхода на shutdown не ставит паузу; осиротевшая paused держит пару; три копии кода уведомлений
+### S8R-FIX-018 — Хвосты S8R-AUDIT-008: доучёт частичного выхода на shutdown не ставит паузу; осиротевшая paused держит пару; три копии кода уведомлений — 🔄 (2026-10-13, два пункта из трёх: shutdown-recovery получает `RESTORE_PAUSE_FROM` — частичный выход, доученный на остановке, паузит и `suspended`-сессию; постоянный отказ старта без владельца → `stopped`, пара «счёт+тикер» и удаление счёта больше не блокируются навсегда. Остаток: свести три копии резолва владельца и `create_notification` — различаются обработкой ошибок и уровнем уведомления)
 Аспект: G/M | Severity: low | Объём: S
 Где: `app/trading/runtime.py` — `_run_shutdown_recovery` вызывает `_recover_orphan_exit_orders` после перевода сессий в `suspended` (пауза только для `active`) → частичный выход, доученный на shutdown, сессию не паузит, к старту сделка закрыта, сессия поднимется (было и до карточки); `NotFoundError` в restore → `paused`, но владелец неизвестен — сессию никто не видит и не остановит, а `paused` входит в `BLOCKING_SESSION_STATUSES` (пара заблокирована); `_notify_not_restored`, `_notify_position_mismatch` и блок «Сессия восстановлена» — три копии резолва владельца и `create_notification` с разной обработкой ошибок; ветка дубликатов в `restore_all` не на `_set_status_if` (рецепт 008 запрещал трогать) (найдено DEV-AUDIT-008, /code-review).
 Как исправить: на shutdown-recovery передавать `RESTORE_PAUSE_FROM`; постоянную причину — `stopped` вместо `paused` (или не блокировать пару осиротевшей сессией); общий помощник уведомления о сессии.
 Связанные: S8R-AUDIT-008, S8R-AUDIT-025.
 
-### S8R-FIX-017 — (частично закрыта S8R-AUDIT-058: разрыв открытых WS при logout/смене пароля) — Хвосты S8R-AUDIT-013: открытые WS не рвутся при logout; текст «Аккаунт деактивирован» не доходит до экрана входа; дубли кода аутентификации
+### S8R-FIX-017 — (частично закрыта S8R-AUDIT-058: разрыв открытых WS при logout/смене пароля) — Хвосты S8R-AUDIT-013: открытые WS не рвутся при logout; текст «Аккаунт деактивирован» не доходит до экрана входа; дубли кода аутентификации — 🔄 (2026-10-13, дубли сведены: один декодер `decode_access_payload` на три входа (REST, WS, админка) — тест проверяет все ветки и то, что `jwt.decode` в эти модули не вернулся; `_require_bound_user` и единый текст отказа бота вместо пяти копий; ТЗ §4.12/§7.4 приведены к коду (токен уходит cookie при upgrade). **Осознанно не делалось:** `detail` 401 на экране входа — противоречит более позднему решению S8R-AUDIT-043, «Аккаунт деактивирован» вернуло бы оракул перечисления учётных записей. Остаток: чистка существующих дублей активных `TelegramLink` на один chat_id — миграция данных на рабочей БД)
 Аспект: A/B | Severity: low | Объём: S
 Где: `app/common/ws_auth.py`, `app/api/ws.py`, `app/trading/ws_sessions.py`, `app/backtest/ws_backtest.py` (нет реестра соединений); `frontend/src/pages/LoginPage.tsx` (любой ответ, кроме 423, → «Неверный логин или пароль»); `jwt.decode`+`type` в трёх местах (`get_current_user`, `ws_authenticate`, `AdminAuthASGIMiddleware`); мёртвый `notification/dispatchers.dispatch_external` с копиями `_get_telegram_link/_get_user`; восемь копий `if not user: reply(_denied_text…)` в `telegram_webhook.py`; предикат — два запроса вместо одного; уже существующие дубли активных `TelegramLink` на один chat_id не чистятся; ТЗ §4.12/§7.4 описывают устаревший WS-протокол `{action:"auth"}` (найдено DEV-AUDIT-013, /code-review).
 Что не так: уже открытое WS-соединение живёт после logout/деактивации до переподключения; отключённый пользователь видит на входе «Неверный пароль»; правка декодирования токена требует трёх мест.
@@ -750,7 +766,7 @@ PR #27 (доказательные тесты) смёржен в `develop` пе�
 Связанные: S8R-MANUAL-CLOSE-SANDBOX-REAL.
 Закрытие: CI PR #29 (DEBUG=false, 00:15 МСК) — 3 failed: этот тест и 2 теста гонок 101 (`sandbox_topup_spy` без `DEBUG=True` — sandbox-токен вне режима разработки отклоняется). Блокировало зелёный CI пакета → исправлено в `s8r/fix-high`: подмена `is_within_trading_hours` и `settings.DEBUG` в фикстуре.
 
-### S8R-FIX-015 — Направление сделки проверяется inline-копиями; paper-выручка по `volume_lots`; paper-просадка без нереализованного P&L — 🔄 два пункта из трёх (2026-10-13): копии `direction in ("buy","long")` заменены на `models.is_long_direction` (risk_monitor ×3, unrealized); выручка paper-закрытия — по `RiskMonitor.position_lots`, как P&L и комиссия выхода. Остаток: нереализованный P&L в paper-просадке
+### S8R-FIX-015 — Направление сделки проверяется inline-копиями; paper-выручка по `volume_lots`; paper-просадка без нереализованного P&L — ✅ (2026-10-13): копии `direction in ("buy","long")` заменены на `models.is_long_direction` (risk_monitor ×3, unrealized); выручка paper-закрытия — по `RiskMonitor.position_lots`, как P&L и комиссия выхода; paper-просадка считает нереализованный P&L тем же источником и той же проверкой свежести цены, что sandbox/real (`unrealized_pnl_by_session`, S8R-AUDIT-070) — защита включается во время убытка, а не после, и режимы при одинаковых настройках ведут себя одинаково. `/code-review` нашёл, что состав бумажного equity после этой правки оказался записан в трёх местах по-разному (пик поднимал только денежный учёт, статус считал по третьей формуле) — сведено к `paper_equity_by_session` / `paper_peak_equity`, 4 теста, структурные тесты карточки переписаны на поведенческие
 Аспект: D/K | Severity: low | Объём: S
 Где: `in ("buy","long")` — `risk_monitor.py` 128/236/640/780, `unrealized.py` 120, `service.py` 479/714, `engine.py` ~3958 (эталон — `models.is_long_direction`, S8R-AUDIT-032); `engine._apply_close_and_settle` — paper `proceeds` по `volume_lots`, а не `RiskMonitor.position_lots`; CB paper max_drawdown без unrealized (найдено DEV-AUDIT-032, /code-review).
 Что не так: смена набора алиасов направления требует правки ~10 мест (одно — `get_positions` — уже расходилось, исправлено в 032); paper исполняется целиком, поэтому `volume_lots == filled_lots` и денежного дефекта сейчас нет, но формула расходится с sandbox/real; paper-просадка по реализованному P&L — одинаково для long и short.
@@ -4011,7 +4027,7 @@ backend pytest **2246 passed / 1 xfailed / 0 failed** (baseline 2223 + 23 нов
 - **Приоритет:** medium. Не блокирует запуск сессии (фикс 2dae943), но первая же сделка упадёт. UX-фикс: показывать сразу при попытке запуска, не при первом ордере.
 - **Связь:** дополняет `S7R-API-PAGINATED-TYPE-MISMATCH` (medium-high) — оба про несинхронизированный backend/frontend контракт.
 
-### S7R-SESSION-RERUN-PAYLOAD-BROKEN — кнопка «Запустить заново» не передаёт sandbox-поля
+### S7R-SESSION-RERUN-PAYLOAD-BROKEN — кнопка «Запустить заново» не передаёт sandbox-поля — ✅ бухгалтерия (2026-10-13): закрыта в S8 (2026-08-10) — `SessionDashboard` передаёт `mode`, `broker_account_id` и таймфрейм, конфликт пары «счёт+тикер» показывается до запуска; пункты визуальной проверки — UI-чеклист **S8.31** (7 пунктов, ждут живого стенда)
 
 - **Источник:** Sprint 7 closeout 2026-05-12, обнаружено при фиксе S7R-SESSION-MODE-BADGE (когда смотрел `SessionDashboard.tsx:179`).
 - **Симптом:** на остановленной сессии есть кнопка «Запустить заново» (`IconRestore`). При клике вызывает `startSession(...)` с payload, который не годится для sandbox/real:
@@ -4061,7 +4077,7 @@ backend pytest **2246 passed / 1 xfailed / 0 failed** (baseline 2223 + 23 нов
 
 ## Переносится в Sprint_8_Review (6 + 1 новый)
 
-### S8R-SR-PERF-BASELINE-MEASUREMENTS (medium, ~6ч)
+### S8R-SR-PERF-BASELINE-MEASUREMENTS (medium, ~6ч) — ✅ бухгалтерия (2026-10-13): закрыта ещё в S8 W5 как `S8R-W5-PERF-BASELINE-MEASUREMENTS` — `pytest-benchmark` в `pyproject.toml`, `backend/tests/test_performance/test_benchmarks.py`, baseline в `Sprint_8/perf_baseline_w5.md` (overhead `@timed_event` 14 мкс, hot-path 1,4–2,5 мс). Карточка осталась в переносах, потому что заголовки не обновляли
 
 - **Источник:** ARCH 8.R notes (W3 финал). Carry-over `S8R-W4-PERF-BASELINE-MEASUREMENTS`.
 - **Что:** прогнать `pytest-benchmark` для 3 hot-path и зафиксировать p95 baseline:
@@ -4076,41 +4092,41 @@ backend pytest **2246 passed / 1 xfailed / 0 failed** (baseline 2223 + 23 нов
   4. Frontend LCP — отдельный Lighthouse CLI run, отчёт в тот же файл.
 - **Приоритет:** medium. Не блокер M4 (PASS WITH NOTES без этого), но критично для ТЗ-валидации перед production rollout.
 
-### S8R-SR-COV-MARKET-DATA-SERVICE (medium, ~4ч)
+### S8R-SR-COV-MARKET-DATA-SERVICE (medium, ~4ч) — ✅ бухгалтерия (2026-10-13): `market_data/service` поднят до 83 % в W5 (цель 80 %), общий гейт `--cov-fail-under=80` в CI зелёный; после S8R-AUDIT-019 (чистка мёртвого кода) общее покрытие 91 %
 
 - **Источник:** ARCH 8.R `S8R-COV-MARKET-DATA-SERVICE`.
 - **Что:** `app/market_data/service.py` 78% → ≥80% (398 строк / 89 непокрыто → 79).
 - **Untested:** `_fetch_lot_size_from_tinvest` happy-path (tinkoff AsyncClient context-manager), `get_or_fetch_logo_isin` commit-fail rollback.
 - **Приоритет:** medium. TOTAL coverage уже 84.83% — per-module gap не блокер.
 
-### S8R-SR-COV-STRATEGY-SERVICE (medium, ~3ч)
+### S8R-SR-COV-STRATEGY-SERVICE (medium, ~3ч) — ✅ бухгалтерия (2026-10-13): `strategy/service` — 97 % в W5 (цель 80 %)
 
 - **Источник:** ARCH 8.R `S8R-W4-COV-STRATEGY-SERVICE`.
 - **Что:** `app/strategy/service.py` 68% → ≥80% (215 строк / 68 непокрыто → ~43).
 - **Приоритет:** medium (low относительно TOTAL).
 
-### S8R-SR-MULTICURRENCY-TOGGLE (medium, ~6ч)
+### S8R-SR-MULTICURRENCY-TOGGLE (medium, ~6ч) — ✅ бухгалтерия (2026-10-13): переключатель RUB/USD в `BalanceWidget` сделан в W5, а mock-курс 90 ₽/$ заменён официальным курсом ЦБ РФ 2026-08-10 (pre-deploy A1); курса нет — переключатель не рисуется
 
 - **Источник:** DEV-4 W3 SKIP → перенос. `S7R-MULTICURRENCY-TOGGLE`.
 - **Что:** переключение USD/RUB в `BalanceWidget` + persisted в `useSettingsStore`.
 - **Endpoint:** `/api/v1/market-data/usd-rate` (нужно создать) или mock 90 RUB/USD.
 - **Приоритет:** medium. Production-ready usability, не блокер.
 
-### S8R-SR-DOCKER-COMPOSE-VALIDATE (informational)
+### S8R-SR-DOCKER-COMPOSE-VALIDATE (informational) — ⏸ у заказчика: `docker compose build` на Mac mini (pre-deploy A8). Исполнитель собрать не может — нужна целевая машина
 
 - **Источник:** OPS W3+W4 не имеет docker CLI в DEV-окружении.
 - **Что:** реальный `docker compose build` на хосте с docker. YAML структурно валиден (yaml.safe_load OK), semantic validation требует runtime.
 - **Когда:** при первом Mac mini deployment.
 - **Приоритет:** informational.
 
-### S8R-SR-PLAYWRIGHT-NIGHTLY-RERUN (informational)
+### S8R-SR-PLAYWRIGHT-NIGHTLY-RERUN (informational) — ✅ бухгалтерия (2026-10-13): `.github/workflows/playwright-nightly.yml` существует и работает на моках (`e2e/fixtures/api_mocks.ts`), backend на CI для него не нужен
 
 - **Источник:** OPS W4 не успел.
 - **Что:** финальный полный Playwright nightly прогон перед production rollout (`CI=true npx playwright test`). Ожидаемо 158+ passed + 2 ранее snycьн (если `S8R-W4-E2E-ANALYTICS-UNSKIP` активен) = 160 / 3 skipped.
 - **Когда:** prerelease (перед Mac mini deployment).
 - **Приоритет:** informational.
 
-### S8R-SR-TEST-EVENT-DELIVERY-FIX-FIXTURES (medium, ~3ч, новый из W4)
+### S8R-SR-TEST-EVENT-DELIVERY-FIX-FIXTURES (medium, ~3ч, новый из W4) — ✅ бухгалтерия (2026-10-13): гонка async-фикстур доставки событий починена в W5 («0 xfailed, event_delivery race починен»); в `tests/test_notification/test_event_delivery_e2e.py` ни одного `skip`/`xfail` не осталось
 
 - **Источник:** BACK2 W4 написал 17 параметризованных тестов доставки event_type через 3 канала, но async session fixtures падают `sqlalchemy.orm.exc.StaleDataError: UPDATE statement on table 'notifications' expected to update 1 row(s); 0 were matched`. Помечены `pytest.mark.xfail(strict=False)`.
 - **Что:** исправить session-scoped fixtures в `tests/test_notification/test_event_delivery_e2e.py` — устранить race condition между `event_bus.subscribe`/`unsubscribe` и `session.flush` на `Notification` объекте.
