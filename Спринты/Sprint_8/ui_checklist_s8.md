@@ -119,7 +119,7 @@
 - [x] `/backtests/{id}` — 4 вкладки: Обзор / График / Показатели / Сделки. (✅ 2026-10-14, сплошная проверка — `reports/s8r_checklist_run_qa2.md`)
 - [x] **Equity zones** на ценовом графике (`InstrumentChart.tsx:226`) — `data-testid="equity-curve-zone-{idx}"` DOM overlay поверх canvas, `pointerEvents:none` на overlay, hover на zone — подсветка trade-range. (✅ 2026-10-14, сплошная проверка — `reports/s8r_checklist_run_qa2.md`)
 - [x] **Trade row click → TradeDetailsPanel** (`BacktestTrades.tsx:285`) — `onRowClick` prop пробрасывается из `BacktestResultsPage`; per-row `data-testid="backtest-trade-row-{trade_id}"`. (✅ 2026-10-14, сплошная проверка — `reports/s8r_checklist_run_qa2.md`)
-- [ ] При клике на сделку — раскрывается `<TradeDetailsPanel>` с entry/exit (time, price, reason, pnl, duration). (❌ 2026-10-14 `reports/s8r_checklist_run_qa2.md`; исправление ждёт решения заказчика)
+- [x] При клике на сделку — раскрывается `<TradeDetailsPanel>` с entry/exit (time, price, pnl, duration). (✅ 2026-10-14: время, цена, P&L, длительность — `reports/s8r_checklist_run_qa2.md`; формулировка обновлена — причина входа/выхода в этой версии не показывается, решение заказчика 2026-10-14, ФТ §19.9; строка «Причина: —» убрана в ветке `s8r/fix-checklist-run`)
 - [x] `data-testid="pnl-histogram"` (гистограмма P&L) и `data-testid="win-loss-donut"` рендерятся на вкладке «Обзор» (наследовано из S7). (✅ 2026-10-14, сплошная проверка — `reports/s8r_checklist_run_qa2.md`)
 - [x] Кнопка «Запустить торговлю из бэктеста» — открывает `LaunchSessionModal` с предзаполненными параметрами (ticker/timeframe/initial_capital/strategy_id) — наследовано из S7. (✅ 2026-10-14, сплошная проверка — `reports/s8r_checklist_run_qa2.md`)
 

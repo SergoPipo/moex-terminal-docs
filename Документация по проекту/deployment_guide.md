@@ -340,6 +340,34 @@ docker compose logs backend | grep encryption_key_mismatch   # должно бы
 ```
 
 - Снимок до ротации и все старые бэкапы зашифрованы старым ключом: при утечке — увести офлайн или удалить.
+
+**Нативный стенд (`scripts/start.sh`, без Docker).** Тот же порядок, файл окружения — `Develop/.env`
+(`backend/app/config.py`, `_ENV_FILE`). Ключи вводятся через `read -rs` — не попадают ни в историю shell,
+ни на экран:
+
+```bash
+# 1. Остановить стенд: Ctrl+C во вкладке, где запущен scripts/start.sh (CLI под живым сервером откажет, код 3).
+# 2. Свой снимок БД (backup API, gotcha-19) — дополнительно к автоматическому снимку CLI:
+cd ~/Documents/Claude_Code/Test/Develop/backend
+.venv/bin/python -c "import sqlite3; s=sqlite3.connect('data/terminal.db'); d=sqlite3.connect('data/terminal.db.bak-pre-key-rotation'); s.backup(d); d.close(); print('ok')"
+# 3. Новый ключ — сгенерировать и сохранить в менеджер паролей:
+python3 -c 'import secrets; print(secrets.token_urlsafe(48))'
+# 4. Перешифровать (старый ключ — из Develop/.env, новый — из шага 3; ввод скрыт):
+read -rs OLD_ENCRYPTION_KEY && read -rs NEW_ENCRYPTION_KEY && export OLD_ENCRYPTION_KEY NEW_ENCRYPTION_KEY
+.venv/bin/python -m app.cli rotate-encryption-key
+unset OLD_ENCRYPTION_KEY NEW_ENCRYPTION_KEY
+# 5. Записать новый ENCRYPTION_KEY в Develop/.env (редактором), запустить стенд:
+cd .. && GRPC_DNS_RESOLVER=native bash scripts/start.sh   # GRPC_DNS_RESOLVER не нужен после S8R-FIX-093 в develop
+# 6. В ДРУГОЙ вкладке (start.sh занимает свою): в журнале нет encryption_key_mismatch (ожидается 0);
+#    «Счёт» и Telegram /balance показывают балансы обоих счетов (ключи брокера расшифровываются);
+#    сессии восстановились (session_runtime_restore_complete).
+grep -c encryption_key_mismatch ~/Documents/Claude_Code/Test/Develop/backend/logs/dev.log
+```
+
+- Если шаг 4 завершился ошибкой — `Develop/.env` не трогать: старый ключ остаётся рабочим; CLI до изменений
+  делает снимок в `BACKUP_DIR`, свой снимок — `data/terminal.db.bak-pre-key-rotation`.
+- После проверки снимок `terminal.db.bak-pre-key-rotation` и прежние `terminal.db.bak-*` зашифрованы **старым**
+  ключом — увести офлайн или удалить.
 - Смена `SECRET_KEY` (JWT): `docker compose run --rm backend python -m app.cli rotate-jwt-secret`, затем новый `SECRET_KEY` в `.env.production` и `docker compose restart backend`; все пользователи входят заново.
 - **Откат кода после деплоя версии с S8R-AUDIT-041 = повторный ввод ключей брокеров и AI**: новый формат шифртекста старой версией не читается.
 
