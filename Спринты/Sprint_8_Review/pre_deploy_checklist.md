@@ -158,6 +158,14 @@ Backend требует оба поля через `model_validator` (`schemas.py
   - мультиплексор `wss://<host>/ws` подключается (S8R-AUDIT-058: раньше уходил в SPA-fallback);
   - страница метрик за nginx: `https://<host>/api/v1/admin/metrics/` под admin — все `_dash-component-suites/…js` и `_favicon.ico` → 200, без `Cache-Control: public, immutable` (S8R-AUDIT-056);
   - ротация секретов по гайду §6а — пробный прогон на копии БД (S8R-AUDIT-041).
+- **Сетевой путь AI и брокера из контейнеров (2026-10-13).** На машине разработки backend
+  наследовал `HTTP(S)_PROXY` из `~/.zshrc` оператора, в контейнер они не попадают. Терминалу
+  прокси нужен разве что для AI: единственный адрес — `https://openrouter.ai/api/v1`. Если на
+  Mac mini доступ к нему идёт через Proxifier — правило `openrouter.ai; *.openrouter.ai`, порт
+  443, «Resolve hostnames through proxy»; проверить, что правило ловит трафик Docker Desktop
+  (выходит процессом Docker на хосте): из контейнера backend — `curl -sI https://openrouter.ai/api/v1/models`
+  и живой AI-запрос в чате. T-Invest и ISS прокси не нужен; в журнале backend должно быть
+  `grpc_dns_resolver_configured resolver=native` без `grpc_dns_resolver_ineffective` (S8R-FIX-093).
 
 ---
 
