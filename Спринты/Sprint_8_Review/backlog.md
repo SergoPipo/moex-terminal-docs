@@ -311,7 +311,9 @@ T-Invest в бэктесте (qa3 Н-1). Вне ветки замечено: в�
     `terminal.db.bak-2026-10-15-pre-8f5ce74`, integrity ok): `git pull --ff-only`, backend перезапустился сам в 15:31
     (`grpc_dns_resolver_preset native`, `session_runtime_restore_complete restored=1`, без WARNING/ERROR), `/health` 200,
     фронт 200; код стенда принимает `https://openrouter.ai/api/v1`. Флаг `AI_ALLOW_PRIVATE_PROVIDER_URLS` не нужен.
-    Проверка ключом (S8.59) — «Проверить» у провайдера Qwen, за заказчиком. Worktree и локальная ветка удалены. Чеклист — S8.59 (2 пункта [~], ждут мержа и перезапуска стенда).
+    **Живая проверка ключом 2026-10-15:** заказчик — «Проверить» у провайдера #3 `qwen/qwen3.8-flash` → «Ключ валиден»
+    (`POST /providers/3/verify` 200, `is_verified=1`, провайдер активен). S8.59 п.1 → [x]; п.2 (показ причины отказа) —
+    закреплён API-тестом, визуально не снимался (нужен провайдер с отвергнутым адресом). Worktree и локальная ветка удалены. Чеклист — S8.59 (2 пункта [~], ждут мержа и перезапуска стенда).
 
 ### Находки QA-1 (отчёт `reports/s8r_checklist_run_qa1.md`: 65 PASS / 3 FAIL / 8 OUTDATED / 1 TELEGRAM / 1 BLOCKED), ветка `s8r/fix-checklist-run` (worktree `wt-s8r-fix`), не закоммичено
 
