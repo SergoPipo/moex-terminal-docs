@@ -331,8 +331,8 @@ git push origin docs/s5r2-skeleton-track4   # ветка опережает remo
   (`--reload` смотрит `.py`), таймер `detect_corporate_actions` не сброшен (детект ≈23:01 по Mac); health 200, 5173 200.
   Правка `.env.example` заказчика на месте.
 - Заказчик удалил `Develop/backend/.venv.old-Test` и локальную ветку `s8r/rename-paths` (`-d`, коммит был в
-  `origin/s8r/rename-paths`). Удалённая ветка `s8r/rename-paths` осталась — удалить на GitHub (кнопка в PR #73 или
-  `git push origin --delete s8r/rename-paths`).
+  `origin/s8r/rename-paths`), затем удалённую ветку (`git push origin --delete s8r/rename-paths`). Хвостов
+  переименования не осталось.
 
 **2026-10-16 (17:15) — каталог переименован `Test` → `Moex-Terminal`, окружение восстановлено, стенд поднят.**
 
