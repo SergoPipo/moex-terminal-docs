@@ -324,6 +324,18 @@ git push origin docs/s5r2-skeleton-track4   # ветка опережает remo
 После мержа PR LOW: вкладка GitHub → Insights → Dependency graph → Dependabot — проверить, что `backend/pyproject.toml` с git-зависимостью SDK разбирается без ошибки.
 
 ## Следующий шаг
+**2026-10-16 (17:30) — репо документации переименован `SergoPipo/test` → `SergoPipo/moex-terminal-docs` (решение
+заказчика).**
+
+- `gh repo rename` (репо публичный; GitHub перенаправляет старые URL, пока на аккаунте не создан новый `test`).
+- `origin` docs-репо → `git@github.com:SergoPipo/moex-terminal-docs.git`; `fetch` проходит, ветка
+  `docs/backlog-006-strategy-builder` синхронна (`c0fd8f6`).
+- Корневой `CLAUDE.md` — новое имя репо; память Claude (`feedback_two_repos`, `project_docs_branch_not_main`,
+  `feedback_no_superpowers`, `MEMORY.md`). Упоминания `SergoPipo/test` в старых handoff (`Code_Review_Full_2026-07/
+  P1_WAVE{2,3}_HANDOFF.md`) — история, не тронуты. Код-репо `moex-terminal` не затронут (ссылок на `test` нет).
+- Попутно: Context7 (плагин) ждёт входа заказчика (Authenticate); Gmail/Higgsfield — коннекторы аккаунта claude.ai, к
+  проекту не привязаны.
+
 **2026-10-16 (17:18) — PR #73 смержен по команде заказчика → develop `d48c6f3`, стенд подтянут.**
 
 - `gh pr merge 73 --merge` по локальному гейту (CI стоит — квота Actions; develop с момента гейта не менялся, `4028d83`).
