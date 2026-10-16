@@ -4,11 +4,11 @@
 # Тонкая обёртка над Develop/scripts/start_ngrok_webhook.sh: позволяет
 # вызывать одной командой из любого места проекта, без cd в Develop/scripts/.
 #
-# Использование (из корня Test/):
+# Использование (из корня Moex-Terminal/):
 #   ./start_ngrok.sh
 #
 # Или с любым cwd:
-#   bash /Users/sergopipo/Documents/Claude_Code/Test/start_ngrok.sh
+#   bash /Users/sergopipo/Documents/Claude_Code/Moex-Terminal/start_ngrok.sh
 #
 # Что делает:
 #   1. pkill старого ngrok (если висит).

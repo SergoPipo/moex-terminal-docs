@@ -5,7 +5,7 @@
 
 set -u
 
-ROOT="/Users/sergopipo/Documents/Claude_Code/Test"
+ROOT="/Users/sergopipo/Documents/Claude_Code/Moex-Terminal"
 BACKEND="$ROOT/Develop/backend"
 FRONTEND="$ROOT/Develop/frontend"
 LOG_DIR="/tmp/moex-dev-logs"

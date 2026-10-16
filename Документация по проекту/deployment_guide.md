@@ -348,7 +348,7 @@ docker compose logs backend | grep encryption_key_mismatch   # должно бы
 ```bash
 # 1. Остановить стенд: Ctrl+C во вкладке, где запущен scripts/start.sh (CLI под живым сервером откажет, код 3).
 # 2. Свой снимок БД (backup API, gotcha-19) — дополнительно к автоматическому снимку CLI:
-cd ~/Documents/Claude_Code/Test/Develop/backend
+cd ~/Documents/Claude_Code/Moex-Terminal/Develop/backend
 .venv/bin/python -c "import sqlite3; s=sqlite3.connect('data/terminal.db'); d=sqlite3.connect('data/terminal.db.bak-pre-key-rotation'); s.backup(d); d.close(); print('ok')"
 # 3. Новый ключ — сгенерировать и сохранить в менеджер паролей:
 python3 -c 'import secrets; print(secrets.token_urlsafe(48))'
@@ -361,7 +361,7 @@ cd .. && GRPC_DNS_RESOLVER=native bash scripts/start.sh   # GRPC_DNS_RESOLVER н
 # 6. В ДРУГОЙ вкладке (start.sh занимает свою): в журнале нет encryption_key_mismatch (ожидается 0);
 #    «Счёт» и Telegram /balance показывают балансы обоих счетов (ключи брокера расшифровываются);
 #    сессии восстановились (session_runtime_restore_complete).
-grep -c encryption_key_mismatch ~/Documents/Claude_Code/Test/Develop/backend/logs/dev.log
+grep -c encryption_key_mismatch ~/Documents/Claude_Code/Moex-Terminal/Develop/backend/logs/dev.log
 ```
 
 - Если шаг 4 завершился ошибкой — `Develop/.env` не трогать: старый ключ остаётся рабочим; CLI до изменений

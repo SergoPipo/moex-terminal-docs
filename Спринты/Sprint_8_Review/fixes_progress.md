@@ -324,6 +324,46 @@ git push origin docs/s5r2-skeleton-track4   # ветка опережает remo
 После мержа PR LOW: вкладка GitHub → Insights → Dependency graph → Dependabot — проверить, что `backend/pyproject.toml` с git-зависимостью SDK разбирается без ошибки.
 
 ## Следующий шаг
+**2026-10-16 (17:15) — каталог переименован `Test` → `Moex-Terminal`, окружение восстановлено, стенд поднят.**
+
+- Проверка: docs `88ad7be`, код `develop 4028d83` = `origin/develop`, по одному worktree, хуков нет; `.env` на старый путь
+  проверил заказчик — пусто.
+- Память Claude: `memory/` (27 файлов) скопирована в ключ `-Users-sergopipo-Documents-Claude-Code-Moex-Terminal`
+  без перезаписи, путь в `feedback_two_repos.md` исправлен; история сессий осталась в старом ключе (не копировалась, 560 МБ;
+  старый каталог не удалён). `~/.claude/settings.json` строки 93–94 (`additionalDirectories`) → новый путь (с подтверждения
+  заказчика). Плагин `pyright-lsp` для новой папки уже был включён (запись от 16:43); запись для старого пути осталась —
+  безвредна.
+- venv backend: старый → `Develop/backend/.venv.old-Test` (удалит заказчик), новый — Python 3.11.15 по рецепту
+  `Develop/CLAUDE.md` (lock с хэшами, SDK, editable, `pip check` 0, `verify_install` 0) + `bandit==1.9.4` (как был; в CI
+  ставится отдельно). Пакеты, стоявшие в старом venv вне lock (`safety`, `RestrictedPython`, `nltk`, `Authlib` и пр.), не
+  ставились — для гейта не нужны. Шебанги `uvicorn`/`alembic`/`pytest` — новый путь.
+- Frontend: `pnpm install --frozen-lockfile` — шимы `.bin` перепривязаны (было 6 со старым путём, стало 0); кэш Vite
+  чистый, оставлен.
+- Пути: код — `Develop/CLAUDE.md` строка `V=…` (ветка `s8r/rename-paths`, `6ee41c7` → **PR #73** в develop; мерж — по
+  команде заказчика, CI стоит); docs — `restart_dev.sh`, `start_ngrok.sh`,
+  `deployment_guide.md` (2), `FAQ/vps_migration_guide.md`, `ui_check_teststand_guide.md`; локальный (не коммитится)
+  `s8r-evidence/teststand/teststand.sh` (T/V/SRC; его worktree `wt-s8r-teststand` уже удалён). Остались 24 упоминания в
+  9 исторических отчётах/журналах — не трогались.
+- Стенд запущен 17:01 (вкладка Terminal, `bash scripts/start.sh`): `grpc_dns_resolver_configured resolver=native`
+  (раньше `…_preset` — переменная была задана в shell; после S8R-FIX-093 не нужна), `scheduler_started`,
+  `session_runtime_restore_complete restored=1` (LKOH paper #2), без WARNING/ERROR (кроме известного `UserWarning`
+  protobuf `GetPrototype`); health 200, `localhost:5173` 200; ngrok-туннель жив (→ `localhost:8000`). Таймер
+  `detect_corporate_actions` сброшен — следующий детект ≈23:01 по Mac.
+- Smoke-гейт в worktree `s8r/rename-paths` от `origin/develop`: pytest **6079 passed / 1 skipped**, ruff/mypy 0,
+  bandit medium+ 0, `pnpm typecheck` 0, vitest **1482** (192 файла).
+
+**2026-10-16 (16:30) — подготовка к переименованию каталога `Test` → `Moex-Terminal` (решение заказчика).**
+
+- Worktree агента `.claude/worktrees/agent-a8dcfbad` (апрель 2026, незакоммиченная правка
+  `Спринты/Sprint_6/reports/DEV-7_report.md`, +31/−19) — по решению заказчика правка сохранена:
+  `Спринты/Sprint_6/reports/DEV-7_report.agent-a8dcfbad-uncommitted.patch` и `.md` (патч проверен — применяется к
+  `fa6cf3d` и даёт ровно сохранённый файл); worktree удалён, ветка `worktree-agent-a8dcfbad` удалена (уже в docs-ветке).
+- `core.hooksPath` (абсолютный путь на стандартный `.git/hooks`, активных хуков нет) снят в обоих репо.
+- Передача — `~/.claude/handoffs/handoff-20261016-1630.md`: шаги восстановления после переименования (память Claude,
+  `~/.claude/settings.json`, плагин pyright-lsp, venv, `pnpm install`, пути в файлах, запуск стенда, smoke-гейт).
+- Переименование делает заказчик: остановить стенд → закрыть сессии/терминалы в папке → `mv` → проверить `.env` → новая
+  сессия в `Moex-Terminal`.
+
 **2026-10-15 (22:23) — живая проверка S8R-FIX-129 и обновление стенда до `4028d83`.**
 
 - Детект 22:23:15 (тикеров 3): SBER 37,64 ₽, реестр 20.07.2026 — проведён, остановленная paper #1 **+376,40 ₽**

@@ -13,7 +13,7 @@
 > Стенд остаётся поднятым (http://127.0.0.1:5273) на случай, если захотите
 > перепроверить что-то своими руками; скажете — уберу его вместе с worktree.
 >
-> Управление: `~/Documents/Claude_Code/Test/s8r-evidence/teststand/teststand.sh up|down|reset`.
+> Управление: `~/Documents/Claude_Code/Moex-Terminal/s8r-evidence/teststand/teststand.sh up|down|reset`.
 > Чтобы оборвать связь с backend (в Safari нет Offline-режима), просите «гаси» — остановлю
 > только uvicorn :8100, страница и vite останутся живыми.
 
