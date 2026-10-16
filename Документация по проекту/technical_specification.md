@@ -3,16 +3,22 @@
 # ТЕХНИЧЕСКОЕ ЗАДАНИЕ (ТЗ)
 ## Торговый терминал для рынка ценных бумаг РФ (MOEX)
 
-**Версия:** 3.0
-**Дата:** 2026-09-24
-**Основание:** Функциональные требования v4.0 от 2026-09-24
+**Версия:** 3.6
+**Дата:** 2026-10-15
+**Основание:** Функциональные требования v4.6 от 2026-10-15
 **Статус:** ✅ M4 Production-ready. Gate Sprint_8_Review пройден (PASS WITH NOTES), остаток приёмки (8 замечаний) и весь backlog доведения закрыты. Актуализировано по итогам код-ревью P0–P1, финальной приёмки и closeout-цикла S8R.
 
 ### История версий
 
 | Версия | Дата | Спринт | Ключевые изменения |
 |--------|------|--------|-------------------|
-| 3.0 | 2026-09-24 | S8R — фиксы аудита 2026-09 (`S8R-AUDIT-NNN`) | Изменения по карточкам аудита `audit_2026-09.md`, пополняется по мере закрытия. **§5.2.4** — `S8R-AUDIT-032`: `Signal.entry_direction` (из `StrategyIR.entry_direction`) + `opens_position`; `SignalProcessor` — вход long = BUY, short = SELL, выход — противоположная сторона; `process_signal` — сигнал против направления без позиции для выхода → HOLD (лог DEBUG: штатное состояние после закрытия); CB только для сигнала, открывающего позицию и не являющегося выходом (`OrderManager` — по тому же выбору встречных сделок filled+pending, что и exit-ветка; рантайм — `engine.is_exit_signal`); `_check_short_block` — short стратегии не блокируется, `block_shorts` сохранён для совместимости API (штатно не достижим); `PaperPortfolioAccountant.apply_close(direction=)` — short: в кэш `cost_basis + (cost_basis − proceeds)`, вход — `apply_open` (обеспечение 1:1); сверка с брокером — штуки со знаком (short < 0), нетто 0 по счёту — расхождение только при открытой позиции живой сессии; `models.is_long_direction` — единая проверка для учёта денег paper и сверки (§5.4, §5.8, §5.10.2). `S8R-AUDIT-080`: `app/strategy/risk_params.py` — `RiskParams` (SL (0,50] %, TP (0,100] %, размер) — единая точка для сохранения блоков (`validate_block_fields`, `parse_executable_blocks`), `/versions/from-params`, `params_sync`, `backtest/strategy_params`, Grid Search; `calc_sl_tp_prices` → `ValueError` при pct ≤ 0; `extract_risk_params(blocks_json)` — только IR; фронт `RISK_LIMITS` синхронен со схемой (тест) (§5.2, §5.4). `S8R-AUDIT-026`: `engine.calculate_position_lots` — единая формула лотов движка и CB без `max(1, …)`; 0 лотов → `process_signal` → `None` + `order.error` «Бюджет меньше одного лота» раз на серию (сброс на pause/resume/stop); CB `_check_position_size_limit` при 0 лотов не блокирует (§5.4, §5.8). `S8R-AUDIT-068`: CB `max_drawdown` для sandbox/real — equity = initial_capital + Σ pnl − Σ commission (включая вход открытых) + unrealized по свежей цене (close живой свечи сигнала или бар `ohlcv_cache` не старше 3 × таймфрейм; иначе unrealized не учитывается); пик в `trading_sessions.peak_equity` (миграция `f6a2c8e41d93`) фиксируется собственным commit при новом максимуме; `get_status` — тот же источник; paper-путь без изменений (§5.8). `S8R-AUDIT-069/100`: `StrategyService.delete` — 422 с перечнем при сессиях active/paused/suspended на любой версии, тело под `keyed_lock("strategy_delete", id)` (перечитывание, `StaleDataError` → 404); старт сессии берёт `strategy_delete` до `session_start_account`, запись аудита parity-override — под обоими локами (§5.4, `locks.py`). `S8R-AUDIT-025`: миграция `e9e5c919fbbf` — `live_trades.lot_size`; `derive_lot_size` — колонка, деривация только для старых строк; `RiskMonitor.position_lots` — одно количество для ордера, P&L и комиссии; `partially_filled` не терминал на входе и выходе; частичный выход (терминальный rejected/cancelled, 0 < исполнено < заявлено) → P&L по исполненному, пометка + пауза в той же транзакции, `position.mismatch` → `recovery_mismatch` (critical) (§5.4, §5.7). `S8R-AUDIT-061`: мультиплексор T-Invest — очередь команд на каждый стрим + sentinel в старую (gotcha-76), переподписка одним запросом, проверка ack `subscribe_candles_response` (отказ → маршрут снят, `on_error` подписчику), `UNAUTHENTICATED`/`PERMISSION_DENIED` → терминальное состояние по sha256-отпечатку токена (переживает eviction, сброс при переподключении счёта), `connection.lost` без повторов; eviction при нуле подписчиков; `stream_manager` — именованные держатели (`session:{id}`, `ws:{conn}`), лок на ключ, снятие сирот через 60 с (§5.6). `S8R-AUDIT-075`: реестр `_EXIT_IN_FLIGHT` удалён — «ордер в полёте» определяют колонки `LiveTrade`; `OrderInFlightError` → `order.error` один раз на эпизод; перед «не выполнено» статус перечитывается (§5.4). `S8R-AUDIT-074`: отправка ордера + commit id под `asyncio.shield` (`run_shielded_from_cancel`, grace 45 с), shutdown: quiesce → suspended → параллельный stop → recovery без порога → ожидание pending → отмена фоновых задач под общим дедлайном 45 с; `docker-compose.yml` `stop_grace_period: 60s` (§8.6). `S8R-AUDIT-099`: `BrokerService.delete_account` — проверка живых сессий и удаление под `keyed_lock("session_start_account", account_id)` (ключ старта sandbox/real-сессии, тело `_delete_account_locked`); `_create_session_locked` перепроверяет существование счёта под локом → `ValidationError`; порядок захвата не меняется (§5.4, `locks.py`). `S8R-AUDIT-030`: `TInvestAdapter._unary` — `asyncio.timeout(TINVEST_UNARY_TIMEOUT_SEC=10)` на всех унарных вызовах SDK; истечение → `BrokerTimeoutError(BrokerError)` from `TimeoutError` (`scope.expired()`), классификаторами 024 отказом не считается, на отправке — «исход неизвестен»; `_read_with_retry` повторяет только `70001`; пробы типа токена, прав и инструмента таймаут не глушат (§5.5). `S8R-AUDIT-101`: `create_account` — `keyed_lock("create_account", user_id)` вокруг SELECT+INSERT, `IntegrityError` → существующая запись, sandbox-пополнение только созданных этим вызовом; `UniqueConstraint uq_broker_accounts_user_type_account (user_id, broker_type, account_id)`, миграция `b8e4d17c9a52` со слиянием дублей (§3.2, `locks.py`). `S8R-AUDIT-024`: миграция `d4f1a9c2b7e0` — `live_trades.client_order_id`, `exit_client_order_id` (UUID4, пишутся до отправки, `PostOrder.order_id`); адаптер `get_order_status_by_client_id` (`GetOrderState`, `order_id_type=REQUEST`, ретраи только на чтении); единое правило `resolve_entry_order`/`order_state_verdict`/`read_order_state` для engine и runtime: состояние → отмена активного → перечитка, `lots_executed>0` = позиция на факт, отсутствие — подтверждённый `NOT_FOUND` не раньше `UNKNOWN_OUTCOME_CONFIRM_AGE_SEC=120` с от последней отправки, детерминированный gRPC-отказ → `failed` сразу, иначе `pending` + `order.error`; recovery входа под `close_trade`, exit-recovery с порогом, сверка пропускает «ответ потерян»; счёт удалён/деактивирован → `failed` (§5.4, §5.5). `S8R-AUDIT-078`: Grid Search — `GridWorkerSlots` (общий лимит воркеров `GRID_MAX_WORKERS_TOTAL`, 0 = cpu−1), отмена job: `threading.Event` → `terminate()+join()` Pool ≤ 2 с, исключение воркера — тоже `terminate()`; запись `_tasks` снимается до публикаций (§5.3). `S8R-AUDIT-055`: базовые URL SPA — модуль `frontend/src/api/baseUrl.ts` (`/api/v1`, `ws(s)://location.host`; `VITE_*` только override), dev-proxy Vite `/api` и `/ws` → :8000, `ARG VITE_API_BASE_URL` в Dockerfile, preflight проверяет `CORS_ORIGINS` (публичный origin обязателен — иначе `ws_origin_allowed` отбивает WS 403), CI-smoke «бандл без localhost:8000» (§8.10). `S8R-AUDIT-092`: `BackupService` — `Connection.backup` + `integrity_check`, restore temp → before_restore (Backup API) → checkpoint → `os.replace`, `fcntl.flock` на `BACKUP_DIR/.lock`, `settings.BACKUP_DIR`, CLI restore отказывает при живом сервере (код 3) (§8, backup). `S8R-AUDIT-091`: `detect_corporate_actions` — сплиты `GET /iss/statistics/engines/stock/splits.json` (все secid, `before/after` → `ratio_from/ratio_to`, `ex_date = record_date = tradedate`), купоны `GET /iss/securities/{secid}/bondization.json?iss.only=coupons` (облигации с открытой сделкой, горизонт 366 дн., `record_date = recorddate`); `process_split` — только позиции с `opened_at < 00:00 МСК tradedate`; `backtest/service.corporate_action_warning` → поле `warning` ответа бэктеста (§5.12, §5.3). `S8R-AUDIT-090`: `process_pending(today)` — `coalesce(record_date, ex_date) <= today_msk`; ex-date = предыдущий торговый день от даты реестра (календарь MOEX); право на выплату — `opened_at < ex-date(00:00 МСК) ≤ closed_at|NULL`; `rollback()` на сбое действия, скаляры новых действий снимаются до обработки (§5.12). `S8R-AUDIT-089`: `CorporateActionService._position_units` — дивиденд и купон на штуки (лоты × `lot_size`, `RiskMonitor.derive_lot_size` → fallback `ensure_lot_size`), НКД на бумагу (§5.12). `S8R-AUDIT-007`: `SessionRuntime._recover_orphan_pending_trades` — сбой `get_order_status`/`cancel_order` → сделка остаётся `pending` (`still_pending`), `failed` только по подтверждённым `rejected`/`cancelled` или после успешной отмены — зеркало `_recover_orphan_exit_orders` (§5.4). `S8R-AUDIT-093`: календарь MOEX — ISS `dailytable`, единый экземпляр сервиса, Сб/Вс неторговые до решения заказчика (§5.9). `S8R-AUDIT-001`: исполняется только код из IR валидированных блоков — fallback `generated_code`, legacy live-путь и эндпоинты `/sandbox/*` удалены; прокси с allow-list атрибутов вместо модулей в песочнице и бэктесте; сужены builtins (§5.11). `S8R-AUDIT-036`: traceback без локалов (`plain_traceback`), процессор `mask_secrets` → `***` (§7.7). `S8R-AUDIT-035`: `users.token_version` + claim `ver`, отзыв всех сессий при смене пароля и reuse refresh; миграция `c5e8b2a7f913` (§7.3). `S8R-AUDIT-034`: при `DEBUG=False` слабые `SECRET_KEY`/`ENCRYPTION_KEY` (dev-, плейсхолдер change-me, < 32 байт, < 8 различных символов) роняют старт; мастер-ключ проверяется в lifespan; preflight-скрипт синхронен (§7.3, §7.8). `S8R-AUDIT-033`: `POST /auth/setup` закрыт после первого пользователя (403, атомарный bootstrap `INSERT … WHERE NOT EXISTS`), категория лимитера `auth`; новый `POST /api/v1/admin/users` (admin); `SetupPage` проверяет `setup-status`, ссылка «Создать аккаунт» со страницы входа убрана (§4.1, п. о первом запуске). `S8R-AUDIT-002`: значения полей блоков валидируются по схеме `BLOCK_FIELD_SCHEMA` на входе API и в `parse_blocks`; кодоген берёт выражение `SOURCE` из словаря, пользовательские строки в код стратегии не интерполируются; бэктест и Grid Search отклоняют версию с невалидными блоками (422). |
+| 3.6 | 2026-10-15 | S8R — `S8R-FIX-133` (решение заказчика 2026-10-15) | Основание — ФТ v4.6. Код — в `develop` `4028d83` (PR #72, смержен 2026-10-15 по локальным гейтам); рабочий стенд — после детекта корп. действий. Scheduler: уведомление о дивиденде/купоне пользователю из `CorporateActionService.accrual_short_user_ids(action)` (владельцы позиций по условиям начисления с `not is_long_direction`) — с суффиксом `; по короткой позиции сумма спишется`; `accrual_recipient_user_ids` и он — из одного запроса `_accrual_owner_directions`. |
+| 3.5 | 2026-10-15 | S8R — `S8R-FIX-131`, `S8R-FIX-132` (решения заказчика 2026-10-15) | Основание — ФТ v4.5. Код — в `develop` `585e297` (PR #70, #71, смержены 2026-10-15 по локальным гейтам); рабочий стенд — после детекта корп. действий. Модуль корп. действий: `process_dividend` и `process_coupon` — сумма со знаком `is_long_direction(trade.direction)` (шорт — минус, та же семантика, что у P&L/SL/TP, S8R-AUDIT-032); в логах `dividend_processed.total` / `coupon_processed.paper_total` — суммы со знаком. Scheduler: адресаты уведомления о сплите — плюс `split_position_user_ids(action)` (условия `process_split`: `filled`/`open`, открыта до 00:00 МСК дня сплита). Миграции нет. |
+| 3.4 | 2026-10-15 | S8R — `S8R-FIX-129` (решение заказчика 2026-10-15) | Основание — ФТ v4.4. Код — в `develop` `833ac34` (PR #69, смержен 2026-10-15 по локальным гейтам), рабочий стенд обновлён. §8 (scheduler) и модуль корп. действий: тикеры джобы `detect_corporate_actions` — `CorporateActionService.detection_tickers()`: сессии `active`/`paused` и сессии любого статуса со сделками в начисляемых статусах (`filled`/`open`/`closed`); адресаты уведомления о дивиденде/купоне — владельцы живых сессий тикера плюс `accrual_recipient_user_ids(action)` (те же условия, что у начисления, `accrual_position_clauses`), без дублей. Начисление (`process_dividend`/`process_coupon`) не менялось — статус сессии оно и раньше не смотрело. Миграции нет. |
+| 3.3 | 2026-10-15 | S8R — `S8R-FIX-130` (решение заказчика 2026-10-15) | Основание — ФТ v4.3. Код — в `develop` `8f5ce74` (PR #68, смержен 2026-10-15 по локальным гейтам), рабочий стенд обновлён. §3.21 — SSRF-барьер `app/ai/url_validator.py`: адрес-заглушка прокси/VPN (`_PROXY_PLACEHOLDER_NETS`: Proxifier macOS `0.0.0.0/8` без `0.0.0.0` и `fd00:696e::/32`, fake-IP `198.18.0.0/15` и `fc00::/18`) принимается только для хостов `KNOWN_AI_PROVIDER_HOSTS` (точное совпадение, регистр и точка в конце имени не важны) и только по https — и при проверке в фабрике, и при закреплённом резолве в момент соединения (`_is_forbidden_for_host`); IP-литерал и любое другое имя — прежнее правило, отказ по заглушке называет прокси/VPN. §API — `POST /settings/ai/providers/{id}/verify` при отказе проверки адреса отвечает 200 `{verified: false, error}` и снимает `is_verified` (раньше 422 `provider_url_blocked`, который форма показывала без причины). Миграции нет. |
+| 3.2 | 2026-10-14 | S8R — решения заказчика 2026-10-14 (поздний вечер): `S8R-FIX-127`, `S8R-FIX-122` | Основание — ФТ v4.2. Код — в `develop` `834a05b` (PR #65, PR #66, смержены 2026-10-15 по локальным гейтам), рабочий стенд обновлён. `S8R-FIX-127`: §11.4 — `POST /backtest` и `/rerun` — job `single` менеджера (`_submit_single_backtest_job`), ответ + `job_id`, отмена `POST /backtest/jobs/{job_id}/cancel` (прерывает `RateLimitWait`), бэктест → `cancelled`; общий cap=3, `BacktestJobLimitError` → 422 `backtest_job_limit`, предпроверка до строки `Backtest`; защита записи `done` от поздней отмены, самовосстановление строк без задачи, shield постановки/уборки, останов → `failed` «Прервано: перезапуск сервера или сбой записи статуса под нагрузкой БД», `DELETE` снимает job; фронт — `cancelJob`, фактический итог вместо локального «Отменён», `backtestApi.cancel` удалён; `S8R-FIX-128` (2026-10-15) — лимит фонового запуска только сервером, значки статусов в таблице стратегии. `S8R-FIX-122`: §5.12 — дивиденды `TInvestAdapter.get_dividends` → `DividendInfo` (`app/broker/base.py`), `_fetch_tinvest_dividends`/`_read_dividends` (токен владельца, перебор владельцев, вывод недоступного счёта из прогона), окно от первой сделки до +366 дней, `_sync_pending_dividends` (сумма/отмена/перенос для непроведённых), ISS-путь дивидендов удалён; отсечка T+1 — `accrual_last_buy_date` вместо `accrual_ex_date`, порог — 00:00 МСК дня после последнего дня покупки; купон без `recorddate` — реестр за торговый день до выплаты; `_DetectedAction.record_date`, тексты уведомлений. Миграций нет. |
+| 3.1 | 2026-10-14 | S8R — сплошная проверка UI-чеклиста S8.1–S8.58 (цикл 2026-10-13/14, `S8R-FIX-093…125`) | Основание — ФТ v4.1. Код — в ветках `s8r/fix-checklist-run` и `s8r/fix-093-grpc-resolver-import`, в `develop` попадёт после мержа. `S8R-FIX-093`: §5.5.2 — `GRPC_DNS_RESOLVER` grpc читает при импорте модуля; значение по умолчанию `native` ставит `app/__init__.py` (`app/grpc_env.py`, перенесён из `app/broker/tinvest/`), lifespan только логирует, `grpc_dns_resolver_ineffective` при раннем импорте grpc — фикс 083 не действовал. `S8R-FIX-115`: §5.5.2, §4.6 — занятость `account_id` песочницы по всем sandbox-записям, регистрация не заводит запись на счёт другого пользователя и на закрытый (422), свой счёт не «занят»; лок `sandbox_recovery` — один на процесс (было `sandbox_recovery_user` по пользователю), берётся внутри `create_account`: порядок `create_account` → `sandbox_recovery`. `S8R-FIX-119`: §7.2, §4.6 — `BrokerKeyUnreadableError(InvalidTag)`, 409 `broker_key_unreadable`, `close_failure_reason` без «брокер не вернул текст». `S8R-FIX-124`: §8.6 — периодическая сверка считает неполные проходы в предзагрузке (`count_incomplete_passes`), ручная (`manual=True`) счётчик не двигает и не подтверждает; пауза сверкой публикует `session.paused`. `S8R-FIX-097`: §11.6 — `status` в `session.paused/resumed/stopped` у всех издателей. `S8R-FIX-098`: §3.11 — `admin.granted/revoked`, `source=cli`. `S8R-FIX-100`: §4.8, §5.7 — `/notifications/` со слэшем. `S8R-FIX-101`: §4.1 — `/login` на 429 `setup-status` — «Слишком много запросов», без порта. `S8R-FIX-103`: §4.2 — смена статуса стратегии из меню одним PUT, `patchStrategyLocal`; `S8R-FIX-104` — подписи статусов. `S8R-FIX-114`: §11.4 — `RUNNER_NOTIFIES_JOB_TYPES`, одно уведомление на одиночный бэктест, Grid — «Grid Search завершён» с данными. `S8R-FIX-116`: §4.6 — подсказка «на странице «Торговля»», потолок `detail` 400 за счёт перечня. `S8R-FIX-117`: §5.7 — `session_mode_label` во всех ответах бота. `S8R-FIX-118`: §5.6 — `date_req` = сегодня МСК, отказ курсу из будущего, кэш до полуночи МСК. `S8R-FIX-120`/`125`: §5.7 — `money.format_price`; `trade.filled` — цена исполнения. `S8R-FIX-121`: §5.9 — `_signed_rub`. `S8R-FIX-122`: §5.12 — `iss_dividends_block_missing`, прошедшие дивиденды без получателей `processed=True`; источник — открытый вопрос. `S8R-FIX-102`: §6.4 — `customValues.barTime`, точка рисунка по времени свечи; смена набора графика — `autoScale` заново (qa2 Н-6). `S8R-FIX-107`: §6.7 — `brokerAccountName`. `S8R-FIX-108`/`099`: §6.1 — `navbar.collapsed.mobile`, мобильный бургер, `aria-label` пунктов. `S8R-FIX-109`: §6.1 — форматтеры дат в `Europe/Moscow`. `S8R-FIX-096`/`123`: §9.1 — окружение подпроцессов без полей `Settings`, сброс реестра `keyed_lock` между тестами, `test_backup_cli` с `--server-stopped`. Без отражения в разделах (UI-мелочи): `S8R-FIX-094` (`aria-label` колокольчика), `095` (e2e: мастер в `beforeAll`), `105` (список фоновых бэктестов не закрывается сам, ФТ §19.10), `106` (testid строк настроек уведомлений), `110`–`113` (просадка CB 2 знака, ширина поля имени, описание `/admin/metrics`, двойной DELETE). **Решения заказчика 2026-10-14:** §5.5.2 — `RateLimitWait` (ожидание лимита в бэктесте), кадр `notification.read` при снятии расхождения, уровни журнала watchdog. |
+| 3.0 | 2026-09-24 | S8R — фиксы аудита 2026-09 (`S8R-AUDIT-NNN`) | Изменения по карточкам аудита `audit_2026-09.md`, пополняется по мере закрытия. **§5.2.4** — `S8R-AUDIT-012`: раунд обрыва стрима, фоновая дозагрузка минуток, флаги `bar_complete`/`bar_pending`, неполный бар не торгуется (§5.6). `S8R-AUDIT-011`: «только деньги» в портфеле песочницы — сбой, перезапрос; фон паузит после 3 подряд таких проходов; real — без повторов (§8.6). `S8R-AUDIT-010`: тиры пары при restore active → suspended → paused, проигравший дубликат — paused с уведомлением только если победитель поднят (§8.6). `S8R-AUDIT-009`: сверка при restore — параллельная предзагрузка портфелей под общим дедлайном, несверенные позиции → `paused` + `recovery_mismatch` critical (§8.6). `S8R-AUDIT-041`: CLI `rotate-encryption-key`/`rotate-jwt-secret`, key_id в шифртексте, сверка ключа с данными на старте (§7.2, §8.8). `S8R-AUDIT-040`: `COOKIE_SECURE` (не задан → prod всегда Secure), `app/common/cookies.py`, nginx X-Forwarded-Proto только от cloudflared (§7.4). `S8R-AUDIT-039`: logout без валидного access (всегда 204, отзыв best-effort одной транзакцией), refresh-cookie на path `/api/v1/auth`, фронт — повтор refresh только на 429 (§7.3–7.5). `S8R-AUDIT-038`: CSRF без fail-open при cookie-сессии, проверка Origin/Referer (login-CSRF), общий нормализованный allowlist `app/common/origin.py` (§7.4). `S8R-AUDIT-037`: lockout только на login, сброс счётчика после истечения; лимитер auth по (IP, username) + потолок на IP, refresh по (sub, IP), IPv6 /64, реальный IP — uvicorn `--proxy-headers` от nginx 172.28.0.10, nginx на 127.0.0.1:80; `app/auth/request_tokens.py` (§7.5). `S8R-AUDIT-008`: `restore_all` — `active` только после успешного `start()`, временный сбой → `suspended` с сохранением пары, постоянная причина → `paused`, `RESTORE_PAUSE_FROM` (§8.6). `S8R-AUDIT-014`: `ai_usage_daily` + глобальный потолок токенов серверного AI-ключа, учёт `/ai/explain` (§5.10.4). `S8R-AUDIT-072`: `app/common/trading_hours` — входы `market_closed_reason`/`is_market_open` (календарь `MOEXCalendarService.is_trading_day`, 10:00–23:50, кроме 18:40–19:05), закрытия `close_blocked_reason`/`is_within_trading_hours` (ночь и будничный праздник); одна точка «сейчас» `_now_msk`; CB — календарь только sandbox/real; мультиплексор `_maybe_publish_lost`. `S8R-AUDIT-004`: `alembic/env.py` — metadata из `app.main`; колонки `ai_provider_configs.daily_limit/monthly_limit/usage_today/usage_month` возвращены в модель; CI — шаг `alembic upgrade head && alembic check` на чистой БД (§8). `S8R-AUDIT-003`: `select_market_data_account` (токен только своего пользователя, prod-first), лот песочницы не authoritative для real/paper и не кэшируется, контекст у всех вызывающих (§5.6). `S8R-AUDIT-071`: миграция `6128b9c52d8a` — `position_sizing_mode` NOT NULL (NULL → `fixed_lots`/1); `sizing_config_error` — неизвестный режим или fixed_sum/percent без размера → CB постоянная блокировка (пауза), `calculate_position_lots` → `ValueError`; режимы — `schemas.VALID_SIZING_MODES` (§3.8, §5.8). `S8R-AUDIT-070`: CB дневной лимит — `money_class` (с S8R-FIX-028 = mode: paper / sandbox / real; было paper / broker = sandbox+real), `class_daily_loss_state` (P&L дня по сессиям класса, включая остановленные сегодня; % от Σ `initial_capital`), override сессии — на её P&L и капитал (`scope=own`); `CB_PAUSE_SCOPE` (all / money_class / own) вместо `CB_SCOPE_ALL_SESSIONS`; `get_status` — `daily_pnl_{paper,sandbox,real}`, `daily_loss_limit_{paper,sandbox,real}` (S8R-FIX-028) (§5.8). `S8R-AUDIT-015`: `PRAGMA foreign_keys=ON` на каждом соединении приложения (`database.py`), миграции — с FK OFF до транзакции (`alembic/env.py`, gotcha-79), `foreign_key_check` при применённых ревизиях; удаление стратегии с историей сессий/бэктестом в работе → 422; эндпоинты CB по `session_id` — проверка владельца (404); реально срабатывают `ondelete` SET NULL/CASCADE моделей (§3, §8.9). `S8R-AUDIT-027`: `session_capital` (free/equity, только БД); база `percent` — paper `balance` в секции входа, sandbox/real `min(free, GetPositions.money RUB)`, не больше `Signal.cb_percent_base`; кэш рублей 30 с на счёт (`app/broker/cash_cache.py`: поколения, резерв после сайзинга, сброс на `place_order`/`cancel_order`/`sandbox_pay_in`, проверка до построения адаптера, `_AdapterLease`); переоткрытие sandbox-счёта при 50004; CB без сети: проекция от `free`, лимит `risk_max_position_pct` от `equity` только для `percent` (§5.4, §5.8). `S8R-AUDIT-057`: security-заголовки двумя слоями (backend + nginx на все ответы), CSP SPA, кэш-политика, Blockly media локально, CI nginx -t (§7.6). `S8R-AUDIT-076`: лок `paper_portfolio` до первой записи на всех денежных путях paper, свежее чтение баланса (§5.4, `locks.py`). `S8R-AUDIT-058`: реестр WS (`app/common/ws_registry.py`), лимиты соединений/подписок, закрытие WS по сессии при logout/смене пароля/краже refresh, атомарный слот AI SSE, nginx `location ^~ /ws` (§4.12, §7.5). `S8R-AUDIT-029`: «Стоп» под `session_lifecycle` с защитой от повторной отмены, параллельное закрытие брокерских позиций с дедлайном, DELETE под локом (§5.4). `S8R-AUDIT-021`: код привязки Telegram `token_urlsafe(9)`, лимиты неудач 5/15 мин на отправителя и 100/15 мин глобально (§5 Telegram). `S8R-AUDIT-013`: единый предикат `authenticate_access_payload` (sub, jti, `is_active`, `ver`) — HTTP, три WS, dash-mount; login деактивированного — 401; Telegram: неактивный — отказ во всех командах и привязке, привязка гасит прежние активные привязки чата; исходящие Telegram/email — только активному (§7.3). `S8R-AUDIT-032`: `Signal.entry_direction` (из `StrategyIR.entry_direction`) + `opens_position`; `SignalProcessor` — вход long = BUY, short = SELL, выход — противоположная сторона; `process_signal` — сигнал против направления без позиции для выхода → HOLD (лог DEBUG: штатное состояние после закрытия); CB только для сигнала, открывающего позицию и не являющегося выходом (`OrderManager` — по тому же выбору встречных сделок filled+pending, что и exit-ветка; рантайм — `engine.is_exit_signal`); `_check_short_block` — short стратегии не блокируется, `block_shorts` сохранён для совместимости API (штатно не достижим); `PaperPortfolioAccountant.apply_close(direction=)` — short: в кэш `cost_basis + (cost_basis − proceeds)`, вход — `apply_open` (обеспечение 1:1); сверка с брокером — штуки со знаком (short < 0), нетто 0 по счёту — расхождение только при открытой позиции живой сессии; `models.is_long_direction` — единая проверка для учёта денег paper и сверки (§5.4, §5.8, §5.10.2). `S8R-AUDIT-080`: `app/strategy/risk_params.py` — `RiskParams` (SL (0,50] %, TP (0,100] %, размер) — единая точка для сохранения блоков (`validate_block_fields`, `parse_executable_blocks`), `/versions/from-params`, `params_sync`, `backtest/strategy_params`, Grid Search; `calc_sl_tp_prices` → `ValueError` при pct ≤ 0; `extract_risk_params(blocks_json)` — только IR; фронт `RISK_LIMITS` синхронен со схемой (тест) (§5.2, §5.4). `S8R-AUDIT-026`: `engine.calculate_position_lots` — единая формула лотов движка и CB без `max(1, …)`; 0 лотов → `process_signal` → `None` + `order.error` «Бюджет меньше одного лота» раз на серию (сброс на pause/resume/stop); CB `_check_position_size_limit` при 0 лотов не блокирует (§5.4, §5.8). `S8R-AUDIT-068`: CB `max_drawdown` для sandbox/real — equity = initial_capital + Σ pnl − Σ commission (включая вход открытых) + unrealized по свежей цене (close живой свечи сигнала или бар `ohlcv_cache` не старше 3 × таймфрейм; иначе unrealized не учитывается); пик в `trading_sessions.peak_equity` (миграция `f6a2c8e41d93`) фиксируется собственным commit при новом максимуме; `get_status` — тот же источник; paper-путь без изменений (§5.8). `S8R-AUDIT-069/100`: `StrategyService.delete` — 422 с перечнем при сессиях active/paused/suspended на любой версии, тело под `keyed_lock("strategy_delete", id)` (перечитывание, `StaleDataError` → 404); старт сессии берёт `strategy_delete` до `session_start_account`, запись аудита parity-override — под обоими локами (§5.4, `locks.py`). `S8R-AUDIT-025`: миграция `e9e5c919fbbf` — `live_trades.lot_size`; `derive_lot_size` — колонка, деривация только для старых строк; `RiskMonitor.position_lots` — одно количество для ордера, P&L и комиссии; `partially_filled` не терминал на входе и выходе; частичный выход (терминальный rejected/cancelled, 0 < исполнено < заявлено) → P&L по исполненному, пометка + пауза в той же транзакции, `position.mismatch` → `recovery_mismatch` (critical) (§5.4, §5.7). `S8R-AUDIT-061`: мультиплексор T-Invest — очередь команд на каждый стрим + sentinel в старую (gotcha-76), переподписка одним запросом, проверка ack `subscribe_candles_response` (отказ → маршрут снят, `on_error` подписчику), `UNAUTHENTICATED`/`PERMISSION_DENIED` → терминальное состояние по sha256-отпечатку токена (переживает eviction, сброс при переподключении счёта), `connection.lost` без повторов; eviction при нуле подписчиков; `stream_manager` — именованные держатели (`session:{id}`, `ws:{conn}`), лок на ключ, снятие сирот через 60 с (§5.6). `S8R-AUDIT-075`: реестр `_EXIT_IN_FLIGHT` удалён — «ордер в полёте» определяют колонки `LiveTrade`; `OrderInFlightError` → `order.error` один раз на эпизод; перед «не выполнено» статус перечитывается (§5.4). `S8R-AUDIT-074`: отправка ордера + commit id под `asyncio.shield` (`run_shielded_from_cancel`, grace 45 с), shutdown: quiesce → suspended → параллельный stop → recovery без порога → ожидание pending → отмена фоновых задач под общим дедлайном 45 с; `docker-compose.yml` `stop_grace_period: 60s` (§8.6). `S8R-AUDIT-099`: `BrokerService.delete_account` — проверка живых сессий и удаление под `keyed_lock("session_start_account", account_id)` (ключ старта sandbox/real-сессии, тело `_delete_account_locked`); `_create_session_locked` перепроверяет существование счёта под локом → `ValidationError`; порядок захвата не меняется (§5.4, `locks.py`). `S8R-AUDIT-030`: `TInvestAdapter._unary` — `asyncio.timeout(TINVEST_UNARY_TIMEOUT_SEC=10)` на всех унарных вызовах SDK; истечение → `BrokerTimeoutError(BrokerError)` from `TimeoutError` (`scope.expired()`), классификаторами 024 отказом не считается, на отправке — «исход неизвестен»; `_read_with_retry` повторяет только `70001`; пробы типа токена, прав и инструмента таймаут не глушат (§5.5). `S8R-AUDIT-101`: `create_account` — `keyed_lock("create_account", user_id)` вокруг SELECT+INSERT, `IntegrityError` → существующая запись, sandbox-пополнение только созданных этим вызовом; `UniqueConstraint uq_broker_accounts_user_type_account (user_id, broker_type, account_id)`, миграция `b8e4d17c9a52` со слиянием дублей (§3.2, `locks.py`). `S8R-AUDIT-024`: миграция `d4f1a9c2b7e0` — `live_trades.client_order_id`, `exit_client_order_id` (UUID4, пишутся до отправки, `PostOrder.order_id`); адаптер `get_order_status_by_client_id` (`GetOrderState`, `order_id_type=REQUEST`, ретраи только на чтении); единое правило `resolve_entry_order`/`order_state_verdict`/`read_order_state` для engine и runtime: состояние → отмена активного → перечитка, `lots_executed>0` = позиция на факт, отсутствие — подтверждённый `NOT_FOUND` не раньше `UNKNOWN_OUTCOME_CONFIRM_AGE_SEC=120` с от последней отправки, детерминированный gRPC-отказ → `failed` сразу, иначе `pending` + `order.error`; recovery входа под `close_trade`, exit-recovery с порогом, сверка пропускает «ответ потерян»; счёт удалён/деактивирован → `failed` (§5.4, §5.5). `S8R-AUDIT-078`: Grid Search — `GridWorkerSlots` (общий лимит воркеров `GRID_MAX_WORKERS_TOTAL`, 0 = cpu−1), отмена job: `threading.Event` → `terminate()+join()` Pool ≤ 2 с, исключение воркера — тоже `terminate()`; запись `_tasks` снимается до публикаций (§5.3). `S8R-AUDIT-055`: базовые URL SPA — модуль `frontend/src/api/baseUrl.ts` (`/api/v1`, `ws(s)://location.host`; `VITE_*` только override), dev-proxy Vite `/api` и `/ws` → :8000, `ARG VITE_API_BASE_URL` в Dockerfile, preflight проверяет `CORS_ORIGINS` (публичный origin обязателен — иначе `ws_origin_allowed` отбивает WS 403), CI-smoke «бандл без localhost:8000» (§8.10). `S8R-AUDIT-092`: `BackupService` — `Connection.backup` + `integrity_check`, restore temp → before_restore (Backup API) → checkpoint → `os.replace`, `fcntl.flock` на `BACKUP_DIR/.lock`, `settings.BACKUP_DIR`, CLI restore отказывает при живом сервере (код 3) (§8, backup). `S8R-AUDIT-091`: `detect_corporate_actions` — сплиты `GET /iss/statistics/engines/stock/splits.json` (все secid, `before/after` → `ratio_from/ratio_to`, `ex_date = record_date = tradedate`), купоны `GET /iss/securities/{secid}/bondization.json?iss.only=coupons` (облигации с открытой сделкой, горизонт 366 дн., `record_date = recorddate`); `process_split` — только позиции с `opened_at < 00:00 МСК tradedate`; `backtest/service.corporate_action_warning` → поле `warning` ответа бэктеста (§5.12, §5.3). `S8R-AUDIT-090`: `process_pending(today)` — `coalesce(record_date, ex_date) <= today_msk`; ex-date = предыдущий торговый день от даты реестра (календарь MOEX); право на выплату — `opened_at < ex-date(00:00 МСК) ≤ closed_at|NULL`; `rollback()` на сбое действия, скаляры новых действий снимаются до обработки (§5.12). `S8R-AUDIT-089`: `CorporateActionService._position_units` — дивиденд и купон на штуки (лоты × `lot_size`, `RiskMonitor.derive_lot_size` → fallback `ensure_lot_size`), НКД на бумагу (§5.12). `S8R-AUDIT-007`: `SessionRuntime._recover_orphan_pending_trades` — сбой `get_order_status`/`cancel_order` → сделка остаётся `pending` (`still_pending`), `failed` только по подтверждённым `rejected`/`cancelled` или после успешной отмены — зеркало `_recover_orphan_exit_orders` (§5.4). `S8R-AUDIT-093`: календарь MOEX — ISS `dailytable`, единый экземпляр сервиса, Сб/Вс неторговые до решения заказчика (§5.9). `S8R-AUDIT-001`: исполняется только код из IR валидированных блоков — fallback `generated_code`, legacy live-путь и эндпоинты `/sandbox/*` удалены; прокси с allow-list атрибутов вместо модулей в песочнице и бэктесте; сужены builtins (§5.11). `S8R-AUDIT-036`: traceback без локалов (`plain_traceback`), процессор `mask_secrets` → `***` (§7.7). `S8R-AUDIT-035`: `users.token_version` + claim `ver`, отзыв всех сессий при смене пароля и reuse refresh; миграция `c5e8b2a7f913` (§7.3). `S8R-AUDIT-034`: при `DEBUG=False` слабые `SECRET_KEY`/`ENCRYPTION_KEY` (dev-, плейсхолдер change-me, < 32 байт, < 8 различных символов) роняют старт; мастер-ключ проверяется в lifespan; preflight-скрипт синхронен (§7.3, §7.8). `S8R-AUDIT-033`: `POST /auth/setup` закрыт после первого пользователя (403, атомарный bootstrap `INSERT … WHERE NOT EXISTS`), категория лимитера `auth`; новый `POST /api/v1/admin/users` (admin); `SetupPage` проверяет `setup-status`, ссылка «Создать аккаунт» со страницы входа убрана (§4.1, п. о первом запуске). `S8R-AUDIT-002`: значения полей блоков валидируются по схеме `BLOCK_FIELD_SCHEMA` на входе API и в `parse_blocks`; кодоген берёт выражение `SOURCE` из словаря, пользовательские строки в код стратегии не интерполируются; бэктест и Grid Search отклоняют версию с невалидными блоками (422). `S8R-AUDIT-054`: `/api/v1/health` — readiness (`ok`/200 при БД `connected` и работающем планировщике, иначе `degraded`/503 с тем же телом), `/api/v1/health/live` — liveness (200 всегда); `tinvest_connected` — по живости `_stream_task` мультиплексора (gotcha-34), на статус не влияет; `version` — `app.__version__` (метаданные пакета); healthcheck compose/Dockerfile — readiness, `start_period` 60 с (§8.5). `S8R-AUDIT-044`: `app/broker/tinvest/errors.py` — `classify` → `FailureKind` (TRANSIENT / AUTH / NOT_FOUND / LINK «ответ не получен» / LOCAL «наш код или локальный отказ grpc»), `to_broker_error(order_action=…)` — текст по категории, `details` gRPC только в лог; классы `TransientBrokerError`/`AuthBrokerError`/`NotFoundBrokerError` (подклассы `BrokerError`); `_read_with_retry` — только чтения и только transient (UNAVAILABLE/DEADLINE — экспонента + джиттер, 70001 — 2 × 4 с, RESOURCE_EXHAUSTED — по `ratelimit_reset` + 1 с в пределах потолка), `OpenSandboxAccount`/`PostOrder`/`CancelOrder` без повторов; общий разбор кода `sandbox_recovery.grpc_code_name` для адаптера и движка; оценка попытки сверки — `read_worst_case_sec()` (§5.5.5). `S8R-AUDIT-051`: `docs/env_vars.md` — перечень всех настроек, тест сверки с `Settings` и подстановками compose; compose — `logging` json-file 10m×5, uvicorn `--timeout-graceful-shutdown 10` (drain + lifespan 45 с < `stop_grace_period` 60 с, gotcha-80); `scripts/start.sh` — preflight при `DEBUG≠true`, ротация `dev.log`; §8.2 приведён к фактическим именам (`SECRET_KEY`, `SMTP_FROM`, `BACKUP_KEEP_LAST`/`BACKUP_CRON`) (§8.2, §8.3). `S8R-AUDIT-065`: `app/common/ticker.py` — `Ticker` (`^[A-Z0-9._-]{1,20}$`, upper-case `BeforeValidator`, `TICKER_RE`) во всех схемах с тикером и GET-параметрах market_data (`Annotated[Ticker, Query()]`, gotcha-81); `app/common/export_safety.py` — `csv_safe_cell/row`, `xlsx_text`, `attachment_disposition` (RFC 5987) для CSV/PDF бэктеста и 3-НДФЛ (§4.11, §5.13). `S8R-AUDIT-066`: `telegram_webhook.py` — пользовательские поля в ответах с `parse_mode=HTML` (/start, /positions, /status, /balance, /close) через `_esc` = `_safe_format_event_text`; подписи `InlineKeyboardButton.text` не экранируются (не HTML). `S8R-AUDIT-097`: файловая SQLite — `NullPool`; `persist_with_retry` — sync/async единица работы, повтор при «locked» (OperationalError/PendingRollbackError, `is_database_locked`), откат до паузы; tax `generate_report`, corporate_actions detect (ISS вне повтора) / `_process_one` (идемпотентно), user_favorites add/remove — 3 попытки (§8.9). `S8R-AUDIT-045`: адаптеры `place_order/get_historical_candles/subscribe_candles(figi=)`; классовый `_figi_cache` TInvest удалён; движок — FIGI до отправки в `trade.figi` (запасной резолв, кэш `(счёт, тикер)` 15 мин), нерезолв → ордер не уходит; стрим и дозагрузка — FIGI из `ensure_figi`; `select_tradable_instrument` — приоритет режимов MOEX (§5.6). `S8R-AUDIT-046`: `get_balance` — `GetPortfolio` ‖ `GetPositions` (`asyncio.gather`, `_read_with_retry`), `available` = `TInvestMapper.rub_money_sum` (общий разбор с сайзингом 027, свежий запрос без кэша/резерва), `in_positions` = `portfolio_in_positions` (бумаги, ≥ 0), `blocked` — рубли под заявками; `GET /broker/accounts/balances` — суммы строками Decimal, `available/blocked/in_positions` могут быть `null` (сбой GetPositions). `S8R-AUDIT-081`: `app/strategy/status.py` (статусы, граф, STARTABLE, подсказки), 409 `strategy_status_not_startable` / `strategy_has_live_sessions` / `strategy_status_changed`, автоперевод статуса по сессиям и после бэктеста, миграция данных `2c7bd0443aa6` (§4.2). `S8R-AUDIT-047`: `TInvestAdapter._prepare_order` — отказы до PostOrder (`direction` не buy/sell, LIMIT без шага/цены, FIGI, подключение) → `OrderNotSentError` (окончательный отказ: вход `failed`, выход без пометки «в полёте»); LIMIT — `price` по шагу (buy вниз / sell вверх, кэш шага по FIGI 24 ч); статус `UNSPECIFIED`/неизвестный → `unknown` → опрос по 024 (`order_response_status`); `closing_order_side` (short закрывается BUY). `S8R-AUDIT-082`: фронт — `getApiErrorMessage` во всех catch стратегии, `saveVersion`/`updateStrategy` пробрасывают ошибку, уведомление в `doSave`; `block_parser` — предупреждение для неизвестного заголовка (формат с заголовками, `:` на конце допускается) и для `[I{N}]` на необъявленный индикатор. `S8R-AUDIT-062`: `create_account` — ротация ключа (перешифровка, пересчёт прав, `registration: created|key_updated|already_connected`, 422 при смене режима), после commit best-effort сброс кэшей 027/045 по счёту и `retire_token` (терминальная пометка отпечатка, если токен не держит ни одна активная запись любого пользователя) + `forget_rate_limiter`; `stream_manager.open_stream` переоткрывает нездоровую запись; `get_accounts(open_sandbox_if_empty=False)` — discover/test-connection без побочных эффектов. `S8R-AUDIT-073`: CB — одно событие `cb.triggered` (EVENT_MAP), перечитывание статуса под per-user CB-локом, пауза условным UPDATE, `session.paused` по каждой сессии, подписка уведомлений при resume, `trigger_value/limit_value` в журнале; тест сверки EVENT_MAP ↔ `event_bus.publish` (§2.4). `S8R-FIX-028`: `money_class(mode) = mode` — дневной лимит CB по трём классам paper / sandbox / real, `get_status` — поля по трём классам, `cb.triggered.money_class` = sandbox / real (§5.8). `S8R-AUDIT-083`: доставка уведомлений — изоляция каналов, повторы транзиентных ошибок с таймаутами, переполнение EventBus — error-лог + метрика (§5.7). `S8R-AUDIT-084`: `POST /notifications/telegram/test` без тела (`extra=forbid` → 422) — `send_test_telegram` серверным ботом в `TelegramLink` (409 без привязки, 503 без бота); DEV_MODE — `external_delivery_suppressed()` для `dispatch_external` и тестов; категория лимитера `notifications_test` 3/мин (`NOTIFICATIONS_TEST_RATE_LIMIT_PER_MINUTE`). `S8R-AUDIT-085`: мастер — готовность Telegram по `telegram/status.linked`; `notificationStore.updateSetting` — откат оптимистичного патча + `settingsError`; «Очистить все» с подтверждением; `TelegramNotifier.send(retry=False)` для теста. `S8R-AUDIT-063`: время ISS MSK → UTC, ISS-бары не подмешиваются к T-Invest, лот sandbox/real без ISS, миграция `6f3a063d1c2e` (§5.6). `S8R-FIX-027`: флаг `block_shorts`, проверка `_check_short_block` и событие `short_block` удалены, миграция `bbb9a0908e89`; поле в теле запроса CB-конфига игнорируется (§5.8). `S8R-AUDIT-086`: журнал аудита (`app/common/audit.py`) и outbox `pending_events` (`app/common/outbox.py`) с идемпотентным повтором при старте; runtime больше не публикует второй `order.placed` (§2.4, §3.11). `S8R-AUDIT-006`: исполнение стратегии бэктеста и Grid Search — в отдельном процессе с дедлайном и лимитом памяти (§5.11). `S8R-AUDIT-087`: `validate_ohlcv`/`OHLCVQualityReport` (warning бэктеста); CB `broker_rejection_streak` — `trading_sessions.consecutive_broker_rejections` (миграция `c7d2e5a19f84`), `is_broker_order_rejection`, `CB_PAUSE_WITHOUT_CLOSE`; частичное исполнение входа — `ENTRY_PARTIAL_FILL_TIMEOUT_SEC`, признак `entry_remainder_unsettled` (0 < filled_lots < volume_lots) в БД, `_settle_entry_remainder_locked` — одна функция для фоновой задачи, recovery и пути закрытия; `order.partial_fill` severity warning (§5.4, §5.8). `S8R-AUDIT-077`: `SharpeRatio` настраивается `metrics.sharpe_params(timeframe)` (единый для бэктеста и Grid Search; D/252, W/52, M/12, внутридневные — Minutes, factor = 805 × 252 / мин ТФ), `convertrate=True`, `annualize=True` (§5.3). `S8R-FIX-026`: `DELETE /strategy/{id}` — 204 (удалена) | 200 `{archived, status, detail}` (история сессий / FK-ссылки → `archived` условным UPDATE по правилам `status.py`) | 422 (живые сессии, бэктест в работе, уже в архиве с историей) (§4.2). `S8R-AUDIT-094`: `job_defaults` планировщика — `misfire_grace_time` 3600 с (5-минутная `refresh_backtest_jobs_rate` — 600 с), `coalesce=True`; jobstore memory (одноразовых задач нет); `schedule_t1_unlock`/`_execute_t1_unlock`/`unblock_settled_funds` удалены. Таблица джоб §5.9 расходится с кодом (есть `update_moex_sessions`, `cleanup_revoked_tokens`, которых нет) — сверить при следующем проходе ТЗ. `S8R-AUDIT-096`: `tax_lots.report_id` (миграция `7fe0fae4293c`), регенерация заменяет лоты года, файл отчёта по id, `_build_lots` (§5.13). `S8R-FIX-025`: `MOEXCalendarService.is_weekend_session_day/is_weekend_session_open` ([10:00, 19:00) MSK) — единая точка; `get_market_status` → `weekend_session`, `time_until_close` до 19:00, `/calendar.is_weekend_session_day`; входы — `trading_hours.entry_verdict` (маркер `WEEKEND_FLAG_REQUIRED`) + T-Invest `weekend_flag` (кэш 12 ч, сбой — 60 с, single-flight, `_find_tradable_instrument`); мультиплексор — `is_session_open` (§5.9). `S8R-AUDIT-095`: единая налоговая база обращающихся ЦБ, тип инструмента из `instruments.type` (пишется при резолве FIGI), эвристика — fallback с пометкой (§5.13). `S8R-FIX-029`: `app/broker/tinvest/tls_roots.ensure_grpc_trusted_roots()` — первый шаг lifespan, bundle «встроенные корни grpc + certs/russian_trusted_root_ca.pem» → `GRPC_DEFAULT_SSL_ROOTS_FILE_PATH` (если не задан оператором); SDK своих credentials не принимает (§5.5, гайд §6б). `S8R-AUDIT-005`: downgrade `a1b2c3d4e5f6` удаляет `idx_ai_user` только если он есть — полный `downgrade base` проходит. `S8R-AUDIT-016`: `app/common/ownership.py` — владелец в SQL, чужой id = 404 (§7.9). `S8R-AUDIT-017`: `POST /backtest/grid` — стратегия джобы = `strategy_id` проверенной версии, поле тела `strategy_id` необязательно и игнорируется (`grid_strategy_id_mismatch` в лог); CB PUT по чужой/несуществующей сессии → 404. `S8R-AUDIT-018`: `url_validator` — `not is_global` (+ multicast), `build_pinned_http_client` (резолв и проверка IP на `connect_tcp`, SNI/Host по имени; при прокси окружения — без подмены), `describe_provider_error` в verify, приватный `api_base_url` — только admin. `S8R-AUDIT-019`: удалены `strategy/code_generator.py` (генерация кода — только `ir_codegen.ir_to_backtrader_code`), `sandbox/executor.py`/`router.py`/`schemas.py`, `notification/dispatchers.py` (`dispatch_external` — `NotificationService`), `restore_sessions`, мёртвые методы `BacktestService`, персистентность `rate_limiter`. `S8R-AUDIT-023`: `POST /corporate-actions/detect` — только администратор (`require_admin`), ≤ 50 тикеров формата `Ticker`, категория лимитера `trading`. `S8R-AUDIT-031`: цена исполнения входа — три источника, ноль — не цена; вход без цены дольше окна подтверждения — `filled` без цены + расхождение и пауза; реконсиляция: без входа → `cancelled` вне `trades_closed`, комиссия — в `realized_pnl`; `quantize_money` (§5.4). Ревью MEDIUM (`S8R-REV-MQ`): комиссия при довыполнении частичного входа — итогом по кумулятивному факту ордера, без задвоения оценки и факта (§5.4). `S8R-AUDIT-042`: привязка шифртекста к записи (AAD-контекст, CLI `rebind-encrypted-secrets`), маскирование bot-token на итоговом тексте (structlog + фабрика LogRecord), отпечаток вместо префикса токена, реестры по отпечатку, права бэкапов 0600/0700 (§7.2, §7.7). `S8R-AUDIT-043`: политика нового пароля ≥ 12 + буква + цифра (`setup-status.password_policy`), вход без enumeration (dummy-хеш, единый 401, 423 удалён, атомарный счётчик неудач, сбой записи — единый 503), `cleanup_revoked_tokens` при старте и каждые 24 ч, `POST /users/me/disclaimer/accept` + гейт `disclaimer_required` на старт/resume (§4.1, §7.1, §5.9, §11.11). `S8R-AUDIT-059`: Swagger/OpenAPI только при DEBUG, `/health` — аноним `{status}`, отвергнутый токен 401, при недоступной БД — по подписи, readiness по таблице `users`; CORS — явные методы/заголовки, `*` в production — отказ старта (§7.6, §8.5). `S8R-AUDIT-048`: квоты T-Invest по сервисам, кэш справочника FIGI, «нет времени» = эпоха SDK, `UNKNOWN`-состояние операции, переоткрытие песочницы без гонок со сверкой позиций (§5.5.2). `S8R-AUDIT-064`: ISS — классификация ошибок и повторов, пагинация по cursor с пределом, графики при сбое ISS из кэша; стрим — битая свеча без переподключения, алерты вне цикла чтения (§5.5.2, §5.5.3). `S8R-AUDIT-088`: §4.0 — реестр всех 142 маршрутов из приложения (источник истины) и таблица соответствия устаревших путей подразделов 4.2–4.11. `S8R-AUDIT-088` (2): §3.0 — сверка схемы с моделями (`users`, `broker_accounts` приведены к моделям, прочие расхождения — таблицей); ссылки ФТ→ТЗ и гайд→ФТ/ТЗ на актуальные версии. `S8R-AUDIT-060`: коды закрытия WS доходят до браузера (accept → close; reason `logout`/`revoked`; 1013 при сбое БД), единый контроллер переподключения с баннером, эпоха клиентской сессии и порядок logout без reuse-detection, nginx — gzip и keepalive_timeout 4s (§7, §7.6, §4.12). `S8R-AUDIT-067`: диапазоны конфигурации CB, `invalid_fields`, нейтрализация опасных сохранённых значений, один снимок конфига на проверку, часы override, статус в рублях (§5.8). `S8R-FIX-054`: `GET /broker/accounts/balances` — при сбое опроса брокера `total`/`available`/`blocked`/`in_positions` = null (`total` стал nullable); экран «Счёт» — карточка `blocked`. `S8R-AUDIT-079`: прореживание кривой equity — равномерная сетка + экстремумы и бар максимальной просадки, Decimal только для отобранных точек. `S8R-AUDIT-098`: CLI `revoke_admin`, ошибки БД в CLI без traceback/SQL, избранное — инструменты ≤ 100 (условный INSERT), таймфрейм — значение enum, `/balance/history/full` — капитал активных сессий числом, `iss_path()` для всех путей ISS с тикером, запрет `.`/`..` в `Ticker`. `S8R-AUDIT-050`: SDK T-Invest по commit-hash, `backend/requirements.lock` (с хэшами) — источник установки в Docker и CI, base-образы по `@sha256`, RestrictedPython удалён из стека (§1 стек, §5.11), лицензии — `docs/licenses.md` репо кода. `S8R-AUDIT-049`: CI — `permissions: contents: read`, concurrency, actions по SHA, Dependabot. `S8R-REV-LQ`: сверка позиций после любой смены sandbox-счёта — единая функция, фантом только до момента переоткрытия, фоновая задача с повтором и паузой при неудаче (§5.5.2). `S8R-FIX-051`: монитор ценовых алертов подключён к стриму и сам подписывается на FIGI с алертами; срабатывание + уведомление + outbox одной транзакцией, доставка по каналам (§5.5.2, §5.7). `S8R-FIX-056`: канонический тикер (резолвер, сравнения без учёта регистра, дедупликация кэша свечей, канал стрима по канону, ISS futures), миграция `fb26c08f99c8` — индекс `upper(ticker)` (§5.6). `S8R-FIX-063` ч.2: CB учитывает сделки «P&L не определён» консервативной оценкой, `cb.unpriced_trade`, `SETTINGS_INHERIT_FROM` (§5.4, §5.8, §10). `S8R-FIX-052`: запрет удаления счёта/сессии с открытыми позициями, сверка с брокером перед закрытием у неуправляемой сессии, `confirm_closed_outside`, общий `ConflictError` (§4.0, §5.4). `S8R-FIX-069`: `POST /strategy/{id}/duplicate` (§4.0). `S8R-FIX-005`: флейк vitest (тесты). `S8R-REV-FBE` (находки ревью по трём осям): None вместо заглушек цены, период бэктеста до резолва тикера, ключ негативного кэша резолвера, рисунок графика — `known_canonical` без сети, `open_chart` с регистром, один модуль текстов pydantic (§5.6, §5.13, §11.15). `S8R-FIX-062/063/065/066`: P&L по исполненным лотам, правило цены исполнения без подмен (gotcha-33), уведомления закрытия через outbox у всех издателей, `stop_grace_period` 90 с, 422 без `input` (§2.4, §4, §5.4, §5.13). `S8R-FIX-067/068`: дозапрос типа в скане облигаций (§5.12), тесты гонок без порогов времени (§9). `S8R-FIX-043/059/061`: налоговый отчёт — ПФИ вне базы, дозапрос типов вне горячего пути (§5.13); `CandleSeries` столбцами (§5.3); сторож живого gRPC в тестах (§9). `S8R-FIX-038`: фронт редактора стратегии — откат пустой стратегии только при однозначном отказе, русские тексты 422 (§4 контракт ошибок). `S8R-FIX-031/033/034/046`: `/health` с пределом 3 с на реальном драйвере (§8.5), дефолт `AI_MODEL=claude-opus-5-5`, мёртвые лимиты AI удалены, `--reload` только при DEBUG (§8.1, §8.2), белый список импортов песочницы = модули исполнителя (§5.11), SSRF-барьер по встроенному IPv4 (§7). `S8R-FIX-042/041/037/039/048`: сброс серии нехватки средств на resume, P&L позиции дашборда × лот (общий `trade_lot_multiplier`), единый setter статуса сессии, журнал CB `Numeric(18,4)` NULL (миграция `752ae89f7ec2`), закрытие позиции без цены входа (§5.4, §5.10). `S8R-FIX-030/032/044/045/053/064`: единая таблица кодов gRPC (§5.5.5), песочница только в рублях (§4), снапшот WS без N+1 (§11.6 C1), чистка ISS-кэша без write-лока на сессии вызывающего — корень 045 (§5.6). `S8R-FIX-049`: комиссия по сторонам сделки, ноль брокера — не факт до окна начисления, досверщик в цикле восстановления, коррекция DailyStat, миграция `c04dc4f891a2` (§5.4, §5.13). `S8R-FIX-035/036/057`: rerun бэктеста проверяет параметры до записи и канонизирует тикер, правило периода (конец позже начала, ≥ 30 дней) во всех точках входа, повтор при `database is locked` — своя сессия на попытку (`persist_with_retry_fresh`), векторная сборка кривой и бенчмарка (§4, §5.6). `S8R-FIX-055`: фронт — `RiskSettingsPage` (`/settings?tab=risk`), проверка `utils/riskLimits.ts` (зеркало `risk_limits.py`), PUT — весь объект (§5.8). `S8R-FIX-074`: фронт — `stores/accountStore.ts` переведён на посекционные `{balances,positions,operations,tax}Loading/Error` (был один `error` на шесть загрузок) и на `utils/apiError.ts::getApiErrorMessage`; `pages/AccountPage.tsx` держит полноэкранный Alert только за `balancesError`, ошибки операций и налоговых отчётов рисуются над своими таблицами. Тем же проходом на хелпер переведены оставшиеся 9 файлов с `err.message` (§4, §5.8). `S8R-FIX-073`: `BalanceHistoryPoint.active_capital` (бэкенд `app/account/service.py`) + ветка «Нет активных сессий» в `BalanceWidget.tsx` (§4). `S8R-FIX-075`: `components/layout/StatusFooter.tsx` опрашивает `/health` в своём 60-секундном цикле и ведёт три состояния плашки брокера (`не подключён` / `на связи` при `tinvest_connected === true` / `настроен`); `hasBrokerConnection` из `settingsStore` остался признаком «счёт настроен», но перестал быть источником зелёного (§6). `S8R-FIX-076`: проп `loadFailed` у `components/account/OperationsTable.tsx`, `AccountPage` передаёт `operationsError !== null` (§4). **S8R-FIX-071:** `live_trades.close_reason` (миграция `fd3492233bc0`, nullable String(40)) — причина закрытия не терминалом (`closed_outside_terminal`, `closed_outside_terminal_by_user`, `sandbox_account_reopened`); входит в `UNDETERMINED_CLOSE_REASONS` и предикат `is_pnl_undetermined`, поэтому `_close_trade_without_order` пишет `pnl = NULL` без подстановки `exit_price = entry_price` и без нулевого `pnl` в `DailyStat` (остаётся `trades_closed +1` и `realized_pnl = −commission`); выборка `unpriced_cb_losses` читает колонку, иначе оценка CB её не видит; в payload `trade.closed` — `PNL_UNDETERMINED_OUTSIDE_TEXT`; `TradeResponse.close_reason` и `LiveTrade.close_reason` на фронте (подпись журнала). **S8R-FIX-070:** `POST /trading/sessions/{id}/reconcile` → `SessionRuntime.reconcile_session_with_broker` (тот же `_reconcile_broker_positions` с `pause_from=()` и явным исходом `ReconcileOutcome`, бюджет `POSITION_RECONCILE_TIMEOUT_SEC`); `BrokerService._assert_account_not_in_use` держит счёт при `position_mismatch_at IS NOT NULL` у sandbox/real-сессии, в `sessions[]` — `position_mismatch`. **Фронтенд переведён на правила React-компилятора** (S8R-FIX-080): `eslint-plugin-react-hooks` поднят до `^7.1.1`, `eslint-plugin-react-refresh` — до `^0.5.7`, версии больше не прибиты точно, гейт `pnpm lint` зелёный. 20 мест в 12 файлах приведены к трём формам: выборка данных отделена от состояния (загрузчик чистый, присваивания — в теле эффекта после `await`, добавлена отмена по размонтированию), сброс состояния при смене пропа делается сравнением с предыдущим значением во время рендера (по СОДЕРЖИМОМУ, если источник не обещает стабильной ссылки — например массив из селектора стора), обращение к действиям сторов из эффектов — через `useEffectEvent`, а не через зависимости (нестабильная ссылка иначе перезапускает эффект на каждый рендер). `strategyStore.fetchStrategy` теперь возвращает `Promise<StrategyDetail | null>` — редактор наполняет форму ответом вызова, с откатом на кэш стора при сбое и сверкой `id`. В `CandlestickChart` ref'ы «последнего значения» (`candlesRef`, `sequentialModeRef`, `onChartReadyRef`, `rebuildMarkersRef`) пишутся в `useLayoutEffect` вместо рендера, а вызов `useTradeMarkers` поднят выше эффектов (требование `react-hooks/immutability`) — из-за смены порядка эффектов первые итерации ожидания серии в `useTradeMarkers` сделаны короткими, иначе маркеры сделок опаздывали на 250 мс. **Хвосты аудита, 2026-10-13.** `S8R-FIX-019`: §8.6 — `restore_all` под общим дедлайном `RESTORE_TOTAL_BUDGET_SEC = 45` (сумма частных дедлайнов превышала `start_period` healthcheck). `S8R-FIX-020`: §8.6 — периодическая сверка греет портфели параллельно через `_prefetch_restore_portfolios` с `log_prefix`, отбор сессий — `_sessions_to_reconcile()` без сети. `S8R-FIX-018`: §8.6 — `_run_shutdown_recovery` передаёт `RESTORE_PAUSE_FROM`; постоянный отказ старта без владельца → `stopped` (`paused` держал пару «счёт+тикер» навсегда); уведомления о сессии сведены к одному `SessionRuntime._notify_session` (резолв владельца, запись, обработка сбоя доставки) — три копии расходились в обработке ошибок, и у самого важного пути, расхождения позиций, её не было вовсе. `S8R-FIX-021`: §7.2 — привязка шифртекста к записи закрыта ещё S8R-AUDIT-042; инвариант «ни одного `encrypt()` без `context=` в `app/`» закреплён тестом, состояние рабочей БД проверено на копии (`rebind-encrypted-secrets` → nothing to rebind). `S8R-FIX-013`/`S8R-FIX-015`: §5.8 — пик equity поднимается на каждой закрытой свече (`update_peak_on_bar`, без сети и без CB-лока), состав `current_equity` для paper включает нереализованный P&L; §3.17 — `daily_stats.peak_equity` удалена миграцией `a7c1d9e2b4f8`. `S8R-FIX-009`: §11.4 — `SHUTDOWN_WAIT_SEC = 10`; §11.5 — grid без слотов остаётся `queued` с событием `waiting`. `S8R-FIX-022`: §5.2.4 — периоды, целиком накрытые обрывом, собираются из дозагруженных минут, предел `GAP_REPUBLISH_MAX_BARS = 60`. `S8R-FIX-008`: §5.9 — `detect_corporate_actions` каждые 6 часов, текст уведомления с датой реестра и ex-date. `S8R-FIX-006`: §3 — `live_trades.nkd_entry/nkd_exit` — НКД на ОДНУ облигацию, ₽. `S8R-FIX-003`: §8.4 — описание логирования приведено к факту (один поток в stdout, файл и ротация снаружи процесса, права 0600). `S8R-FIX-017`: §4.12/§7.4 — WS-аутентификация cookie при upgrade, один декодер access-токена на три входа. `S8R-FIX-021`: `alembic/env.py` нормализует `DATABASE_URL` той же функцией, что настройки. `S8R-FIX-023`/`S8R-FIX-024`/`S8R-FIX-002`: §9.1 — окружение тестового движка (FK, `GRPC_ENABLE_FORK_SUPPORT`, `faulthandler_timeout`, CLI по эффекту). `S8R-FIX-079`: §1.2 — TanStack Table 9.3+ (явные фичи, фабрики моделей строк, `table.state`, `getAllCells`). Находка прогона: §11.4 — провал бэктеста доходит до job'а возвращаемым значением `_run_backtest_task`, а не перечитыванием `backtests.status` (в зазоре записи провал превращался в `done` с ложным «Бэктест завершён»). |
 | 2.9 | 2026-08-10 | S8R — гигиена перед деплоем | **§5.2.2 (парсер шаблона), §5.6 (рыночные данные), §5.4 (движок), §9.** (1) `S8R-FIGI-NO-NEGATIVE-CACHE` (Q4=a): `_fetch_figi_from_tinvest` возвращает `FigiLookup(figi, source_answered)` вместо `str \| None`. Флаг разделяет «провайдер ответил, инструмента нет» и «источник молчит» (нет счёта с токеном, `ImportError` SDK, ошибка расшифровки, `asyncio.TimeoutError`, любое исключение gRPC) — кэшируется **только первое**. Отметки промахов — модульный `_figi_negative_cache: dict[str, datetime]` с `FIGI_NEGATIVE_TTL = 15 мин`; кэш процессный, а не на экземпляре, потому что `process_signal` создаёт `MarketDataService(self.db)` заново на каждый сигнал. TTL читается при проверке (как `CbrRateService._is_fresh`), протухшие записи вычищаются при записи новой, успешный резолв снимает отметку. Публичная `reset_figi_negative_cache()` + autouse-фикстура в `tests/conftest.py`: без сброса состояние текло бы между тестами и падение зависело бы от их порядка. В БД отрицательный результат не пишется — колонка `instruments.figi` хранит либо настоящий идентификатор, либо ничего; миграций нет (Q8=a). (2) `S8R-PAPER-TARIFF-UNREACHABLE-FROM-UI` (Q5=a): наследование тарифа существовало в `start_session` с 2026-08-04, но включалось условием «ставка сессии == 0 И передан `broker_account_id`», а `buildSessionStartRequest` слал счёт только для `sandbox`/`real`. В черновике появилось поле `commission_source: 'manual' \| 'account'`; при `account` тело запроса содержит `broker_account_id` **и** `commission_pct: 0` — ровно та комбинация, которую backend распознаёт. Backend не менялся. Инварианты, закреплённые тестами (`test_paper_tariff_from_ui.py`): `broker_account_id` у paper-сессии не делает её брокерской — `PaperPortfolio` создаётся, запрет `S8R-DUPLICATE-SESSION-PER-INSTRUMENT` смотрит на `mode.in_(('sandbox','real'))`, ставка фиксируется в момент запуска. Для `sandbox`/`real` `commission_pct` по-прежнему принудительно 0. (3) `S7R-BG-BACKTEST-AUTOCOLLAPSE` (Q6=b): `AUTOCOLLAPSE_DELAY_MS = 30_000` в `BackgroundBacktestsBadge`; таймер на каждую терминальную карточку, задержка считается от `finished_at` (не от монтирования: `items` меняется на каждом тике прогресса соседнего джоба, и отсчёт «с нуля» не дошёл бы до конца; попутно карточка, завершившаяся до перезагрузки страницы, убирается сразу). `error` исключён намеренно — текст причины больше нигде не виден; при открытом popover отсчёт не идёт. (4) `S5R-BLOCKLY-MODE-B-MODAL` / `-CHECK` (Q2=a, Q3=a) — см. §5.2.2: кнопка в редакторе, шаблон приведён к семи секциям парсера, добавлен парсящийся пример, контракт закреплён тестом синхронизации `.tsx` ↔ `template_format_rules.py`; два `test.skip` в `e2e/blockly.spec.ts` заменены рабочими спеками. (5) `S7R-E2E-7.9-MISSING` (Q7=b): сценарий 7.9 закрыт pytest-интеграционным тестом (`tests/test_backup/test_cli_restore_roundtrip.py`), а не Playwright-спеком — сценарий целиком серверный (запуск `python -m app.cli.backup` через `subprocess` и чтение файла БД), браузер в нём не участвует. Проверяется результат, а не код возврата: round-trip восстановления потерянной строки, `PRAGMA integrity_check`, содержимое pre-restore-снимка, попадание в бэкап транзакции, оставшейся в WAL (gotcha-19), ротация 10 → `--keep 7` по `mtime` и неприкосновенность рабочей `data/terminal.db`. |
 | 2.8 | 2026-08-10 | S8R — доведение до деплоя | **(1) `S8R-FRONTEND-BUILD-BROKEN` — production-сборка фронтенда была сломана, а гейт этого не видел.** `frontend/Dockerfile` собирает образ через `pnpm build` (= `tsc -b && vite build`); `tsc -b` падал со 102 ошибками типов в 45 файлах. Гейт «tsc 0» (в том числе шаг CI `pnpm tsc --noEmit`) не проверял ни одного файла: корневой `tsconfig.json` — solution-файл с `"files": []`, и без `-b` команда завершается мгновенно с кодом 0. Все ошибки устранены; `package.json` получил скрипт `typecheck: tsc -b`, в CI шаг заменён на `pnpm typecheck` и добавлен `pnpm build`. `fancy-canvas` объявлена прямой зависимостью (импортируется в примитивах графика). **(2) Новый endpoint `GET /api/v1/market-data/usd-rate`** → `{rate, as_of, stale}`. Источник — `https://www.cbr.ru/scripts/XML_daily.asp`, кэш 6 ч в процессе + `asyncio.Lock` (один запрос к ЦБ на всех). Недоступность ЦБ: при наличии кэша — `stale=true`, иначе `503`. Разбор XML — `xml.etree` с лимитом тела 1 МБ и инлайн-`nosec B314` (фиксированный HTTPS-хост, внешние сущности CPython не резолвит). **(3) Порядок захвата локов дополнен** (`app/common/locks.py`): `session_lifecycle` (по `session_id`) — **самый внешний**, под ним `close_trade` (по возрастанию `trade_id`) → `sandbox_reconcile_account`; `session_start_account` — отдельная ветвь. `pause/stop/resume_session` сериализованы по сессии, `_submit_order_to_broker` берёт `close_trade` своей сделки. **(4) `BrokerService.delete_account`** отклоняет удаление счёта при сессиях в статусах `active`/`paused`/`suspended` (FK `ondelete='SET NULL'` иначе обнулял `broker_account_id` у работающих сессий). **(5) Единая сборка тела запроса на запуск сессии** — `frontend/src/components/trading/sessionRequest.ts`; ручная сборка в «Запустить заново» была источником расхождения контракта. Приведены к реальности типы `LiveTrade.direction` (`buy`/`sell`), `Backtest` (поля списочного ответа) и `tradingApi.getSession` (`SessionDetailResponse`). Миграций цикл не добавляет, alembic head прежний — `a7b8c9d0e1f2`. |
 | 2.7 | 2026-08-06 | Sprint_8_Review — один инструмент, одна сессия на счёте | **§5.4 (движок), §9.** (1) `S8R-DUPLICATE-SESSION-PER-INSTRUMENT`: `TradingSessionManager._assert_no_conflicting_session` — единая точка запрета для `start_session` и `resume_session`. Единица конфликта — пара «`broker_account_id` + `ticker`» (Q2=a): именно счёт определяет общий пул бумаг у брокера, а таймфрейм на пул не влияет. Область — режимы `sandbox`/`real` (Q1=a): механика песочницы идентична бою, отличается только цена ошибки. Блокирующие статусы — `BLOCKING_SESSION_STATUSES = (active, paused, suspended)` (Q3=a); `suspended` включён потому, что `restore_all` вернёт такую сессию в `active` сам. Выбор виновника — `ORDER BY CASE(status) , id LIMIT 1` + `.scalars().first()`, а не `scalar_one_or_none()`: конфликтующих кандидатов может быть несколько (исходное состояние БД заказчика — сессии #4/#6), и `MultipleResultsFound` дал бы 500 вместо понятного отказа. Схема БД **не** меняется: `UniqueConstraint` на «счёт + тикер» запретил бы и закрытые исторические сессии, которых у заказчика уже две (Q5=a). (2) **Атомарность** — новый ключ `keyed_lock("session_start_account", broker_account_id)`. Без него проверка была `SELECT`-затем-`INSERT` без сериализации: между ними есть `await` на реальном I/O, и два одновременных «Запустить» проходили оба (воспроизведено тестом: в БД оказывались две сессии). Место в документированном порядке захвата (`app/common/locks.py`) — **самый внешний**: путь запуска берёт только этот ключ, а `close_trade` и `sandbox_reconcile_account` внутри секции не запрашиваются, потому что под локом идёт только работа с БД. Подписка на стрим (`SessionRuntime.start`) вынесена из-под лока в `_announce_started_session`: `locks.py` разрешает сеть под локом лишь с таймаутом на самом вызове, а зависший стрим запер бы запуск всех сессий счёта. (3) `SessionRuntime.restore_all` дедуплицирует пару «счёт + тикер» за проход: пред-проход закрепляет её за уже `active`-сессиями, чтобы `suspended`, попавшаяся раньше по порядку, не забрала пару у сессии, которая в БД уже числится работающей. Пропуск логируется (`session_restore_skip_duplicate_instrument`), статус **не** переписывается — восстановление не место для ревизии пользовательских данных. (4) `S8R-RECONCILE-NO-ACCOUNT-DEDUP`: `_reconcile_broker_positions` считает `our_units` по **всем** sandbox/real-сессиям счёта (JOIN `LiveTrade` → `TradingSession` по `broker_account_id`), независимо от статуса сессии — брокеру всё равно, `stopped` у нас сессия или нет, незакрытая сделка занимает бумаги. Сравниваются только FIGI **этой** сессии; обратная проверка ограничена её тикером, иначе карточка сессии по SBER показывала бы расхождение соседа по GAZP. Портфель кэшируется на **один проход** фоновой сверки (`portfolio_cache`, ключ `broker_account_id`) — 10 сессий счёта давали 10 адаптеров и 10 одинаковых запросов; кэш дольше прохода означал бы сверку с устаревшим состоянием счёта. (5) **§9** — тест гонки на файловой БД с `NullPool` (gotcha-48), рандеву **до** захвата лока (gotcha-59); защита проверена мутацией: снятие `async with lock` даёт две сессии и роняет тест. (6) Фронт: `TradingSession.status` в `api/types.ts` дополнен `suspended` — backend отдавал его и раньше, в типе его не было. (7) `S8R-PAPER-CONFLICT-BY-VERSION-NOT-TIMEFRAME` (решение заказчика, вечер 2026-08-06): из `_create_session_locked` удалена унаследованная проверка «одна активная сессия на пару (`strategy_version_id`, `ticker`)» — она не учитывала `timeframe`, из-за чего SBER на 1h и SBER на D от одной версии не запускались вместе. Paper-режим ограничений на повтор инструмента больше не несёт **вообще**: у каждой сессии свой `PaperPortfolio`, брокерских ордеров нет, общего пула бумаг нет — ни одно из оснований `S8R-DUPLICATE-SESSION-PER-INSTRUMENT` к нему не применимо. Запрет для `sandbox`/`real` не затронут и покрыт отдельным классом тестов (`TestSandboxRestrictionUnaffected`). |
@@ -54,7 +60,7 @@
 |-----------|-----------|----------|
 | **§7 Auth (Model A)** | Оба JWT — в cookie, не в `localStorage`. Три cookie: `access_token` (`path=/`), `refresh_token` (`path=/api/v1/auth/refresh`), `csrf_token` (TTL = refresh), все HttpOnly+Secure кроме csrf (double-submit). `login/setup/refresh` возвращают тело **без токенов** (`AuthMetaResponse`), `logout` стирает все три. Refresh читается из cookie и защищён CSRF double-submit (убран из exempt-списка). Бутстрап клиента — `GET /auth/me` под loading-гейтом. Cross-tab single-flight refresh на `navigator.locks` (grace-окно сознательно не вводилось). | P1 auth-hardening |
 | **§7 CSRF: правило для не-axios клиентов** | Interceptor двойной отправки CSRF живёт в axios-инстансе (`api/client.ts`). **Любой клиент, который ходит мимо него** (SSE через `fetch`, `EventSource`, ручные `fetch`), обязан сам подставлять `X-CSRF-Token` из cookie — иначе `CSRFMiddleware` видит «cookie есть, заголовка нет» и отбивает запрос 403. Единый источник токена — экспортируемый `getCSRFToken()`; дублировать регулярку разбора cookie запрещено. Каждый такой клиент покрывается тестом на заголовок. | S8R BUG-32 (класс BUG-21) |
-| **§7 WebSocket** | Авторизация по cookie **на upgrade** (`common/ws_auth.py`, применяется к трём точкам), первым кадром сервер шлёт `auth_ok`, проверка `Origin`. Токен в query-string не используется. Протухший токен → close 4401 + guard в `onclose` (без reconnect-шторма). | P1 W3 + auth-hardening |
+| **§7 WebSocket** | Авторизация по cookie **на upgrade** (`common/ws_auth.py`, применяется к трём точкам), первым кадром сервер шлёт `auth_ok`, проверка `Origin`. Токен в query-string не используется. Отказ — accept → close (S8R-AUDIT-060: close до accept uvicorn превращал в HTTP 403, браузер видел 1006): 4401 без reason — истёк JWT (клиент делает один общий refresh и переподключается), 4401 `revoked`/`logout` — сессию закрыл сервер (тихий стоп без refresh), 4403 — нет доступа, 1013 — сбой БД при проверке (обычный обрыв). Клиент — `WsReconnectController` во всех WS-хуках: backoff ≤ 30 с, после 10 обрывов подряд — баннер «Нет связи с сервером» с «Повторить». | P1 W3 + auth-hardening |
 | **§3/§5 Денежный учёт paper** | Единая точка мутации — `PaperPortfolioAccountant`. Семантика полей: `balance` = свободный кэш, `blocked_amount` = капитал открытых позиций по цене входа, `equity = balance + blocked_amount`. Buy-fill списывает и **отклоняет** при нехватке; ручное/all-close и SL/TP-close кредитуют с учётом `lot_size`. Инертный T+1 нейтрализован для paper (`unblock_settled_funds` → no-op, `available = balance`). Инвариант, закреплённый тестом: `Δequity == trade.pnl − trade.commission` (с `quantize` — точно и для облигаций; при нулевой ставке комиссии вырождается в прежний `Δequity == trade.pnl`). Комиссия удерживается из `balance` и **не** попадает в `blocked_amount` — иначе закрытие вернуло бы её как часть cost_basis. Следствие: CB-drawdown работает на paper. | BE-TRAD-06 + Q4 (`S8R-PAPER-NO-COMMISSION`) |
 | **§6 Слой разметки графика** | `series.attachPrimitive()` не запрашивает перерисовку — примитив обязан звать `param.requestUpdate()` в `attached()`, иначе фигура не рисуется до постороннего redraw. Выбор фигуры под курсором — одна функция `primitives/pick.ts::pickTopHit` (перебор от верхнего слоя к нижнему) для **всех** обработчиков: click, hover, контекстное меню, drag; иначе захват фигуры проваливается в панорамирование графика. Анкоры (`p1`/`p2`, `corner-*`) отдаются hit-тестом только у выделенной фигуры → после выделения hit-тест пере-опрашивается. Подробности: `Develop/stack_gotchas/gotcha-36-attachprimitive-no-redraw.md`. | S8R BUG-33 / BUG-34 |
 | **§8 Deployment: миграции** | `alembic/env.py` обязан уважать `DATABASE_URL` из окружения. Приоритет URL: программный override (`config.set_main_option`, тесты) > `DATABASE_URL` > значение из `alembic.ini`; async-драйверы (`+aiosqlite`/`+asyncpg`) срезаются, т.к. Alembic ходит синхронно. Без этого миграции молча уходят в БД из ini — при отдельном пути к данным (Docker/прод) обновится не тот файл. | S8R FIND-06 |
@@ -71,7 +77,7 @@
 | **§4 Настройки уведомлений: серверная нормализация** | `PUT /notifications/settings/{event_type}` приводит `email_enabled` к `false` для типов вне `EMAIL_ALLOWED_EVENTS` и отвечает **200** с нормализованным значением. 422 сознательно не используется: жёсткий отказ ломает wizard-flow, который отправляет настройки для всех типов разом. UI-гейт по `email_supported` остаётся, серверная нормализация закрывает обход мимо интерфейса. | S9-EMAIL-TOGGLE-MISMATCH (доведение) |
 | **§6 Фоновые бэктесты: реконсиляция после перезагрузки** | Состояние фоновых job'ов персистится в localStorage, а WS-канал сервер закрывает через 30 с после терминального события — job, завершившийся при закрытой вкладке, после F5 «висел» в `running` без результата и причины. На mount выполняется разовая сверка незавершённых job'ов с `GET /backtest/jobs/{id}`; терминальный статус и причина подтягиваются в store, недоступная сеть состояние не меняет. **Контракт ответа задаёт `_job_to_dict` (`backtest/router.py`): идентификатор бэктеста приходит ВЛОЖЕННЫМ — `result.backtest_id`, плоского `result_id` в ответе нет.** Все потребители (оба WS-обработчика и REST-реконсиляция) обязаны читать его одинаково: расхождение даёт `status='done'` без `result_id`, и бейдж не покажет кнопку «Открыть результат». Тип клиента `getJob()` обязан соответствовать этой схеме (`progress`, `error_message`, `result`). | S8R доведение + код-ревью |
 | **§9 Тесты не ходят в сеть** | Юнит-тесты `app/trading` обязаны подменять `MarketDataService.ensure_lot_size_strict`. По контракту FIX-1 он идёт в T-Invest → MOEX ISS и **бросает** `LotSizeUnavailableError`, когда лот не определить авторитетно, из-за чего `process_signal` пропускает сигнал. Без подмены `test_max_positions_limit` зависел от доступности ISS: пропуск одного из трёх наполняющих сигналов оставлял 2 открытые позиции, и четвёртый сигнал проходил по лимиту. Ветка «лот недоступен → сигнал пропущен» покрыта явным тестом. | S8R доведение |
-| **§4 Контракт ошибок для фронта** | Любая ошибка запроса показывается пользователю текстом из `detail` ответа сервера. Сырой текст axios (`Request failed with status code N`, `Network Error`, `timeout of Nms exceeded`) выводить запрещено. Единая точка разбора — `frontend/src/utils/apiError.ts::getApiErrorMessage(err, fallback)`: понимает `{detail: str}`, `{detail: [{msg}]}` (422), `{detail: {message}}`, `{message}`; HTML-тело прокси и blob отсекает; при непарсибельном ответе отдаёт fallback вызывающей стороны. Причина падения фонового job'а: `error_message` (REST) / `message` (WS-кадр). | S9-BG-BACKTEST-503-UX |
+| **§4 Контракт ошибок для фронта** | Любая ошибка запроса показывается пользователю текстом из `detail` ответа сервера. Сырой текст axios (`Request failed with status code N`, `Network Error`, `timeout of Nms exceeded`) выводить запрещено. Единая точка разбора — `frontend/src/utils/apiError.ts::getApiErrorMessage(err, fallback)`: понимает `{detail: str}`, `{detail: [{msg}]}` (422), `{detail: {message}}`, `{message}`; HTML-тело прокси и blob отсекает; при непарсибельном ответе отдаёт fallback вызывающей стороны. Причина падения фонового job'а: `error_message` (REST) / `message` (WS-кадр). | S9-BG-BACKTEST-503-UX 422 pydantic (S8R-FIX-038): типовые типы ошибок переводятся на русский (`frontend/src/utils/apiError.ts`, словарь согласован с `_CONSTRAINT_TEXT` бэкенда) с подписью поля из `loc`; `value_error` — текстом валидатора без префикса «Value error,», неизвестный тип — исходным `msg`; формы с ошибками по полям используют `getValidationIssues`. S8R-FIX-066: 422 — `{detail:[{type,loc,msg,ctx?}]}`, без `input`; неконечные числа — строкой. `TradeResponse.exit_broker_order_id` (новое поле). |
 | **§6 Тема и доступность** | Тема вынесена в `frontend/src/theme.ts`. `--mantine-color-dimmed` переопределяется **только** для dark-схемы через `cssVariablesResolver` (`light: {}` не трогается): контраст приглушённого текста к фону поднят с **4.04 : 1** (ниже порога WCAG AA) до **7.83 : 1** (AAA). Хардкод цветов в компонентах запрещён — правка на уровне токена. Подробности: `gotcha-42`. | S9-DARK-DIMMED-CONTRAST |
 | **§6 SPA-роутинг** | Каждый вложенный `<Routes>` обязан иметь собственный `<Route path="*">`: внешний splat-роут (`admin/*`) уже перехватил путь, и глобальный catch-all не срабатывает — вместо 404 рендерится пустой `main`. `/admin/metrics` внутри SPA — страница-заглушка со ссылкой на Dash (дашборд смонтирован в backend через `app.mount` и живёт на другом origin), остальные `/admin/*` → 404. Подробности: `gotcha-43`. | S9-ADMIN-METRICS-SPA-404 |
 | **§7 Поля секретов в UI** | Поле ввода стороннего секрета (Telegram bot token и аналогичные) обязано нести `autoComplete="new-password"` + `data-lpignore="true"`. `autocomplete="off"` для `type=password` браузерами игнорируется намеренно, а Mantine `PasswordInput` ставит именно `off` — без явного переопределения Chrome подставляет в поле секрета сохранённый пароль пользователя. Проверяется тестом на **отрендеренный DOM**, не на пропсы. Подробности: `gotcha-41`. | S9-BOT-TOKEN-AUTOFILL |
@@ -137,7 +143,7 @@
 | Хеширование паролей | Argon2id (argon2-cffi) | 23.1+ | Рекомендация OWASP, winner PHC |
 | Шифрование | cryptography (Fernet / AES-256-GCM) | 42.0+ | AES-256-GCM для API-ключей |
 | JWT | PyJWT | 2.8+ | Компактный, проверенный |
-| Sandbox | RestrictedPython | 7.0+ | Ограничение исполнения пользовательского кода |
+| Sandbox | — (RestrictedPython удалён, S8R-AUDIT-050/S8R-FIX-047) | — | Исполняется только код, сгенерированный из IR блоков (`ir_codegen`), в дочернем процессе с лимитами (S8R-AUDIT-001/006, §5.11) |
 | Telegram | python-telegram-bot | 21.0+ | Async, поддержка inline-кнопок, webhook |
 | HTTP-клиент | httpx | 0.27+ | Async, для MOEX ISS и AI-провайдеров |
 | Валидация | Pydantic | 2.6+ | Нативная интеграция с FastAPI |
@@ -161,7 +167,7 @@
 | Маршрутизация | React Router | 6.22+ | Стандарт для React SPA |
 | HTTP-клиент | Axios | 1.7+ | Интерцепторы для JWT, отмена запросов |
 | WebSocket | Нативный WebSocket + reconnecting-websocket | 4.4+ | Авто-переподключение |
-| Таблицы | TanStack Table | 8.15+ | Виртуализация, сортировка, фильтрация |
+| Таблицы | TanStack Table | 9.3+ | Сортировка, фильтрация, пагинация. С 2026-10-13 (S8R-FIX-079) — v9: фичи перечисляются явно (`tableFeatures({...})`), модели строк создаются фабриками `create*RowModel` вместо геттеров `get*RowModel`, состояние читается `table.state`, ячейки — `getAllCells()`, сортировщик колонки — `sortFn`. Набор фич входит в типы (`ColumnDef<TFeatures, TData, TValue>`), поэтому объявляется один раз на таблицу и переиспользуется хелпером колонок. Правило `react-hooks/incompatible-library` v9-таблицу не трогает — подавление снято |
 | Код (отображение) | Monaco Editor (read-only) или react-syntax-highlighter | latest | Подсветка Python-кода стратегии |
 | Иконки | Tabler Icons | 3.1+ | Бесплатные, SVG |
 | Уведомления (toast) | Mantine Notifications | 7.8+ | Интеграция с Mantine |
@@ -210,7 +216,7 @@ moex-terminal/
 │   │   │   ├── schemas.py
 │   │   │   ├── models.py
 │   │   │   ├── block_parser.py      # Шаблон → блоки (режим B)
-│   │   │   └── code_generator.py    # Блоки → Python/Backtrader
+│   │   │   └── ir_codegen.py        # IR → Python/Backtrader (code_generator.py удалён, S8R-AUDIT-019)
 │   │   ├── backtest/                # Модуль бэктестинга
 │   │   │   ├── router.py
 │   │   │   ├── service.py
@@ -386,13 +392,17 @@ class EventBus:
 События:
 - `order.placed`, `order.filled`, `order.rejected`
 - `position.opened`, `position.closed`
-- `circuit_breaker.triggered`
+- `cb.triggered` — срабатывание Circuit Breaker (S8R-AUDIT-073): одно событие в `trades:{session_id}` сработавшей сессии, публикует `CircuitBreakerEngine._trigger` сразу после commit паузы, до принудительного закрытия позиций; payload — `event_type`, `reason`, `signal`, `scope`, `money_class`, `trigger_value`/`limit_value` (строкой). По каждой сессии, реально поставленной на паузу (условный UPDATE только из `active`), — `session.paused` `{session_id, status, reason}`. `CircuitBreakerEvent.trigger_value/limit_value` — факт и порог проверки (`Numeric(18,4)` — колонка смешанных единиц ₽/%/счётчики, деньги в payload — 2 знака; у проверки без числа — NULL в БД и `null` в payload; миграция `752ae89f7ec2`, S8R-FIX-039).
 - `connection.lost`, `connection.restored`
 - `strategy.started`, `strategy.stopped`, `strategy.paused`
 - `backtest.completed`, `backtest.failed`
 
 **Гарантия доставки критических событий:**
-Для событий `order.placed`, `order.filled`, `circuit_breaker.triggered`, `connection.lost` — перед publish в event bus создаётся запись в таблице `pending_events` (см. раздел 3.20). После успешной обработки всеми подписчиками — проставляется `processed_at`. При старте системы — повторная обработка записей с `processed_at IS NULL` для предотвращения потери событий при крэше.
+Реализовано S8R-AUDIT-086 (`app/common/outbox.py`): для `order.placed`, `trade.filled` (исполнение), `cb.triggered`, `connection.lost` строка `pending_events` (§3.20) пишется в транзакции состояния до commit; publish — после, с `outbox_id`. `processed_at` ставится в транзакции in-app уведомления (идемпотентно); фан-аут `connection.lost` — идемпотентно по `(outbox_id, user_id)` (`Notification.related_entity_type="pending_event"`), `processed_at` после доставки всем. При старте повторяются необработанные `order.placed` / `trade.filled` / `cb.triggered` в окне 1 с…1 ч, ≤ 200 строк; `connection.lost` снимается с повтора (`stale_state` — это состояние, а не факт). Запись `connection.lost` мультиплексором — фоновой задачей ≤ 5 с, стрим её не ждёт.
+
+S8R-FIX-063 ч.2: `cb_unpriced_trade` без своей строки настроек наследует каналы `cb_triggered` (`SETTINGS_INHERIT_FROM`; доставка и `GET /notifications/settings`; первый `PUT` дополняет непереданные поля из родителя); событие в `EMAIL_ALLOWED_EVENTS`.
+
+S8R-FIX-065: `trade.closed` и `position.mismatch` (закрытие, paper SL/TP, отмена pending, сверка после переоткрытия, вход без цены, остаток входа) — строка `pending_events` той же транзакцией, что запись. После снятия локов `close_trade` и отключения адаптера (`publish_staged_after`): шина (WS), доставка своих строк фоновой задачей (`deliver_staged` → `NotificationService.deliver_staged_events`); при отмене — обе фоном. Дедупликация — по `processed_at`. Нет получателя — строка не пишется. Повтор при старте — `OUTBOX_REPLAY_EVENTS` (+`trade.closed`, `position.mismatch`).
 
 ---
 
@@ -404,6 +414,27 @@ class EventBus:
 
 > **Важное примечание о типах для финансовых данных:** Для всех денежных сумм, цен и процентов используется `Numeric` вместо `Float` для предотвращения ошибок округления IEEE 754. Типы: `Numeric(18, 8)` — цены, `Numeric(18, 2)` — денежные суммы, `Numeric(10, 4)` — проценты. В Python-коде для финансовых расчётов использовать `decimal.Decimal`.
 
+### 3.0 Сверка схемы с моделями (S8R-AUDIT-088, 2026-10-02)
+
+Источник истины — модели SQLAlchemy (`app/*/models.py`) и миграции Alembic (head `7fe0fae4293c`). Подразделы 3.1–3.22 сверены программно с `Base.metadata`; таблицы `users` и `broker_accounts` приведены к моделям, остальные расхождения — ниже (поле в модели есть, в описании нет — описание неполное; наоборот — описание устарело):
+
+| Таблица | Только в модели | Только в ТЗ (устарело) |
+|---|---|---|
+| `ai_provider_configs` | `prompt_tokens_limit`, `prompt_tokens_used`, `completion_tokens_limit`, `completion_tokens_used`, `price_per_1m_prompt`, `price_per_1m_completion` | — |
+| `backtests` | `parity_checked`, `parity_signals_match`, `parity_divergences`, `parity_metrics_diff` | — |
+| `chart_drawings` | `display_order` | — |
+| `corporate_actions` | `amount`, `description`, `record_date`, `created_at` | `detected_at` |
+| `daily_stats` | — | `unrealized_pnl` (удалено миграцией `e2f3a4b5c6d7`), `peak_equity` (удалено миграцией `a7c1d9e2b4f8`, S8R-FIX-013) |
+| `live_trades` | `figi`, `lot_size`, `client_order_id`, `commission_source`, `exit_broker_order_id`, `exit_client_order_id`, `exit_order_placed_at` | — |
+| `pending_events` | `payload` | `payload_json` |
+| `price_alerts` | `figi`, `condition`, `target_price` | `direction`, `price_level` |
+| `strategies` | `description` | — |
+| `strategy_versions` | `comment`, `created_by` | — |
+| `trading_sessions` | `timeframe`, `strategy_name`, `commission_pct`, `peak_equity`, `consecutive_broker_rejections`, `position_mismatch_at`, `position_mismatch_note` | — |
+| `user_notification_settings` | `in_app_enabled` | `inapp_enabled` |
+
+Таблицы моделей без подраздела 3.x: `ai_usage_daily` (§5.10.4), `backtest_jobs` (§11.3), `circuit_breaker_configs`, `circuit_breaker_events`, `instruments`, `tax_lots`, `tax_reports` (§18.2 ФТ), `user_ai_settings`, `user_favorites` — описание по моделям.
+
 ### 3.1 Таблица `users`
 
 ```
@@ -413,17 +444,20 @@ users
 ├── password_hash: String(255), NOT NULL          -- Argon2id hash
 ├── email: String(255), NULLABLE
 ├── risk_daily_loss_pct: Numeric(10, 4), DEFAULT 5.0       -- % от баланса
-├── risk_daily_loss_fixed: Numeric(18, 2), NULLABLE        -- фикс. сумма ₽
+├── risk_max_position_pct: Numeric(10, 4), NOT NULL, DEFAULT 25.0  -- % капитала на позицию
 ├── risk_max_drawdown_pct: Numeric(10, 4), DEFAULT 20.0    -- % от пика equity
-├── risk_max_position_size: Numeric(18, 2), NULLABLE       -- макс. сумма позиции ₽
-├── risk_daily_trade_limit: Integer, DEFAULT 50   -- макс. сделок/день
-├── disclaimer_accepted_at: DateTime, NULLABLE
-├── failed_login_count: Integer, DEFAULT 0       -- Счётчик неудачных попыток входа
+├── disclaimer_accepted_at: DateTime, NULLABLE              -- S8R-AUDIT-043: пишется POST /users/me/disclaimer/accept
+├── failed_login_count: Integer, DEFAULT 0       -- Счётчик неудачных попыток входа (атомарный UPDATE, S8R-AUDIT-043)
 ├── locked_until: DateTime, NULLABLE              -- Блокировка до (при brute-force)
+├── is_active: Boolean, DEFAULT True
+├── is_admin: Boolean, NOT NULL, DEFAULT False
+├── wizard_completed_at: DateTime, NULLABLE       -- мастер первого запуска
+├── token_version: Integer, NOT NULL, DEFAULT 0   -- S8R-AUDIT-035: рост — отзыв всех токенов
 ├── created_at: DateTime, NOT NULL, DEFAULT utcnow
-├── updated_at: DateTime, NOT NULL, DEFAULT utcnow, onupdate utcnow
-└── is_active: Boolean, DEFAULT True
+└── updated_at: DateTime, NOT NULL, DEFAULT utcnow, onupdate utcnow
 ```
+
+> S8R-AUDIT-088: полей `risk_daily_loss_fixed`, `risk_max_position_size`, `risk_daily_trade_limit` в модели нет (лимиты — в `circuit_breaker_configs`).
 
 ### 3.2 Таблица `broker_accounts`
 
@@ -437,9 +471,12 @@ broker_accounts
 ├── encrypted_api_secret: LargeBinary, NULLABLE   -- Если требуется
 ├── encryption_iv: LargeBinary, NOT NULL          -- IV для AES-GCM
 ├── account_id: String(50), NOT NULL              -- ID счёта у брокера
-├── account_type: String(20), NOT NULL            -- 'broker', 'iis'
+├── account_type: String(20), NULLABLE            -- 'broker', 'iis'
+├── is_sandbox: Boolean, NOT NULL, DEFAULT False  -- эндпоинт песочницы T-Invest
 ├── is_active: Boolean, DEFAULT True
 ├── has_withdrawal_rights: Boolean, DEFAULT False  -- Предупреждение
+├── has_trading_rights: Boolean, NOT NULL, DEFAULT False
+├── commission_pct: Numeric(10, 4), NOT NULL, DEFAULT 0  -- тариф счёта (оценка комиссии)
 ├── created_at: DateTime, NOT NULL
 ├── updated_at: DateTime, NOT NULL
 └── INDEX: idx_broker_user (user_id)
@@ -568,7 +605,7 @@ trading_sessions
 ├── mode: String(10), NOT NULL                    -- 'paper', 'real'
 ├── status: String(20), NOT NULL
 │         -- 'active','paused','stopped','suspended','error'
-├── position_sizing_mode: String(20), NOT NULL    -- 'pct_deposit', 'fixed_amount'
+├── position_sizing_mode: String(20), NOT NULL, DEFAULT 'fixed_lots'    -- 'fixed_sum' | 'fixed_lots' | 'percent' (S8R-AUDIT-071, миграция 6128b9c52d8a)
 ├── position_sizing_value: Numeric(18, 2), NOT NULL
 ├── max_concurrent_positions: Integer, DEFAULT 1
 ├── cooldown_seconds: Integer, DEFAULT 0
@@ -606,8 +643,8 @@ live_trades
 ├── pnl_pct: Numeric(10, 4), NULLABLE
 ├── commission: Numeric(18, 2), NULLABLE
 ├── slippage: Numeric(18, 8), NULLABLE            -- entry_price - entry_signal_price
-├── nkd_entry: Numeric(18, 2), NULLABLE           -- НКД при покупке (для облигаций)
-├── nkd_exit: Numeric(18, 2), NULLABLE            -- НКД при продаже
+├── nkd_entry: Numeric(18, 2), NULLABLE           -- НКД при покупке, на ОДНУ облигацию, ₽ (S8R-FIX-006)
+├── nkd_exit: Numeric(18, 2), NULLABLE            -- НКД при продаже, на ОДНУ облигацию, ₽ (S8R-FIX-006: писателя пока нет; налоговый расчёт умножает разницу на количество штук, как `process_coupon`)
 ├── opened_at: DateTime, NOT NULL
 ├── closed_at: DateTime, NULLABLE
 ├── INDEX: idx_lt_session (session_id)
@@ -628,6 +665,8 @@ paper_portfolios
 ```
 
 ### 3.11 Таблица `audit_log`
+
+Наполнение (S8R-AUDIT-086): `app/common/audit.py` — `audit()`/`build_audit()`, перечень действий `AUDIT_ACTIONS` (auth.*, admin.user_created, admin.granted/admin.revoked, broker.*, session.*, position.closed_manual, order.placed, cb.triggered, parity_override); `source` — `web` (с ip и user-agent) | `system` | `cli`. `S8R-FIX-098`: CLI `python -m app.cli.users grant_admin|revoke_admin <username>` пишет `admin.granted`/`admin.revoked` (`entity_type="user"`, `entity_id`, `details={"username"}`, `user_id=NULL`, `source=cli`) в той же транзакции, что смена `is_admin`, плюс structlog `admin_granted`/`admin_revoked`; идемпотентный повтор («already admin» / «not admin») записи не создаёт. Запись — в транзакции действия; неудачные входы — отдельной короткой транзакцией. Детали — только идентификаторы (фильтр секретов, предел длины); неизвестный логин — `sha256[:12]` и длина. Ротация по `created_at` — не реализована.
 
 ```
 audit_log
@@ -738,10 +777,15 @@ daily_stats
 ├── trades_closed: Integer, DEFAULT 0
 ├── pnl: Numeric(18, 2), DEFAULT 0.0
 ├── realized_pnl: Numeric(18, 2), DEFAULT 0.0
-├── unrealized_pnl: Numeric(18, 2), DEFAULT 0.0
-├── peak_equity: Numeric(18, 2), NULLABLE
 ├── UNIQUE: uq_daily_stat (session_id, date)
 ```
+
+`unrealized_pnl` удалена миграцией `e2f3a4b5c6d7`, `peak_equity` — миграцией
+`a7c1d9e2b4f8` (S8R-FIX-013): обе не заполнялись никогда. Пик капитала живёт в
+`trading_sessions.peak_equity` и `paper_portfolios.peak_equity`; «пик за день»
+дал бы третье, более мягкое определение просадки под тем же словом. Приём
+миграции — `batch_alter_table` (SQLite без native DROP COLUMN, gotcha-12),
+идемпотентно и с обратимым `downgrade`.
 
 ### 3.18 Таблица `bond_info_cache`
 
@@ -781,7 +825,7 @@ corporate_actions
 ```
 pending_events
 ├── id: Integer, PK, autoincrement
-├── event_type: String(50), NOT NULL              -- 'order.placed', 'circuit_breaker.triggered', ...
+├── event_type: String(50), NOT NULL              -- 'order.placed', 'cb.triggered', ...
 ├── payload_json: Text, NOT NULL
 ├── created_at: DateTime, NOT NULL, DEFAULT utcnow
 ├── processed_at: DateTime, NULLABLE
@@ -800,6 +844,7 @@ ai_provider_configs
 ├── encryption_iv: LargeBinary, NOT NULL          -- IV для AES-GCM
 ├── model_id: String(100), NOT NULL               -- 'claude-sonnet-4-6-20250514', 'gpt-4o', ...
 ├── api_base_url: String(255), NULLABLE           -- Для custom-провайдеров (Ollama, LM Studio и др.)
+│                                                  -- SSRF-барьер (S8R-AUDIT-018, S8R-FIX-046, `app/ai/url_validator.py`): адрес и все DNS-ответы — не приватные/служебные; у IPv6 проверяется встроенный IPv4 (mapped, compatible ::/96, SIIT, NAT64 64:ff9b::/96 и 64:ff9b:1::/48, 6to4, Teredo). Ограничение: NAT64 с операторским префиксом (RFC 6052 §2.2) не распознаётся. S8R-FIX-130: для хостов `KNOWN_AI_PROVIDER_HOSTS` (openrouter.ai, api.openai.com, api.anthropic.com, api.deepseek.com, api.groq.com, api.mistral.ai, generativelanguage.googleapis.com, dashscope[-intl].aliyuncs.com; точное совпадение) допустим адрес-заглушка прокси/VPN — Proxifier macOS `0.0.0.0/8` (кроме `0.0.0.0`) и `fd00:696e::/32`, fake-IP `198.18.0.0/15` и `fc00::/18`, только по https (по http при подменённом DNS запрос с ключом ушёл бы на чужой адрес — сертификат не защищает): соединение на заглушку перехватывает прокси. Proxifier для Windows (`127.8.*.*`, loopback) не поддержан.
 ├── daily_limit: Integer, DEFAULT 100             -- Лимит запросов в сутки
 ├── monthly_limit: Integer, DEFAULT 3000          -- Лимит запросов в месяц
 ├── usage_today: Integer, DEFAULT 0               -- Счётчик использования (сбрасывается ежедневно)
@@ -866,6 +911,170 @@ pending_events
 
 Все endpoints имеют префикс `/api/v1`. Формат ответов — JSON. Аутентификация — через Bearer JWT в заголовке `Authorization`. CSRF-токен передаётся в заголовке `X-CSRF-Token` для мутирующих запросов.
 
+### 4.0 Реестр эндпоинтов (S8R-AUDIT-088)
+
+**Источник истины по путям, методам и доступу — это реестр** (выгружен 2026-10-02 из приложения, ветка `s8r/fix-low`: 139 HTTP-маршрутов + 3 WebSocket; с S8R-FIX-069 — 140 HTTP) и OpenAPI самого приложения (`/openapi.json` — только при `DEBUG=true`, S8R-AUDIT-059). Подразделы 4.1–4.12 ниже описывают формы запросов/ответов и правила; где их пути расходятся с реестром, верен реестр — соответствие:
+
+| В подразделах ниже (устарело) | Фактически |
+|---|---|
+| `/api/v1/strategies…` (PATCH) | `/api/v1/strategy…` (PUT); версии — `/versions/list`, `/versions/by-id/{id}`, `/versions/{number}`, `/versions/snapshot`, `/versions/from-params`, `/versions/{id}/restore` |
+| `/api/v1/backtests…`, `/backtests/optimize` | `/api/v1/backtest…`; grid-search — `POST /backtest/grid`, фоновые — `/backtest/run-async`, `/backtest/jobs…` |
+| `/api/v1/market/…` | `/api/v1/market-data/…` (`/instruments`, `/candles` с query `ticker`, `/calendar`, `/market-status`, `/sparkline`, `/bonds/…`, `/price-alerts`) |
+| `/api/v1/broker-accounts/{id}/positions`, `/operations` | `/api/v1/broker/accounts/{id}/positions`, `/operations`; балансы — `/broker/accounts/balances` |
+| `PATCH /trading/sessions/{id}` | `PATCH /trading/sessions/{id}/pause`, `/resume`, `/stop`; закрытие позиции — `POST /trading/sessions/{id}/positions/{trade_id}/close` |
+| `/api/v1/settings/profile`, `/settings/telegram/*` | профиль — `GET /api/v1/users/me`; Telegram — `/api/v1/notifications/telegram/*` |
+| `PATCH /notifications/settings`, `POST /notifications/read-all` | `PUT /notifications/settings/{event_type}`, `PUT /notifications/read-all` |
+| Export API (`/api/v1/export/…`) | экспорт бэктеста — `GET /backtest/{id}/export`; налоговый отчёт — `/api/v1/tax/reports…`; отдельного namespace нет |
+
+Перегенерация реестра — скриптом по `app.routes` (метод, путь, зависимости `get_current_user`/`require_admin`, первая строка docstring) при изменении роутеров.
+
+| Метод | Путь | Доступ | Модуль | Назначение (docstring) |
+|---|---|---|---|---|
+| GET | `/api/v1/account/balance/history` | пользователь | `account.router` | S7 7.7 — `[{ts, total_value, trading_pnl, active_capital, currency:'RUB'}]` за последние ``days`` дней. `active_capital` (S8R-FIX-073) — сумма `initial_capital` сессий, активных на дату точки; `total_value = active_capital + trading_pnl`, ноль в `active_capital` = активных сессий на эту дату не было. |
+| GET | `/api/v1/account/balance/history/full` | пользователь | `account.router` | Расширенная версия — полезна для Dashboard widget, |
+| GET | `/api/v1/admin/ping` | администратор | `admin.router` | Health-эндпоинт admin-зоны. |
+| POST | `/api/v1/admin/users` | администратор | `admin.router` | S8R-AUDIT-033: создание учётной записи администратором. |
+| POST | `/api/v1/ai/chat` | пользователь | `ai.chat_router` | AI-чат (non-streaming). |
+| POST | `/api/v1/ai/chat/clear` | пользователь | `ai.chat_router` | Очистить историю чата стратегии. |
+| GET | `/api/v1/ai/chat/history/{strategy_id}` | пользователь | `ai.chat_router` | Получить историю чата стратегии. |
+| POST | `/api/v1/ai/chat/stream` | пользователь | `ai.chat_router` | AI-чат с SSE streaming. |
+| POST | `/api/v1/ai/explain` | пользователь | `ai.chat_router` | Объяснение фрагмента Python/Backtrader кода. |
+| GET | `/api/v1/ai/status` | пользователь | `ai.router` | Статус AI-сервиса. |
+| POST | `/api/v1/auth/login` | без входа | `auth.router` | login |
+| POST | `/api/v1/auth/logout` | без входа | `auth.router` | Выход: ВСЕГДА 204 + стирание cookie сессии (S8R-AUDIT-039). |
+| GET | `/api/v1/auth/me` | пользователь | `auth.router` | get_me |
+| PATCH | `/api/v1/auth/password` | пользователь | `auth.router` | change_password |
+| PATCH | `/api/v1/auth/profile` | пользователь | `auth.router` | Обновить email и другие данные профиля. |
+| POST | `/api/v1/auth/refresh` | без входа | `auth.router` | refresh |
+| POST | `/api/v1/auth/setup` | без входа | `auth.router` | Мастер первого запуска: создание ЕДИНСТВЕННОГО пользователя (ФТ §2.1). |
+| GET | `/api/v1/auth/setup-status` | без входа | `auth.router` | setup_status |
+| POST | `/api/v1/backtest` | пользователь | `backtest.router` | Launch a new backtest asynchronously. |
+| GET | `/api/v1/backtest/` | пользователь | `backtest.router` | Список бэктестов пользователя. Опционально фильтр по strategy_id. |
+| POST | `/api/v1/backtest/grid` | пользователь | `backtest.router` | S7 7.2-be / C5 — запустить Grid Search. |
+| GET | `/api/v1/backtest/jobs` | пользователь | `backtest.router` | S7 7.17 — список фоновых jobs пользователя (для бейджа в шапке). |
+| GET | `/api/v1/backtest/jobs/{job_id}` | пользователь | `backtest.router` | S7 7.17 — снапшот одной job (REST-альтернатива WS). |
+| POST | `/api/v1/backtest/jobs/{job_id}/cancel` | пользователь | `backtest.router` | S7 7.17 — отменить фоновый бэктест. |
+| POST | `/api/v1/backtest/run-async` | пользователь | `backtest.router` | S7 7.17 — поставить бэктест в фоновую очередь. |
+| GET | `/api/v1/backtest/strategy-params/{strategy_version_id}` | пользователь | `backtest.router` | Возвращает имена и default-значения параметров стратегии. |
+| DELETE | `/api/v1/backtest/{backtest_id}` | пользователь | `backtest.router` | Удалить бэктест. |
+| GET | `/api/v1/backtest/{backtest_id}` | пользователь | `backtest.router` | Get a backtest record with all metrics. |
+| GET | `/api/v1/backtest/{backtest_id}/equity-curve` | пользователь | `backtest.router` | Get equity curve points for a backtest. |
+| GET | `/api/v1/backtest/{backtest_id}/export` | пользователь | `backtest.router` | Экспорт бэктеста в CSV или PDF (S7 7.3). |
+| POST | `/api/v1/backtest/{backtest_id}/rerun` | пользователь | `backtest.router` | Перезапустить бэктест с теми же параметрами, но на текущей версии стратегии. Параметры исходного бэктеста проверяются до создания записи (S8R-FIX-035): недопустимый тикер или период → 422 «Перезапуск невозможен…», запись не создаётся; тикер канонизируется (`canonical_ticker`, S8R-FIX-056), не найденный канон — остаётся сохранённый. |
+| GET | `/api/v1/backtest/{backtest_id}/trades` | пользователь | `backtest.router` | Get paginated trades list for a backtest. |
+| GET | `/api/v1/broker-accounts` | пользователь | `broker.router` | Получить список брокерских аккаунтов. |
+| POST | `/api/v1/broker-accounts` | пользователь | `broker.router` | Создать брокерские аккаунты T-Invest. |
+| POST | `/api/v1/broker-accounts/discover` | пользователь | `broker.router` | Обнаружить счета у брокера по API-ключу. |
+| DELETE | `/api/v1/broker-accounts/{account_id}` | пользователь | `broker.router` | Удалить брокерский аккаунт. 409 `broker_account_in_use` — живые сессии или нежилые sandbox/real-сессии с открытыми позициями (`sessions[]` в ответе; S8R-FIX-052). |
+| GET | `/api/v1/broker-accounts/{account_id}` | пользователь | `broker.router` | Получить брокерский аккаунт с балансом. |
+| PATCH | `/api/v1/broker-accounts/{account_id}` | пользователь | `broker.router` | Обновить брокерский аккаунт. |
+| POST | `/api/v1/broker-accounts/{account_id}/reopen-sandbox` | пользователь | `broker.router` | Переоткрыть протухший sandbox-счёт (S8R-SANDBOX-ACCOUNT-STALE-REOPEN). |
+| GET | `/api/v1/broker-accounts/{account_id}/sandbox-balance` | пользователь | `broker.router` | Текущий баланс sandbox-счёта T-Invest (S8 W8a). Только в рублях (S8R-FIX-053); query-параметра валюты нет. |
+| POST | `/api/v1/broker-accounts/{account_id}/sandbox-topup` | пользователь | `broker.router` | Поднять баланс sandbox-счёта до target_balance (S8 W8a). Только рубли (S8R-FIX-053): `currency` в теле необязателен, допускается только `rub`, иное → 422. |
+| POST | `/api/v1/broker-accounts/{account_id}/test-connection` | пользователь | `broker.router` | Проверить, что API-ключ активен у T-Invest (S5R). |
+| GET | `/api/v1/broker/accounts/balances` | пользователь | `broker.router` | Получить актуальные балансы всех подключённых брокерских счетов. |
+| GET | `/api/v1/broker/accounts/{account_id}/operations` | пользователь | `broker.router` | Получить реальные операции брокерского счёта через T-Invest (C9 S5R). |
+| GET | `/api/v1/broker/accounts/{account_id}/positions` | пользователь | `broker.router` | Получить реальные позиции брокерского счёта через T-Invest (C8 S5R). |
+| DELETE | `/api/v1/charts/drawings/{drawing_id}` | пользователь | `chart_drawings.router` | delete_drawing |
+| PATCH | `/api/v1/charts/drawings/{drawing_id}` | пользователь | `chart_drawings.router` | update_drawing |
+| DELETE | `/api/v1/charts/{ticker}/{tf}/drawings` | пользователь | `chart_drawings.router` | clear_drawings |
+| GET | `/api/v1/charts/{ticker}/{tf}/drawings` | пользователь | `chart_drawings.router` | list_drawings |
+| POST | `/api/v1/charts/{ticker}/{tf}/drawings` | пользователь | `chart_drawings.router` | create_drawing |
+| GET | `/api/v1/circuit-breaker/config` | пользователь | `circuit_breaker.router` | Текущая конфигурация CB пользователя. |
+| PUT | `/api/v1/circuit-breaker/config` | пользователь | `circuit_breaker.router` | Обновить глобальную конфигурацию CB. |
+| PUT | `/api/v1/circuit-breaker/config/session/{session_id}` | пользователь | `circuit_breaker.router` | Override конфигурации CB для конкретной сессии. |
+| GET | `/api/v1/circuit-breaker/events` | пользователь | `circuit_breaker.router` | Лог срабатываний CB (пагинация). |
+| GET | `/api/v1/circuit-breaker/events/session/{session_id}` | пользователь | `circuit_breaker.router` | События CB по конкретной сессии. |
+| GET | `/api/v1/circuit-breaker/status` | пользователь | `circuit_breaker.router` | Текущий статус CB: сделки сегодня, drawdown, etc. |
+| GET | `/api/v1/corporate-actions/` | пользователь | `corporate_actions.router` | Список корп. действий с фильтрами. |
+| POST | `/api/v1/corporate-actions/detect` | администратор | `corporate_actions.router` | Принудительный запуск детекции корп. действий — только администратор. |
+| GET | `/api/v1/corporate-actions/{action_id}` | пользователь | `corporate_actions.router` | Детали корп. действия. |
+| GET | `/api/v1/health` | без входа | `main` | S8 W2 BACK2 (C-S8-1): extended health-check для Dashboard виджета. |
+| GET | `/api/v1/health/live` | без входа | `main` | S8R-AUDIT-054: liveness — процесс жив и отвечает на HTTP. 200 всегда. |
+| GET | `/api/v1/market-data/bonds/{ticker}/coupons` | пользователь | `market_data.router` | Расписание купонов облигации. |
+| GET | `/api/v1/market-data/bonds/{ticker}/info` | пользователь | `market_data.router` | Информация об облигации. |
+| GET | `/api/v1/market-data/bonds/{ticker}/nkd` | пользователь | `market_data.router` | Текущий НКД облигации. |
+| GET | `/api/v1/market-data/calendar` | без входа | `market_data.router` | Get trading calendar info for today. |
+| GET | `/api/v1/market-data/candles` | пользователь | `market_data.router` | Get OHLCV candles for a ticker with caching. |
+| POST | `/api/v1/market-data/candles/subscribe` | пользователь | `market_data.router` | Подписаться на стриминг свечей в реальном времени через T-Invest. |
+| GET | `/api/v1/market-data/instruments` | пользователь | `market_data.router` | Search instruments via MOEX ISS. |
+| GET | `/api/v1/market-data/instruments/{ticker}` | пользователь | `market_data.router` | Get instrument details by ticker. |
+| GET | `/api/v1/market-data/instruments/{ticker}/logo` | пользователь | `market_data.router` | Получить URL логотипа инструмента (T-Invest CDN). |
+| GET | `/api/v1/market-data/market-status` | без входа | `market_data.router` | Get current MOEX market status (public endpoint). |
+| GET | `/api/v1/market-data/price-alerts` | пользователь | `market_data.price_alert_router` | Список активных оповещений пользователя. |
+| POST | `/api/v1/market-data/price-alerts` | пользователь | `market_data.price_alert_router` | Создать ценовое оповещение. |
+| DELETE | `/api/v1/market-data/price-alerts/{alert_id}` | пользователь | `market_data.price_alert_router` | Удалить своё оповещение; чужое и несуществующее — один 404 (S8R-AUDIT-016). |
+| GET | `/api/v1/market-data/sparkline` | пользователь | `market_data.router` | S8 W2 BACK2 (C-S8-2): sparkline для виджета MarketSparkline. |
+| GET | `/api/v1/market-data/usd-rate` | пользователь | `market_data.router` | Курс USD/RUB по фиксингу ЦБ РФ (`S9-MULTICURRENCY-CBR-RATE`, Q2=b). |
+| DELETE | `/api/v1/notifications/` | пользователь | `notification.router` | Удалить все уведомления пользователя. |
+| GET | `/api/v1/notifications/` | пользователь | `notification.router` | Список уведомлений пользователя, отсортированных по created_at DESC. |
+| PUT | `/api/v1/notifications/read-all` | пользователь | `notification.router` | Пометить все уведомления как прочитанные. |
+| GET | `/api/v1/notifications/settings` | пользователь | `notification.router` | Настройки уведомлений пользователя по event_type. |
+| PUT | `/api/v1/notifications/settings/{event_type}` | пользователь | `notification.router` | Обновить настройку для конкретного event_type (атомарный upsert). |
+| POST | `/api/v1/notifications/telegram/link-token` | пользователь | `notification.router` | Генерирует одноразовый токен для привязки Telegram (base64url, 12 символов). |
+| GET | `/api/v1/notifications/telegram/status` | пользователь | `notification.router` | Проверить, привязан ли Telegram. |
+| POST | `/api/v1/notifications/telegram/test` | пользователь | `notification.router` | Тестовое сообщение в привязанный Telegram-чат пользователя. |
+| DELETE | `/api/v1/notifications/telegram/unlink` | пользователь | `notification.router` | Отвязать Telegram. |
+| POST | `/api/v1/notifications/telegram/webhook` | без входа | `notification.router` | Endpoint для Telegram webhook. |
+| POST | `/api/v1/notifications/test-email` | пользователь | `notification.router` | Отправить тестовое email-уведомление на почту пользователя. |
+| GET | `/api/v1/notifications/unread-count` | пользователь | `notification.router` | Количество непрочитанных уведомлений. |
+| PATCH | `/api/v1/notifications/{notification_id}/read` | пользователь | `notification.router` | Пометить уведомление как прочитанное. |
+| POST | `/api/v1/observability/lcp` | пользователь | `common.observability_router` | Положить клиентский LCP в тот же буфер, что и серверные `@timed_event`. |
+| GET | `/api/v1/settings/ai/instructions` | пользователь | `ai.router` | Получить пользовательские инструкции для AI. |
+| PUT | `/api/v1/settings/ai/instructions` | пользователь | `ai.router` | Обновить пользовательские инструкции для AI. |
+| GET | `/api/v1/settings/ai/providers` | пользователь | `ai.router` | Список AI-провайдеров пользователя. |
+| POST | `/api/v1/settings/ai/providers` | пользователь | `ai.router` | Добавить AI-провайдер. |
+| POST | `/api/v1/settings/ai/providers/verify-credentials` | пользователь | `ai.router` | Проверить credentials без сохранения. |
+| DELETE | `/api/v1/settings/ai/providers/{provider_id}` | пользователь | `ai.router` | Удалить AI-провайдер. |
+| PATCH | `/api/v1/settings/ai/providers/{provider_id}` | пользователь | `ai.router` | Обновить AI-провайдер. |
+| POST | `/api/v1/settings/ai/providers/{provider_id}/activate` | пользователь | `ai.router` | Сделать провайдер активным. |
+| POST | `/api/v1/settings/ai/providers/{provider_id}/reset-usage` | пользователь | `ai.router` | Сбросить счётчики токенов провайдера. |
+| POST | `/api/v1/settings/ai/providers/{provider_id}/verify` | пользователь | `ai.router` | Проверить API-ключ провайдера. |
+| GET | `/api/v1/settings/ai/usage` | пользователь | `ai.router` | Статистика использования AI. |
+| GET | `/api/v1/strategy` | пользователь | `strategy.router` | Получить список стратегий текущего пользователя. |
+| POST | `/api/v1/strategy` | пользователь | `strategy.router` | Создать новую стратегию. |
+| POST | `/api/v1/strategy/parse-template` | пользователь | `strategy.router` | Parse text template into block diagram JSON. |
+| DELETE | `/api/v1/strategy/{strategy_id}` | пользователь | `strategy.router` | Удалить стратегию: 204 — удалена; 200 `{archived: true}` — при истории |
+| GET | `/api/v1/strategy/{strategy_id}` | пользователь | `strategy.router` | Получить детали стратегии с версиями. |
+| PUT | `/api/v1/strategy/{strategy_id}` | пользователь | `strategy.router` | Обновить стратегию. |
+| POST | `/api/v1/strategy/{strategy_id}/generate-code` | пользователь | `strategy.router` | Generate Python code from block diagram JSON. |
+| POST | `/api/v1/strategy/{strategy_id}/duplicate` | пользователь | `strategy.router` | Дублировать стратегию: «<имя> (копия)» (черновик) с копией последней версии одним commit; чужая → 404 (S8R-FIX-069). |
+| POST | `/api/v1/strategy/{strategy_id}/versions` | пользователь | `strategy.router` | Создать новую версию стратегии. |
+| GET | `/api/v1/strategy/{strategy_id}/versions/by-id/{version_id}` | пользователь | `strategy.router` | Полная версия по её id (для history-detail UI). |
+| POST | `/api/v1/strategy/{strategy_id}/versions/from-params` | пользователь | `strategy.router` | S7R-GRID-APPLY-PARAMS — создать новую версию с переписанными default-ами. |
+| GET | `/api/v1/strategy/{strategy_id}/versions/list` | пользователь | `strategy.router` | История версий стратегии (DESC по version_number). |
+| POST | `/api/v1/strategy/{strategy_id}/versions/snapshot` | пользователь | `strategy.router` | Создать именованный snapshot текущего состояния стратегии. |
+| POST | `/api/v1/strategy/{strategy_id}/versions/{version_id}/restore` | пользователь | `strategy.router` | History-preserving откат: создаёт новую версию-копию + переключает current. |
+| GET | `/api/v1/strategy/{strategy_id}/versions/{version_number}` | пользователь | `strategy.router` | Получить конкретную версию стратегии (по version_number). |
+| GET | `/api/v1/tax/reports` | пользователь | `tax.router` | Список отчётов пользователя. |
+| POST | `/api/v1/tax/reports` | пользователь | `tax.router` | Сгенерировать налоговый отчёт. |
+| GET | `/api/v1/tax/reports/{report_id}` | пользователь | `tax.router` | Детали отчёта. |
+| GET | `/api/v1/tax/reports/{report_id}/download` | пользователь | `tax.router` | Скачать файл отчёта. |
+| GET | `/api/v1/trading/dashboard` | пользователь | `trading.router` | Сводка: active sessions count, total P&L. |
+| GET | `/api/v1/trading/positions` | пользователь | `trading.router` | Все открытые позиции по всем сессиям. |
+| GET | `/api/v1/trading/sessions` | пользователь | `trading.router` | Список торговых сессий. |
+| POST | `/api/v1/trading/sessions` | пользователь | `trading.router` | Запустить новую торговую сессию. |
+| DELETE | `/api/v1/trading/sessions/{session_id}` | пользователь | `trading.router` | Удалить торговую сессию (только остановленные). 409 `session_has_open_positions` — sandbox/real с открытыми позициями (S8R-FIX-052). Счёт также держит неснятая пометка расхождения sandbox/real-сессии (S8R-FIX-070): в `sessions[]` ответа — признак `position_mismatch`. |
+| GET | `/api/v1/trading/sessions/{session_id}` | пользователь | `trading.router` | Детали торговой сессии. |
+| POST | `/api/v1/trading/sessions/{session_id}/close-all` | пользователь | `trading.router` | Закрыть все позиции сессии. |
+| PATCH | `/api/v1/trading/sessions/{session_id}/pause` | пользователь | `trading.router` | Поставить сессию на паузу. |
+| GET | `/api/v1/trading/sessions/{session_id}/positions` | пользователь | `trading.router` | Открытые позиции сессии. |
+| POST | `/api/v1/trading/sessions/{session_id}/positions/{trade_id}/close` | пользователь | `trading.router` | Закрыть позицию. Тело `{reason?, confirm_closed_outside?}`; ответ +`closed_without_order`. У сессии, которую рантайм не ведёт (`runtime_does_not_manage`: sandbox/real и `paused`/`stopped` или `suspended` без слушателя), — сверка с портфелем брокера перед ордером: позиции нет → закрытие без ордера; 409 `broker_position_partial` / `broker_position_unverified`; `confirm_closed_outside=true` — закрыть без ордера по подтверждению пользователя (filled, неуправляемая сессия). `close-all` — `results[]` по сделкам (S8R-FIX-052). |
+| POST | `/api/v1/trading/sessions/{session_id}/reconcile` | пользователь | `trading.router` | **S8R-FIX-070.** Ручная сверка позиций с брокером для сессии, которую рантайм не ведёт: ответ `{status: cleared|mismatch, note}` — пометка расхождения снята либо подтверждена. 422 — paper или сессия без брокерского счёта; 409 `session_is_live` — живую сессию сверяет фоновый цикл; 409 `reconcile_not_done` — портфель не прочитан (пометка остаётся). Бюджет — `POSITION_RECONCILE_TIMEOUT_SEC`. |
+| PATCH | `/api/v1/trading/sessions/{session_id}/resume` | пользователь | `trading.router` | Возобновить сессию. |
+| GET | `/api/v1/trading/sessions/{session_id}/stats` | пользователь | `trading.router` | Агрегированная статистика сессии (формат `SessionStats` для PnLSummary). |
+| PATCH | `/api/v1/trading/sessions/{session_id}/stop` | пользователь | `trading.router` | Остановить сессию. |
+| GET | `/api/v1/trading/sessions/{session_id}/trades` | пользователь | `trading.router` | Сделки сессии с пагинацией. |
+| GET | `/api/v1/user-favorites` | пользователь | `user_favorites.router` | list_favorites |
+| POST | `/api/v1/user-favorites/{kind}` | пользователь | `user_favorites.router` | add_favorite |
+| DELETE | `/api/v1/user-favorites/{kind}/{value}` | пользователь | `user_favorites.router` | remove_favorite |
+| GET | `/api/v1/users/me` | пользователь | `users.router` | Профиль текущего пользователя (прокси, точная копия `GET /auth/me`). |
+| POST | `/api/v1/users/me/disclaimer/accept` | пользователь | `users.router` | Зафиксировать принятие дисклеймера (ФТ §18.1, S8R-AUDIT-043). |
+| POST | `/api/v1/users/me/wizard/complete` | пользователь | `users.router` | Отметить, что пользователь прошёл onboarding-визард. |
+| WS | `/ws` | токен (cookie/Bearer, проверка до accept) | `backtest.ws` | Multiplexed WebSocket endpoint с cookie-JWT аутентификацией. |
+| WS | `/ws/backtest/{job_id}` | токен (cookie/Bearer, проверка до accept) | `backtest.ws_backtest` | WS канал прогресса конкретной job (контракт C2). |
+| WS | `/ws/trading-sessions/{user_id}` | токен (cookie/Bearer, проверка до accept) | `trading.ws_sessions` | WebSocket endpoint трейдинг-сессий пользователя (контракт C1). |
+
 ### 4.1 Auth API
 
 ```
@@ -880,7 +1089,15 @@ POST   /api/v1/auth/login
        Body: { username, password }
        Response: 200 { access_token, refresh_token, expires_in }
        Error 401: { detail: "Неверный логин или пароль" }
-       Error 423: { detail: "Аккаунт заблокирован", retry_after: 900 }
+                  -- S8R-AUDIT-043: один ответ для «нет пользователя», «неверный пароль»,
+                  -- «учётка временно заблокирована» (423 удалён; причина — только в журнал/лог).
+                  -- Нет пользователя → verify против dummy-хеша (считается в lifespan);
+                  -- Argon2 — в потоке; выборка без eager-связей; счётчик неудач — один
+                  -- атомарный UPDATE … WHERE не заблокирован RETURNING; успех — сброс
+                  -- тем же условием (0 строк → 401) + rehash устаревшего хеша.
+       Error 429: лимитер auth, заголовок Retry-After
+       Error 503: { detail: "База данных временно занята…" } + Retry-After
+                  -- сбой записи БД в ЛЮБОЙ ветке (отказ и успех) — один ответ
 
 POST   /api/v1/auth/refresh
        Body: { refresh_token }
@@ -895,15 +1112,27 @@ GET    /api/v1/auth/me
 PATCH  /api/v1/auth/password
        Body: { current_password, new_password }
        Response: 200
+       -- new_password — политика §7.1 (422 при нарушении)
 
 GET    /api/v1/auth/setup-status
-       Response: 200 { is_configured: bool }
+       Response: 200 { is_configured: bool, password_policy: { min_length, max_length,
+                       require_letter, require_digit, description } }
+       -- password_policy — единый источник правила нового пароля для фронта (S8R-AUDIT-043)
        -- Возвращает true если в таблице users есть хотя бы один пользователь.
        -- Используется frontend для автоматического редиректа на /setup при первом запуске.
        -- Доступен без JWT.
+       -- S8R-FIX-101: сбой запроса на /login (`LoginPage.setupStatusErrorText`): 429 (лимитер general) —
+       -- «Слишком много запросов, повторите через N с» по Retry-After (без заголовка — «…повторите
+       -- позже»); 5xx / нет ответа — «Сервер недоступен. Проверьте, что терминал запущен, и обновите
+       -- страницу.» Порт в тексте не называется (за nginx его нет). 429 самого login — «Слишком много
+       -- попыток…», тот же хелпер `tooManyText`.
 ```
 
 ### 4.2 Strategy API
+
+Статусы (S8R-AUDIT-081, `app/strategy/status.py` — единый источник, фронтовые копии сверяются тестом): `status` — enum из 6 значений в OpenAPI; `PUT /strategy/{id}` со статусом — 422 вне графа ручных переходов (`paper`/`live` — только системные), 409 `strategy_has_live_sessions` при живых сессиях, 409 `strategy_status_changed` при гонке (условный UPDATE); `POST /trading/sessions` — 409 `strategy_status_not_startable` из draft/paused/archived. Автоперевод: любая запись статуса сессии идёт через `app/trading/session_status.py` (S8R-FIX-037: `set_session_status`, условные `set_sessions_status_if`/`pause_session_if_active`, `delete_session_row`; AST-страж запрещает прямые записи), setter сам вызывает `sync_strategy_status_with_sessions` в той же транзакции при пересечении границы живых сессий (меняет только tested/paper/live); `stopped` — терминальный, завершение бэктеста — `promote_draft_after_backtest` (`draft → tested`). Миграция данных `2c7bd0443aa6`.
+
+**Смена статуса из меню — один запрос (S8R-FIX-103).** `StrategyStatusMenu` шлёт ровно один `PUT /strategy/{id}` `{status}` (`strategyApi.updateStatus`); стор правится только локально — `strategyStore.patchStrategyLocal` (оптимистично, затем статусом из ответа сервера, при ошибке — откат), без сети. Прежний сетевой `updateStrategy` рядом с `updateStatus` давал два PUT: проигравший получал 409 `strategy_status_changed`, UI откатывался при успехе на сервере, а откат шёл третьим PUT. Тексты подписей статусов во фронте (`STATUS_META`, `STATUS_MAP`, дашборд) — «Бумажная торговля» / «Боевая торговля», у инструментов «Бумажная / Песочница / Боевая» (S8R-FIX-104, ФТ §3.1).
 
 ```
 GET    /api/v1/strategies
@@ -996,7 +1225,7 @@ POST   /api/v1/trading/sessions
            broker_account_id,
            ticker,
            mode,                  -- "paper" | "real"
-           position_sizing_mode,  -- "pct_deposit" | "fixed_amount"
+           position_sizing_mode,  -- "fixed_sum" | "fixed_lots" | "percent"
            position_sizing_value,
            max_concurrent_positions?,
            cooldown_seconds?,
@@ -1060,6 +1289,8 @@ GET    /api/v1/broker-accounts
 POST   /api/v1/broker-accounts
        Body: { broker_type, name, api_key, api_secret?, account_id, account_type }
        Response: 201 { account (key masked) }
+       Error 422: sandbox-токен, свободных счетов нет (S8R-FIX-115): «Sandbox-счета этого токена уже
+                  подключены другим пользователем терминала…» | «…закрыты брокером — подключать нечего…»
 
 GET    /api/v1/broker-accounts/{id}
        Response: 200 { account with balance }
@@ -1069,7 +1300,10 @@ PATCH  /api/v1/broker-accounts/{id}
        Response: 200
 
 DELETE /api/v1/broker-accounts/{id}
-       Response: 204
+       Response: 204 | 409 { detail, error_code: "broker_account_in_use", sessions: [...] }  (S8R-FIX-052)
+       -- S8R-FIX-116: detail ≤ 400 символов (`ACCOUNT_IN_USE_DETAIL_MAX_LEN` = MAX_LENGTH фронта):
+       -- при длинном перечне сокращается перечень («и ещё K»), подсказки не режутся; подсказка живых
+       -- сессий — «Работающие торговые сессии остановите на странице «Торговля».»
 
 GET    /api/v1/broker-accounts/{id}/positions
        Response: 200 { positions from broker }
@@ -1081,6 +1315,10 @@ GET    /api/v1/broker-accounts/{id}/operations
 POST   /api/v1/broker-accounts/discover
        Body: { broker_type, api_key, api_secret? }
        Response: 200 { accounts: [{account_id, type, name}] }
+
+-- Любой endpoint, где ключ счёта не расшифровался (S8R-FIX-119; в т.ч. sandbox-balance, раньше 500):
+-- 409 { detail: "Ключ брокерского счёта не расшифровывается — введите ключ заново в «Настройки →
+-- Брокер».", error_code: "broker_key_unreadable" } (§7.2)
 ```
 
 ### 4.7 AI API
@@ -1102,9 +1340,11 @@ POST   /api/v1/ai/explain
 ### 4.8 Notification API
 
 ```
-GET    /api/v1/notifications
+GET    /api/v1/notifications/
        Query: ?unread_only=true&page=&per_page=
        Response: 200 { items: [...], unread_count }
+       -- S8R-FIX-100: со слэшем — маршруты GET/DELETE объявлены как `/` (реестр §4.0); без слэша
+       -- FastAPI отвечает 307 (лишний круг). Фронт (`notificationApi`) ходит по `/notifications/`.
 
 PATCH  /api/v1/notifications/{id}/read
        Response: 200
@@ -1131,7 +1371,7 @@ PATCH  /api/v1/settings/profile
        Response: 200
 
 POST   /api/v1/settings/telegram/link
-       Response: 200 { token, expires_at }     -- 6-значный токен, TTL 5 мин
+       Response: 200 { token, expires_at }     -- токен secrets.token_urlsafe(9) (12 символов), TTL 5 мин (S8R-AUDIT-021)
 
 DELETE /api/v1/settings/telegram/unlink
        Response: 204
@@ -1162,7 +1402,8 @@ DELETE /api/v1/settings/ai/providers/{id}
 POST   /api/v1/settings/ai/providers/{id}/verify
        -- Тестовый запрос к провайдеру для проверки ключа
        Response: 200 { verified: true, model: "claude-sonnet-4-6-...", latency_ms: 340 }
-       Error 422: { verified: false, error: "Invalid API key" }
+       Ключ отвергнут / адрес не прошёл SSRF-проверку (S8R-FIX-130):
+                 200 { verified: false, error: "<причина>" }, is_verified → false
 
 POST   /api/v1/settings/ai/providers/{id}/activate
        -- Делает указанного провайдера активным (деактивирует остальных)
@@ -1191,6 +1432,8 @@ GET    /api/v1/health
 
 ### 4.11 Export API
 
+Безопасность файлов (S8R-AUDIT-065, `app/common/export_safety.py`): `Content-Disposition` — `attachment; filename="<ASCII-санитизированное>"; filename*=UTF-8''<percent-encoded>` (RFC 5987) одной функцией `attachment_disposition` для всех скачиваний; ячейки CSV, начинающиеся с `= + - @ \t \r`, получают префикс `'` (`csv_safe_cell`), числа не трогаются.
+
 ```
 GET    /api/v1/export/backtest/{id}/csv
        Response: 200 (file download, Content-Type: text/csv)
@@ -1211,14 +1454,23 @@ GET    /api/v1/export/tax-report
 
 **Endpoint:** `ws://localhost:8000/api/v1/ws`
 
-**Авторизация:** после установки соединения клиент отправляет первое сообщение:
-```json
-{
-    "action": "auth",
-    "token": "<jwt_token>"
-}
-```
-Сервер верифицирует токен. При успехе: `{"type": "auth_ok"}`. При ошибке: `{"type": "auth_error", "detail": "..."}` + закрытие соединения. До авторизации любые subscribe-запросы отклоняются. Это предотвращает утечку JWT через URL (серверные логи, history).
+> **Актуально с S8R (S8R-AUDIT-013/058):** токен передаётся cookie при WS-upgrade (не первым сообщением; описание ниже приведено к коду в S8R-FIX-017); отказ аутентификации — close 4401. **Лимиты:** ≤ `WS_MAX_CONNECTIONS_PER_USER` (30, диапазон 10–50) WS на пользователя по всем эндпоинтам, сверх — accept + close 4429 (клиент выдерживает общую паузу 60 с); ≤ 50 подписок на соединение (`limit_exceeded`); канал `market:<TICKER>:<TF>` проверяется как в REST `/candles/subscribe` (ТФ из `Timeframe`); JSON не-объект → `error` без разрыва. Отказ на upgrade (S8R-AUDIT-060) — accept → close с кодом (не до accept): истёкший JWT — 4401 без reason, отзыв по БД — 4401 `revoked`, сбой БД — 1013. Закрытие 4401 при logout — reason `logout`, при смене пароля/краже/отзыве — `revoked` (клиент не делает refresh). Закрытие 4401: logout — только соединения своей пары токенов; смена пароля — все, кроме текущей; повторный refresh (кража) — все; отзыв во время upgrade (память отзывов 120 с) — тоже 4401. `/ws/backtest` после терминального события закрывает клиент. nginx: `location ^~ /ws` (мультиплексор), `limit_conn` 60/IP.
+
+**Авторизация** (приведено к коду в `S8R-FIX-017`; прежнее описание с кадром
+`{action:"auth", token:"<jwt>"}` устарело с S8R-AUDIT-013/058 и вводило в
+заблуждение — клиент такого сообщения не шлёт):
+
+Токен уходит **cookie при upgrade** — `access_token`, тот же, что у REST. В URL
+JWT не попадает никогда (серверные логи, history — gotcha-16), а отдельный
+кадр авторизации не нужен: соединение уже установлено от имени пользователя.
+Разбор токена — общий с HTTP (`decode_access_payload`, `S8R-FIX-017`: трёх
+копий проверки подписи и типа больше нет).
+
+Сервер подтверждает успех сообщением `{"type": "auth_ok"}` — его ждёт клиент,
+прежде чем слать `subscribe` (до него подписки отклоняются). Отказ — `accept` и
+затем `close` с кодом (не разрыв до accept, S8R-AUDIT-060): истёкший или чужой
+JWT — 4401 без reason (клиенту имеет смысл обновить пару), отзыв по БД — 4401
+`revoked` (refresh не поможет), сбой БД — 1013.
 
 **Клиент -> Сервер (подписка):**
 ```json
@@ -1401,7 +1653,7 @@ endpoint и парсер существовали, но не были связа
 
 **5.2.3 Генератор кода:**
 
-`code_generator.py` принимает JSON блочной схемы и генерирует Python-класс для Backtrader:
+Генерация кода — `ir_codegen.ir_to_backtrader_code` (§5.2.4) из IR валидированных блоков; прежний `code_generator.py` удалён (S8R-AUDIT-019). Исторически генератор принимал JSON блочной схемы и генерировал Python-класс для Backtrader:
 
 ```python
 # Шаблон генерации
@@ -1449,8 +1701,8 @@ class GeneratedStrategy(bt.Strategy):
 > **Реализация:** `app/strategy/ir_codegen.py` (`ir_to_backtrader_code`). `StrategyIR`
 > (`app/strategy/ir.py`) включает индикаторы, условия входа/выхода, а также SL/TP,
 > размер позиции и тайм-фильтр. Stochastic генерируется как `bt.indicators.StochasticFast`
-> (числовой паритет %K с интерпретатором). Старый `code_generator.py` оставлен для
-> legacy-тестов и не используется в production-пути. Подробности и ловушка —
+> (числовой паритет %K с интерпретатором). Старый `code_generator.py` удалён вместе
+> с его тестами (S8R-AUDIT-019), parity-тесты идут по `ir_codegen`. Подробности и ловушка —
 > `Develop/stack_gotchas/gotcha-35-dual-block-translators-drift.md`.
 >
 > **Валидация значений полей блоков (S8R-AUDIT-002).** Значения `fields`
@@ -1515,11 +1767,18 @@ class OHLCVValidator:
 **5.4.1 Компоненты:**
 
 - `TradingSessionManager` — управление жизненным циклом сессий (start, pause, stop, resume). Делегирует `SessionRuntime.start/stop` для live-части.
+  `S8R-AUDIT-029`: остановка — одна секция под `session_lifecycle`, защищённая от отмены запроса (`run_shielded_from_cancel`, перехват каждой повторной отмены anyio — gotcha-77, grace 275 с): снять listener без события → закрыть позиции (`_close_trades`: sandbox/real до 5 параллельно в собственных `AsyncSession`, paper по одной, дедлайн 120 с) → `stopped` → `positions.close_failed` (кроме позиций с принятым брокером встречным ордером) → одно `session.stopped`. Повторный «Стоп» закрывает остаток (422). DELETE сессии — под тем же локом. Пауза не публикует `session.stopped`.
 - `SessionRuntime` *(введён в S5R.2, `app/trading/runtime.py`)* — **единственная production-точка вызова** `SignalProcessor.process_candle()`. Держит per-session listener'ы на каналах EventBus `market:{ticker}:{timeframe}`, загружает скользящее окно истории свечей при старте, реагирует на closed-свечи, публикует события в канал `trades:{session_id}`. Создаётся один раз в `main.py lifespan`, вызывает `restore_all(active_sessions)` при старте backend, `shutdown()` при остановке.
 - `SignalProcessor` — получает от runtime скользящее окно свечей (`candles: list[dict]`, по умолчанию N=200), прогоняет через стратегию в sandbox, генерирует сигналы. Сохранены алиасы `candle_open/candle_high/candle_low/candle_close/candle_volume` для обратной совместимости со старыми сгенерированными стратегиями.
 - `OrderManager` — конвертирует сигналы в ордера, проверяет circuit breaker, отправляет в брокер, закрывает позиции (`close_position`, `close_all_positions`).
+  Ревью MEDIUM (`S8R-REV-MQ`): довыполнение частичного входа — `executed_commission` кумулятивен по ордеру и пишется итогом (`_apply_entry_order_commission`): факт > 0 (после округления до копеек) заменяет оценку и не уменьшает записанный факт (источник `broker`); иначе записанный факт сохраняется, оценка пересчитывается на весь оборот входа, сделка без записи учитывается правилом первого fill (`_record_broker_commission`). Правило «значение брокера — факт» — одна функция `_broker_commission_is_fact` (семантика нуля — S8R-FIX-049). Средняя цена None/0 не перезаписывает цену и объём входа. Правило первого fill не изменилось.
+  `S8R-FIX-049`: комиссия хранится по сторонам (`entry_/exit_commission`, `_source`, `_at`; итог `commission` = сумма, `_sync_commission_total`, вкл. paper). Правило факта одно для входа и выхода (`_broker_commission_is_fact`): > 0 после `quantize_money` у терминального ордера — `broker`; частичный кумулятив — `broker_partial`; 0 на real после окна `COMMISSION_SETTLE_WINDOW_SEC` = 600 с от исполнения — провизорный `broker_zero` (позднее значение > 0 заменяет); 0 в sandbox — не факт; вход без цены — `unknown`; итог `estimated`, если хоть одна сторона `estimated`/`unknown`. Досверщик — в `_periodic_recovery_loop` (каждые 300 с): SQL-отбор с LIMIT 20, сделки не старше 7 дней, стороны читаются у брокера независимо, отметка `commission_checked_at` до сети, лок `close_trade` ждёт ≤ 5 с (иначе — следующий проход); у закрытой сделки разница корректирует `DailyStat` дня закрытия (`closed_at` UTC) одной транзакцией. Сделки, закрытые до миграции `c04dc4f891a2`, — `commission_legacy=1`: стороны не раскладываются, досверщик не трогает. CB дневного лимита считает по валовому P&L.
+  `S8R-AUDIT-031`: цена исполнения входа — `average_position_price` из `GetOrderState`, иначе `executed_order_price / (лоты × лот)`, иначе цена ответа `PostOrder`; ноль — не цена (маппер T-Invest отдаёт `Decimal 0` при пустом `MoneyValue`). Нет цены — сделка остаётся `pending`; дольше `UNKNOWN_OUTCOME_CONFIRM_AGE_SEC` — `filled` без цены: `position_mismatch_at` + нота, пауза сессии, критичное `position.mismatch`, SL/TP не ставятся, закрытие из терминала доступно, повторный ордер не отправляется. Реконсиляция: сделка без подтверждённого входа → `cancelled` без P&L и вне `trades_closed`; записанная комиссия брокера попадает в `realized_pnl`. Деньги (P&L, комиссия, paper-портфель, статистика, CB, корпоративные действия) округляются одной функцией `app/common/money.quantize_money` (копейки, `ROUND_HALF_UP`).
+  `S8R-FIX-048`: закрытие и сверка `filled` без цены в sandbox/real (признак `is_priceless_broker_entry`): в единой точке учёта закрытия (`_apply_close_and_settle`, через неё идут и закрытие, и `finalize_exit_order`) — после исполнения выхода один `GetOrderState` ордера входа адаптером вызывающего (бюджет `ENTRY_PRICE_LOOKUP_TIMEOUT_SEC` = 5 с, отменяемый), правило S8R-AUDIT-031. Цена найдена — обычный P&L, сторона комиссии входа — факт или оценка от оборота (время стороны — исполнение входа). Не найдена — `closed`, `pnl`/`pnl_pct` NULL («P&L не определён»: closed + pnl NULL + entry NULL, API `pnl_undetermined`); `DailyStat`: `trades_closed +1`, `realized −commission`; CB учитывает её консервативной оценкой (S8R-FIX-063 ч.2, `app/circuit_breaker/unpriced.py`); без оценки — `cb.unpriced_trade` (critical, outbox транзакции закрытия, `stage_unpriced_trade_alert`; пути `_settle_close_locked`, сверка после переоткрытия, закрытие вне терминала S8R-FIX-052); статистика сессии — вне win rate и средней сделки, комиссия — в net и в кривой капитала; `trade.closed` — `pnl`/`net_pnl` null, Telegram «P&L не определён (брокер не сообщил цену входа)». Отмена во время дозапроса: запись закрытия и уведомление о частичном выходе — под `run_shielded_from_cancel` (grace `ORDER_CANCEL_GRACE_SEC`), исходная `CancelledError` пробрасывается всегда. Paper и `entry = 0` — `cancelled` (FIX-5).
+  `S8R-FIX-063/065`: Цена исполнения ордера — `order_fill_price`: `average_position_price` → `executed_order_price/(лоты×лот)` → средневзвешенная `stages[].price`; ноль — не цена. Последний источник — `response.price`: цена или сумма/(лоты×лот), берётся кандидат в пределах ±20 % от оценки (рынок, иначе цена входа/сигнала, gotcha-33). Запись закрытия sandbox/real — один commit под `run_shielded_from_cancel` (`ORDER_CANCEL_GRACE_SEC`); свой адаптер — после записи. Выход без цены брокера — «P&L не определён» (`exit_price` NULL; `exit_signal_price` — только при рыночной оценке). Нереализованный P&L и объём позиции — по исполненным лотам (`position_unrealized_pnl`/`position_quantity`, S8R-FIX-062).
 - `RiskMonitor` — мониторинг SL/TP по открытым позициям и их закрытие при срабатывании. В `paper` закрывает сам; в `sandbox`/`real` только принимает решение, а исполнение делегирует `OrderManager.close_position` — единственному пути отправки встречного ордера брокеру (`_close_via_broker`, 2026-08-05). Здесь же `derive_lot_size` — авторитетный множитель штук/лот, восстановленный из `volume_rub`.
 - `PaperTradingEngine` — эмуляция исполнения ордеров для paper trading; вся денежная мутация paper-портфеля идёт через `PaperPortfolioAccountant` (`apply_open` / `apply_close`).
+  `S8R-AUDIT-076`: денежная мутация paper-портфеля (вход, закрытие, SL/TP, дивиденды/купоны/cash-in-lieu) — в секции `paper_portfolio_section` = `keyed_lock("paper_portfolio", session_id)` (после `close_trade`), взятой **до первой записи транзакции** (иначе asyncio-лок и SQLite-писатель дают дедлок, gotcha-78); баланс внутри перечитывается (`populate_existing`). Атомарный SQL не применяется: Numeric в SQLite хранится как REAL.
 
 > **Нереализованный P&L нигде не хранится** — он считается на лету
 > (`app/trading/unrealized.py`, `unrealized_pnl_by_session`) и одинаково у трёх
@@ -1575,6 +1834,16 @@ EventBus.publish(f"trades:{session.id}", {"type": "order.placed", "latency_ms": 
 
 - `app/market_data/stream_manager.py` поддерживает **одно** persistent gRPC `MarketDataStream` к T-Invest.
 - Мультиплексирует подписки по ключу `(ticker, timeframe)`. Map `_TIMEFRAME_TO_INTERVAL` транслирует таймфреймы системы в T-Invest enum.
+- **Один токен на процесс** (`S8R-FIX-011`, явное правило). Токен в ключ не
+  входит: подписчики одного `(ticker, timeframe)` едут на токене того, кто
+  открыл стрим первым. Для этого продукта это не ограничение, а факт —
+  регистрация закрывается после первого пользователя (`S8R-AUDIT-033`), то
+  есть процесс обслуживает одного владельца. Правило записано здесь, чтобы
+  следующий, кто добавит второго пользователя или второй боевой токен, увидел:
+  ключ стрима придётся расширять счётом, иначе чужие свечи поедут на чужом
+  токене. Поведение после обрыва WS описано в §4.12: мультиплексор
+  восстанавливает свои каналы сам, а REST-подписку на стрим повторяет клиент
+  (`useWsAuthGeneration`).
 - Auto-reconnect с exponential backoff при разрыве.
 - Rate limiting через `TokenBucketRateLimiter` (см. Gotcha 4 в `Develop/CLAUDE.md`).
 
@@ -1655,11 +1924,18 @@ class BaseBrokerAdapter(ABC):
 **5.5.2 T-Invest реализация:**
 
 - gRPC-клиент через `tinkoff.invest.AsyncClient`.
+- **Окружение gRPC процесса (S8R-FIX-029/083/093).** `GRPC_DNS_RESOLVER` grpcio (1.84) читает **при импорте модуля** `grpc`, а не при первом канале, как предполагал S8R-FIX-083: тот выставлял переменную в lifespan строкой ниже `ensure_grpc_trusted_roots()`, а она сама импортирует grpc (`pkgutil.get_data("grpc._cython", …)`) — в логе `resolver=native`, в работе c-ares (10–11 с на разрешение имени при дедлайне unary 10 с). С S8R-FIX-093 значение по умолчанию `native` ставит `app/__init__.py` при импорте пакета (`app/grpc_env.apply_grpc_dns_resolver_default`, модуль перенесён из `app/broker/tinvest/grpc_env.py` в корень пакета, чтобы `app/__init__` не поднимал брокерский пакет); заданное оператором значение не трогается (`ares` — вернуть c-ares). lifespan только пишет лог: `grpc_dns_resolver_configured` / `_preset` / `_ineffective` (warning: grpc импортирован раньше пакета `app`, значение не подействовало). `GRPC_DEFAULT_SSL_ROOTS_FILE_PATH` (корни НУЦ, S8R-FIX-029) grpc читает лениво — она по-прежнему первым шагом lifespan. Обе переменные — окружение процесса, не `Settings` (`docs/env_vars.md`, гайд по деплою §6в).
 - `StreamManager` — управление gRPC-стримами (candles, orderbook, trades). Одно gRPC-соединение, мультиплексирование подписок.
-- Rate limiter: token bucket, 300 req/min (unary). Отдельная очередь для market data и trade operations.
+- Rate limiter (`S8R-AUDIT-048`, `rate_limiter.py`): token bucket на токен × сервис по справочнику лимитов (`tinvest_api_overview.md`): MarketData 600, Instruments 200, Operations 200, Orders 100, PostOrder 300, CancelOrder 100, Users 100 в мин; запросы подписки стрима — 100/мин; sandbox-токен — методы SandboxService в общие 200/мин, MarketData/Instruments — по своим квотам. Ключ реестра — отпечаток токена. Ожидание квоты: отправка ордеров — не дольше 10 с (`QuotaNotAcquiredError` = «не отправлено», выход повторяется следующим тиком), чтения — без потолка (ограничены внешними дедлайнами).
+- Справочник инструмента по FIGI (`GetInstrumentBy`: тикер, название, тип, шаг цены) — один процессный кэш, TTL 24 ч, ≤ 4096 записей, один канал на пачку, дедуп одновременных промахов; ответ без тикера и ошибки не кэшируются.
+- Маппер: пустой Timestamp брокера SDK отдаёт как 1970-01-01 — «нет времени» = None или эпоха: свеча пропускается (агрегированный WARNING), дата операции — None; неизвестное состояние операции — `UNKNOWN` (не `EXECUTED`).
 - Автоматическое переподключение: exponential backoff 1s -> 2s -> 4s -> ... -> 60s, до 10 попыток.
-- Token bucket state сохраняется в файл `data/.rate_limit_state` при graceful shutdown и восстанавливается при старте — для предотвращения превышения лимитов брокера при быстром рестарте.
+- Состояние token bucket **не сохраняется** между рестартами (персистентность удалена — S8R-AUDIT-019).
+- Песочница (`S8R-AUDIT-048`, `sandbox_recovery.py`): новый счёт открывается, только если у токена нет счёта со статусом не-`closed` (под `keyed_lock("sandbox_account_open")`); «живой» счёт — любой, кроме `closed`; под локом переоткрытия (`sandbox_recovery`, с S8R-FIX-115 — один на процесс; до него — `sandbox_recovery_user` по пользователю) перечитывается текущий `account_id` записи (соседнее переоткрытие → `UNCHANGED` с новым счётом); после любой смены счёта — сверка позиций по фактическому портфелю текущего счёта (идемпотентна; при ошибке чтения портфеля — пропуск до фоновой сверки); запись нового `account_id` — своей сессией, сессия вызывающего обязана быть зафиксирована.
+- **Счёт песочницы — одной записи (S8R-FIX-115).** `account_id` песочницы глобален для токена, а токен подключают и разные пользователи; токен из шифртекста не сравнить (свой IV у записи). Поэтому: (а) переоткрытие (`_account_ids_taken_by_siblings`) считает занятыми `account_id` **всех** sandbox-записей, кроме своей (было — только записей того же пользователя); нет свободного живого — `UNAVAILABLE` с `SANDBOX_ALL_ACCOUNTS_TAKEN_MESSAGE`; (б) регистрация sandbox-токена (`BrokerService.create_account` → `_free_sandbox_accounts`) не заводит запись на счёт, закреплённый за записью другого пользователя (422 «…уже подключены другим пользователем терминала…»), и на закрытый у брокера счёт (422 «…закрыты брокером…»); свой `account_id` занятым не считается, даже если на него есть и унаследованная запись другого (иначе владелец не сменит ключ, S8R-AUDIT-062), своя запись на закрытый счёт ключ меняет по-прежнему. Отбор и вставка — одной секцией под `sandbox_recovery`, взятым **внутри** `create_account` (порядок `create_account` → `sandbox_recovery`, `app/common/locks.py`; обратного пути нет, под `sandbox_recovery` — только БД своей сессией запроса, без сети и других локов); тот же лок держит переоткрытие — регистрация и переоткрытие не закрепляют один живой счёт за двумя записями. Уникального индекса на `account_id` sandbox-записей в БД нет (пары разных пользователей, заведённые до запрета, законны) — защита только в процессе (один uvicorn-worker). Боевые счета у двух пользователей — как прежде (`UNIQUE (user_id, broker_type, account_id)`).
+- Сверка после смены sandbox-счёта (`S8R-REV-LQ`, `app/trading/sandbox_reopen.py`): одна функция «переоткрыть + сверить» и одно правило запуска (REOPENED или счёт уже переоткрыт соседом) для движка, кнопки «Пересоздать sandbox-счёт» и восстановления при запросе баланса. Фантом — только сделка `filled`, вход которой исполнен до момента переоткрытия (`reopened_at`, граница — целая секунда), без выхода в полёте, FIGI нет в портфеле нового счёта; портфель — один раз за проход под локами `close_trade` (по возрастанию) → `sandbox_reconcile_account`, условия перепроверяются под локом сделки; при неточном моменте (сосед без записи) портфель «только деньги» считается непрочитанным. Сверка — фоновая задача (одна на счёт, своя сессия), пропущенные сделки — отложенный повтор (~210 с), портфель не прочитан во всех попытках — пометка расхождения, пауза, critical; занятые локи — повтор. `pending` старого счёта разрешает recovery ордера (NOT_FOUND → `failed` после окна подтверждения).
 - Маппер `TInvestMapper` — конвертирует Protobuf-объекты в доменные модели.
+- Мультиплексор стрима (`S8R-AUDIT-064`): ошибка маппинга одной свечи — свеча пропускается (ERROR на первую ошибку нового типа, далее агрегированный WARNING), без переподключения; ценовые алерты проверяются отдельной задачей из ограниченной очереди (figi, время свечи) → [min, max], при остановке очередь дочитывается ≤ 1 с. Монитор алертов (`S8R-FIX-051`) регистрируется в реестре мультиплексоров из lifespan (`set_default_price_alert_monitor`, читается в момент проверки); сам держит подписку 1m на FIGI с активными алертами через счёт владельца (`select_market_data_account`, только активные пользователи и счета); пересчёт — старт, создание/удаление/срабатывание алерта, создание/замена ключа/деактивация/удаление счёта (до `release_token`); FIGI — при создании алерта, NULL дозаполняется. Срабатывание — условный UPDATE + in-app уведомление + outbox `notification.dispatch` в одной транзакции; доставка отмечается по каналам, повтор при старте — фоном, только недоставленные. In-memory набор FIGI с алертами — остальные свечи не проверяются; лок пересчёта — в `locks.py`.
 - **Sandbox vs Production (per-account):** Поле `BrokerAccount.is_sandbox` определяет, к какому эндпоинту подключается адаптер (`sandbox-invest-public-api.tbank.ru` или `invest-public-api.tbank.ru`). Тип токена определяется автоматически при подключении через пробный вызов `get_accounts()` / `get_sandbox_accounts()`. Sandbox-аккаунты доступны только при `DEBUG=true`.
 
 **5.5.3 MOEX ISS fallback:**
@@ -1668,6 +1944,8 @@ class BaseBrokerAdapter(ABC):
 - Используется только для исторических данных (OHLCV), торгового календаря и информации об инструментах.
 - Не поддерживает торговые операции.
 - Endpoint: `https://iss.moex.com/iss/`
+- Ошибки и повторы (`S8R-AUDIT-064`, `MOEXISSClient._request`): 5xx, сбой связи, 408/429 и ответ 200 не-JSON (заглушка техработ) — до 3 попыток внутри клиента (Retry-After: 0 — сразу, > 10 с — без ожидания, бюджет пауз 20 с на выборку), затем `TransientBrokerError` («связи нет» ≠ «данных нет»); 4xx — `BrokerError`; вызывающие сами не повторяют. Пагинация `get_paginated` — по `<блок>.cursor` (есть у `/history`), иначе до короткой страницы; предел 1000 страниц — `BrokerError` «выборка усечена». Купоны облигаций — один метод `get_coupons(ticker)`.
+- Последствия сбоя ISS: график без T-Invest — данные из кэша при наличии (ошибка фонового обновления — пометкой), 503 «MOEX ISS недоступен» только при пустом кэше; облигация — устаревший кэш, сбой купонов кэш не затирает; детект корпоративных действий прерывается после первого сбоя.
 
 **5.5.4 Фабрика:**
 
@@ -1683,15 +1961,49 @@ class BrokerFactory:
         return adapter_class(**credentials)
 ```
 
+**5.5.5 Классы ошибок и повторы (S8R-AUDIT-044):**
+
+`app/broker/tinvest/errors.py::classify(exc)` разбирает исключение один раз (цепочка `__cause__`, код gRPC из SDK-`AioRequestError` или сырого `AioRpcError`, 5-значный код T-Invest, `ratelimit_reset`) в категорию:
+
+| Категория | Коды / исключения | Чтения | Отправка/отмена ордера | Класс ошибки |
+|---|---|---|---|---|
+| TRANSIENT | UNAVAILABLE, DEADLINE_EXCEEDED, `BrokerTimeoutError`, INTERNAL 70001, RESOURCE_EXHAUSTED с `ratelimit_reset` | повтор (`_read_with_retry`) | без повтора, «ответ не получен — проверьте портфель» | `TransientBrokerError` |
+| AUTH | UNAUTHENTICATED, PERMISSION_DENIED, локальный INVALID_METADATA ключа | без повтора | без повтора | `AuthBrokerError` |
+| NOT_FOUND | NOT_FOUND | без повтора | — | `NotFoundBrokerError` |
+| LINK | UNKNOWN, CANCELLED, ABORTED, INTERNAL ≠ 70001, сетевые `OSError` | без повтора | «ответ не получен — проверьте портфель» | `TransientBrokerError` |
+| LOCAL | прочие исключения не из SDK (ошибка нашего кода) | без повтора | «внутренняя ошибка при отправке ордера» | `BrokerError` |
+
+Повторы: UNAVAILABLE/DEADLINE — экспонента с джиттером, 70001 — фиксированно 2 × 4 с (песочница оживает ≥ 5 с, gotcha-56), RESOURCE_EXHAUSTED — пауза `ratelimit_reset + 1` с, если укладывается в потолок, иначе без повтора. Паузы — вне `asyncio.timeout` вызова; токен лимитера берётся на каждую попытку. Худший случай одного чтения — `read_worst_case_sec()` (3 × дедлайн + паузы = 38 с), им пользуется оценка попытки сверки рантайма. Классификация исхода ордера движком (`is_definitive_rejection`) не меняется.
+
+**Ожидание лимита в бэктесте (2026-10-14).** `app/broker/tinvest/rate_limit_wait.py::RateLimitWait` — только для чтения свечей бэктеста и грида (параметр `rate_limit_wait` у `TInvestAdapter.get_historical_candles`; графики, торговля и стримы — без него): при `RESOURCE_EXHAUSTED` тот же чанк повторяется после паузы `ratelimit_reset + 1` с (без заголовка — 30 с, минутное окно квоты), не более 3 ожиданий и 180 с суммарно; `asyncio.timeout` выборки (`_load_data`) сдвигается `reschedule` ровно на фактическую паузу; загруженные чанки сохраняются в кэш. Ожидание — событие `waiting` (канал job и `backtest:{id}`, `stage: "waiting"`; ретранслятор `ws_backtest.py` его пропускает). Потолок исчерпан — `RateLimitExhaustedError` с текстом «Лимит запросов T-Invest исчерпан — повторите через N с». Не покрыто: резолв FIGI справочником при исчерпанном лимите не ждёт.
+
+**Снятие баннера расхождения.** `SessionRuntime._clear_position_mismatch` той же транзакцией помечает прочитанными непрочитанные `recovery_mismatch` сессии (`mark_session_alerts_read`) и после commit шлёт кадр `notification.read` (канал уведомлений пользователя; event_type уведомления не вводится). Watchdog стримов: WARNING `stream_watchdog_figi_unresolved` — один раз на сессию и на каждый сетевой ответ брокера, повтор из кэша промахов (`FigiLookup.from_miss_cache`) — DEBUG.
+
+**Единая таблица кодов gRPC (S8R-FIX-030).** `app/broker/grpc_codes.py` (модуль без зависимостей) — категория для каждого из 17 `StatusCode` (TRANSIENT, RATE_LIMITED, AUTH, NOT_FOUND, ORDER_REJECTED, REQUEST_REJECTED, LOST, UNCLASSIFIED) и наборы категорий потребителей: вид ошибки адаптера (`classify`), «заведомо отвергнут» и бизнес-отказ по заявке движка (`sandbox_recovery.is_definitive_rejection`, `is_broker_order_rejection`), терминальный стрим мультиплексора. Своих наборов кодов у потребителей нет; решения по всем кодам закреплены параметризованным тестом.
+
 ### 5.6 Market Data Service
 
 **Ответственный: BACK1**
+
+**Канонический тикер (`S8R-FIX-056`, `app/market_data/ticker_resolver.py`).** `canonical_ticker(db, value, user_id)` — кэш процесса (24 ч) → справочник `instruments` без учёта регистра (индекс `ix_instruments_ticker_upper`, доверие — при известном виде инструмента) → T-Invest → ISS SECID → фолбэк upper (не кэшируется, негативный кэш 60 с по ключу (тикер, есть ли T-Invest), свежие отметки обоих видов — ответ без чтения счёта, S8R-REV-FBE); single-flight по (тикер, есть ли T-Invest) в отдельной задаче под shield. Вызывается в точках входа API (свечи, sparkline, subscribe, инструмент, лого, облигации, бэктест и его rerun — период проверяется до канонизации, сессии до локов, алерты, избранное; detect — без сети). Тип `Ticker` — только формат. Сравнения тикеров в БД и коде — без учёта регистра (`ticker_eq`/`ticker_in`/`same_ticker`), `ohlcv_cache` — `IN (канон, upper)` с дедупликацией по бару (приоритет канона); канал стрима сессии — по канону. ISS: свечи фьючерсов — `engines/futures/markets/forts`; лот фьючерса из ISS не берётся (только T-Invest). Создание рисунка графика — `known_canonical` (кэш/справочник, без сети; не известен — тикер пути как есть, S8R-REV-FBE).
+
+**Чистка ISS-строк кэша свечей (S8R-FIX-064).** При доступном T-Invest ISS-строки пары перед загрузкой проверяются `SELECT EXISTS` (без write-лока); если они есть — удаляются в отдельной короткой сессии на движке `self.db.bind` с commit (`_purge_iss_cache`). Сессия вызывающего (бэктест, торговля) пишущую транзакцию SQLite не получает и write-лок на время сетевой догрузки свечей не держит — раньше DELETE даже на 0 строк держал лок до commit результата, и остальные писатели падали «database is locked» после busy_timeout 30 с (S8R-FIX-045 — следствие).
+
+**Время и источники (S8R-AUDIT-063).** Время MOEX ISS — московское, приводится к UTC в парсере (`parse_iss_datetime`, `app/common/timezones.MSK` = фиксированный UTC+3 — одна зона на проект). При подключённом T-Invest строки ISS в `ohlcv_cache` не читаются (`_get_cached`, `last_cached_bar` — CB, unrealized, позиции, цена выхода). Лот для sandbox/real — только T-Invest (строгий и ленивый путь одинаково, кэш лота песочницы по `(счёт, тикер)`), P&L — множитель сделки `LiveTrade.lot_size`; ISS-лот — только paper/viewer, в `instruments` не пишется. Миграция `6f3a063d1c2e` вычищает сдвинутые ISS-свечи.
+
+**FIGI инструмента (S8R-AUDIT-045).** Единый источник FIGI — `MarketDataService.ensure_figi` (токен счёта сессии, промах кэшируется 15 мин по `(счёт, тикер)`). Ордер, история и стрим передают адаптеру `figi=` явно; адаптер ищет FIGI сам (перебор TQBR → TQCB → TQTF) только если FIGI не передан. Движок определяет FIGI **до** отправки ордера (сделка → запасной резолв с кэшем 15 мин по `(счёт, тикер)`) и пишет его в `live_trades.figi` — ключ сверки; не определён — ордер не уходит. `paper_<TICKER>` брокеру не передаётся (`broker_figi`). Выбор инструмента из ответа `find_instrument` (`select_tradable_instrument`) — один для FIGI, лотности и ордеров: точное совпадение тикера; среди торгуемых через API (`api_trade_available_flag`, иначе среди всех) — режим по приоритету TQBR → TQTF → TQCB → TQOB → TQIR → TQPI → TQIF; прочие класс-коды — только при отсутствии основных; при равенстве — наименьший `(class_code, figi)`. Порядок ответа брокера на выбор не влияет.
 
 **Функции:**
 1. `get_candles(ticker, timeframe, from_dt, to_dt)` — проверяет кеш в `ohlcv_cache`, дозагружает отсутствующее через брокер, сохраняет в кеш, возвращает DataFrame.
 2. `subscribe_realtime(ticker, timeframe, callback)` — создаёт подписку через `BrokerAdapter.subscribe_candles()`.
 3. `validate_data(df, ticker, timeframe)` — вызов `OHLCVValidator`.
 4. `check_cache_coverage(ticker, timeframe, from_dt, to_dt)` — определяет, какие участки нужно загрузить.
+
+**Обрыв стрима и дозагрузка (S8R-AUDIT-012).** `stream_manager` открывает «раунд обрыва» `[последняя живая свеча до обрыва, первая после)` при (пере)создании стрима или смене `adapter.connection_epoch` (публичное свойство поверх `multiplexer.connection_epoch`). Живые свечи публикуются сразу с `bar_pending=True`; после `BACKFILL_DEBOUNCE_SEC` (1,5 с) фоновая задача одним REST-запросом минуток на тикер (общим для 1m/5m/15m/1h/4h, через адаптер стрима, `_unary`) дозагружает хвост бара, пережившего обрыв, и голову текущего периода; сливаются только минуты старше первой живой; агрегатор хранит 2 закрытых периода. Затронутые бары переопубликуются с тем же timestamp, исправленными OHLC, `bar_pending=False` и `bar_complete` (False — если в обрыве были сделки после конца периода или REST не удался). Поля `stream_gen`, `bar_complete`, `bar_pending` в `candle.update`. Listener (`runtime.py`) торгует бар только после подтверждения полноты; неполный — RiskMonitor по его high/low и по свежему бару, сигнал не исполняется; SL/TP на свежем баре подавляет сигнал на его закрытии. Задачи дозагрузки отменяются при снятии стрима и в `unsubscribe_all`. **Периоды, целиком накрытые обрывом (S8R-FIX-022, 2026-10-13):** переопубликовывались только бары из `pending_bars` и `gap_period`, а период, не попавший ни туда, ни туда, на график не приходил вовсе до перезагрузки страницы (агрегатор держит два последних). Теперь такие периоды собираются из дозагруженных минут и публикуются с `bar_complete=True`; предел `GAP_REPUBLISH_MAX_BARS = 60` на раунд, дальше — одна строка в лог, а график перечитает период обычным REST-запросом (длинный обрыв не заливает сокет). Торговлю это не включает: закрывающая свеча приходит из нового поколения стрима, и `_closed_bar_verdict` такие бары пропускает (`gen_changed` → SKIP).
+
+**Выбор ключа для рыночных/справочных данных (S8R-AUDIT-003).** `select_market_data_account(db, user_id, preferred_account_id, sandbox, account_id)` — единственная точка: только счета пользователя, `encrypted_api_key` и `encryption_iv` NOT NULL, порядок prod → счёт сессии → id; без `user_id`/`account_id` — `None` (дальше ISS/None, «любой токен» не используется). `decrypt_market_data_token` — расшифровка. Лот: prod → ISS → устаревший authoritative-кэш → sandbox; sandbox-лот — authoritative только для `mode=sandbox`, в общий кэш не пишется; strict real/paper песочницу не спрашивает. FIGI для сверки — `select_market_data_account(account_id=счёт сессии)`. Владелец сессии — `strategy_version_owner_id`. Ограничение многопользовательского режима: общий стрим `(ticker, tf)` открывается токеном первого открывшего (сессии или графика).
+
+**Курс USD/RUB ЦБ РФ (`app/market_data/cbr_rate.py`, `GET /market-data/usd-rate`; S8R-FIX-118).** Запрос `XML_daily.asp?date_req=<сегодня МСК, ДД/ММ/ГГГГ>`: без даты ЦБ днём отдаёт уже установленный курс следующего дня. Одна дата МСК (`today = datetime.now(MSK).date()`, снятая до запроса) идёт и в `date_req`, и в кэш (`_fetched_msk_date`), и в запасной `as_of` ответа без атрибута `Date` (раньше — дата UTC, с 00:00 до 03:00 МСК вчерашняя). Курс с `as_of > today` отвергается (`cbr_rate_future_date` → `CbrRateUnavailable`: есть кэш — `stale=true`, нет — 503). `_is_fresh` ложно при смене даты МСК: кэш не переживает полночь МСК даже в пределах TTL 6 ч.
 
 **Алгоритм загрузки с учётом rate limits:**
 
@@ -1747,6 +2059,8 @@ class BondService:
 
 ### 5.7 Notification Service — ✅ реализовано S6
 
+**Доставка (S8R-AUDIT-083).** Каналы изолированы (`asyncio.gather(return_exceptions=True)`): сбой Telegram не мешает Email и наоборот, in-app пишется независимо. Повторы только транзиентных ошибок: Telegram — 3 попытки, backoff 1/2 с, `RetryAfter` ≤ 30 с, `BadRequest`/`Forbidden`/`InvalidToken` — без повтора (gotcha-82), таймауты `HTTPXRequest` 5/10/10/5 с; SMTP (aiosmtplib) — 3 попытки на сеть/4xx, 5xx без повтора, `SMTP_TIMEOUT_SEC=15`. EventBus при переполнении очереди подписчика — `logger.error` + счётчик и метрика `event_bus.dropped`. Гарантированная доставка через `pending_events` (§2.4) **не реализована** — таблица есть, потребителя нет (S8R-FIX-040).
+
 **Ответственный: BACK2 (core) + OPS (deploy)**
 
 **Архитектура (реализация S6):**
@@ -1762,8 +2076,9 @@ class BondService:
 - Webhook endpoint: `POST /api/v1/notification/telegram/webhook`.
 - Верификация webhook через `X-Telegram-Bot-Api-Secret-Token`.
 - HTML parse_mode, severity→emoji маппинг, inline-кнопки для session/trade.
-- **Привязка:** `POST /api/v1/notification/telegram/link-token` → 6-значный токен (TTL 5 мин, in-memory store). Пользователь отправляет `/start <токен>` боту.
+- **Привязка:** `POST /api/v1/notification/telegram/link-token` → токен `secrets.token_urlsafe(9)` (12 символов, TTL 5 мин, in-memory store); `link_store.consume(token, requester)` — лимит неудач 5/15 мин на пользователя Telegram (иначе чат), 100/15 мин глобально, успех не сбрасывает счётчик, память ограничена (S8R-AUDIT-021). Пользователь отправляет `/start <токен>` боту.
 - **Webhook handler** (`app/notification/telegram_webhook.py`): команды `/start` (привязка), `/positions`, `/status`, `/help` + callback queries.
+  - **Подпись режима (S8R-FIX-117).** Одна на все ответы — `session_mode_label(mode)` по `SESSION_MODE_LABELS` (`paper` → «бумажная», `sandbox` → «песочница», `real` → «реальный»; неизвестный режим — как есть): `/status`, `/positions`, кнопки `/close`, заголовок блока счёта `/balance` («(песочница)» / «(реальный)»). Прежние тернарники знали два режима из трёх: `/status` — песочница как «Paper», `/positions` и `/close` — как «real». `/status` — сессии `active`/`paused` (стратегия, тикер, ТФ, режим), без позиций; позиции — `/positions`. `/balance` — все активные счета с `account_id` параллельно, блок на счёт (Доступно / Заблокировано под заявки / В позициях / Итого, S8R-FIX-084); сбой счёта — `❌ <текст>`, у исключения без текста — «ошибка без текста (<класс>)» (S8R-FIX-119).
 - ⚠️ Stack Gotcha 17: `patch.object(bot_instance, ...)` невозможен из-за frozen attrs v20+. Мокировать через `patch.object(type(bot), ...)`.
 
 **EmailNotifier** (`app/notification/email.py`):
@@ -1775,8 +2090,13 @@ class BondService:
 - `create_notification()` создаёт запись в `notifications`.
 - EventBus publish → WS канал `notifications:{user_id}`.
 
+**Форматы величин в текстах (2026-10-14):**
+- `app/common/money.format_price(Decimal)` — `format(value.normalize(), "f")`: цена без хвоста нулей `Numeric(18, 8)` и без экспоненты («300», «100.5»), значащие знаки не округляются (шаг цены облигаций — до 4–5 знаков). Применяется: ценовой алерт `price_alert` (уровень и текущая цена, S8R-FIX-120), `trade.opened` (`price`) и `trade.filled` (S8R-FIX-125).
+- `trade.filled` («Сделка исполнена», `runtime.py`): `price` = `trade.entry_price` (цена исполнения; для sandbox/real — брокера), при `entry_price is None` (`pending`) — `signal.price`. Раньше — всегда `signal.price`, и сообщение расходилось с «Позиция открыта» по той же сделке.
+- `trade.closed` — без изменений: тело с `net_pnl` (= `pnl − commission`) и комиссией (`trade_closed_payload`); `pnl` в payload и в журнале — валовой.
+
 **REST API** (`app/notification/router.py`): 6 + 2 endpoints:
-- `GET /api/v1/notifications` — лента с пагинацией
+- `GET /api/v1/notifications/` — лента с пагинацией (со слэшем; без него 307, S8R-FIX-100; `DELETE /api/v1/notifications/` — удалить все)
 - `GET /api/v1/notifications/unread-count` — счётчик
 - `PATCH /api/v1/notifications/{id}/read` — пометить прочитанным
 - `PUT /api/v1/notifications/read-all` — прочитать все
@@ -1790,6 +2110,8 @@ class BondService:
 - Возвращает `list[str]` каналов, куда отправлено.
 
 ### 5.8 Circuit Breaker
+
+**Конфигурация (S8R-AUDIT-067).** `PUT /circuit-breaker/config` (и `/config/session/{id}`) **заменяет конфиг целиком** — клиент отправляет весь объект. Диапазоны входа (`app/common/risk_limits.py`): проценты 0 < x ≤ 100 (4 знака), суммы 0 < x ≤ 999 999 999 999,99 (2 знака, дробный хвост округляется `quantize_money`), сделок в день 1…10 000, cooldown 0…86 400 с (тот же предел у запуска сессии), целые — strict; окно часов непустое с учётом умолчаний 10:00–23:50; иначе 422. GET отдаёт `invalid_fields` — сохранённые ранее значения вне диапазонов. Движок читает конфиг и пользователя **одним снимком** (`CBConfigSnapshot`) на `check_before_order`; опасные сохранённые значения (≤ 0 там, где 0 блокирует всё; перевёрнутое окно часов) не применяются: в глобальном — «не задано», в override сессии — из глобального по полю (часы и пара fixed/pct — парой); прочие значения сверх пределов применяются как есть. Часы торговли учитывают override сессии. Несколько глобальных строк (session_id IS NULL) — берётся минимальный id + WARNING `cb_config_duplicate_rows`. `GET /circuit-breaker/status`: `daily_loss_limit` — в рублях (`daily_loss_threshold`), процент — `daily_loss_limit_pct`; при нулевом капитале и процентном лимите — `null`.
 
 **Ответственный: SEC (логика) + BACK1 (интеграция)**
 
@@ -1805,7 +2127,6 @@ class CircuitBreakerService:
             self._check_duplicate_instrument(session, signal),
             self._check_cooldown(session),
             self._check_trading_hours(signal),
-            self._check_short_block(signal),
             self._check_insufficient_funds_streak(session),
         ]
         for check in checks:
@@ -1821,13 +2142,16 @@ class CircuitBreakerService:
 ```
 
 **Расчёт дневных убытков:**
+- S8R-FIX-063 ч.2: Расчёт дневных убытков»: «+ Σ min(оценка, 0) сделок „P&L не определён“ (`unpriced_cb_losses`). Цены: вход — факт → `entry_signal_price` → close последнего закрытого бара ≤ `opened_at` − ТФ; выход — факт → `exit_signal_price` → бар ≤ `closed_at` − ТФ. Давность бара: ≤ 24 ч для внутридневных ТФ, ≤ 7 суток для D и выше; ISS не берётся. Сдвиг `CB_UNPRICED_ADVERSE_PCT` = 1 % против позиции, количество — `position_quantity`. Комиссия не вычитается — как у валового `pnl`. Собственный лимит сессии — доля из классового расчёта (`pnl_by_session`). Пометка причины — „включая оценку N сделок без подтверждённой цены“». «Max drawdown» (sandbox/real): «equity включает оценённый убыток таких сделок всех дней
 - Агрегация `SUM(pnl)` по `live_trades` за текущий торговый день. Начало торгового дня определяется по рынку инструмента: фондовый/долговой — 10:00 MSK, валютный — 10:00 MSK (несмотря на продлённую сессию до 23:50). Сброс дневных счётчиков — в 10:00 MSK следующего торгового дня по календарю MOEX.
 - Плюс unrealized P&L открытых позиций (текущая цена - цена входа).
 - Сравнение с `user.risk_daily_loss_pct * account_balance` или `user.risk_daily_loss_fixed`.
 
 **Max drawdown:**
-- `peak_equity` обновляется при каждом закрытии позиции.
+- `peak_equity` обновляется при каждом закрытии позиции **и на каждой закрытой свече** — `CircuitBreakerEngine.update_peak_on_bar(session, close_price)` из `SessionRuntime._handle_candle` (S8R-FIX-013). Раньше пик поднимался только когда дело доходило до проверок входа: между сигналами цена могла сходить вверх и вернуться, просадка считалась от старого пика, и лимит срабатывал позже, чем настроен (при редких сигналах мог не сработать вовсе). Вызов без сети (цена из свечи) и **без per-user CB-лока**: лок держится на горячем пути «сигнал → ордер», а пик только растёт — потерянное обновление исправляет следующий бар.
 - `current_drawdown = (peak_equity - current_equity) / peak_equity * 100`.
+- **Состав `current_equity` одинаков во всех режимах (S8R-FIX-015).** Песочница и реальный счёт — equity по сделкам сессии плюс открытые позиции по свежей цене (`broker_equity_by_session`, S8R-AUDIT-068). Бумажный режим с 2026-10-13 — `paper_equity_by_session`: `balance + blocked_amount + unrealized`, где нереализованная часть приходит из того же `unrealized_pnl_by_session` и с той же проверкой свежести цены (живая свеча сигнала, иначе свежий бар кэша, S8R-AUDIT-070); свежей цены нет — открытая часть не учитывается вовсе. До этого paper считался только по реализованному P&L: позиция в минусе лимит не трогала до закрытия, то есть защита включалась ПОСЛЕ убытка, а для шортов расхождение с sandbox/real было заметнее.
+- **Пик и статус считаются ТЕМ ЖЕ составом** (находка `/code-review` к S8R-FIX-015). `paper_equity_by_session` — единственный источник бумажного equity: его используют проверка просадки, `update_peak_on_bar` и блок «текущее состояние» над формой риск-менеджмента (`CircuitBreakerService.get_status`). Иначе состав расходился: денежный учёт `PaperTradingEngine` поднимал `paper_portfolios.peak_equity` только по `balance + blocked_amount`, и прибыль открытой позиции опускала просадку, но пика не поднимала — когда та же прибыль уходила, просадка считалась от величины, которой капитал уже не был (лимит снова срабатывал позже); статус же показывал 0 % там, где движок видел просадку. `paper_peak_equity(portfolio, equity)` — симметричный аналог `broker_peak_equity`.
 - При `current_drawdown >= user.risk_max_drawdown_pct` -> trigger.
 
 **Нехватка средств (insufficient funds streak):**
@@ -1847,12 +2171,14 @@ class CircuitBreakerService:
 | `sync_moex_calendar` | Ежедневно 00:05 MSK | Загрузка торгового календаря из MOEX ISS (S8R-AUDIT-093: `dailytable`) |
 | `update_moex_sessions` | Ежедневно 06:00 MSK | Обновление расписания торговых сессий |
 | `daily_backup` | Ежедневно 01:00 MSK | Бэкап SQLite (через `sqlite3 .backup`) |
-| `cleanup_revoked_tokens` | Ежедневно 03:00 MSK | Удаление истёкших revoked JWT |
+| `cleanup_revoked_tokens` | Каждые 24 ч от старта + сразу при старте (S8R-AUDIT-043) | Удаление строк `revoked_tokens` с `expires_at < now`, идемпотентно |
 | `send_daily_stats` | Ежедневно 19:00 MSK (после закрытия фондового) | Дневная статистика в Telegram и email |
 | `refresh_instrument_info` | Еженедельно вс 12:00 | Обновление данных об инструментах (лотность, шаг цены) |
-| `check_corporate_actions` | Ежедневно 08:00 MSK | Проверка дивидендов/сплитов через MOEX ISS |
+| `detect_corporate_actions` | Каждые 6 часов | Проверка дивидендов/купонов/сплитов через MOEX ISS (S8R-FIX-008: было описано «ежедневно 08:00 MSK», имя задачи и период приведены к коду — `IntervalTrigger(hours=6)`). Тикеры — `CorporateActionService.detection_tickers()`: сессии `active`/`paused` и сессии любого статуса со сделками в начисляемых статусах (S8R-FIX-129) |
 | `reset_ai_daily_usage` | Ежедневно 00:00 MSK | Сброс `usage_today` в `ai_provider_configs` |
 | `reset_ai_monthly_usage` | 1-е число месяца 00:00 MSK | Сброс `usage_month` в `ai_provider_configs` |
+
+Суммы дневной статистики (`real PnL`, `unreal` по сессиям и итог) форматирует `_signed_rub` (`app/scheduler/service.py`, S8R-FIX-121): `quantize_money` (копейки, половина — вверх), знак, пробел между тысячами; ноль после округления — «0.00 ₽» без знака. Прежний `{:+,.0f}` округлял до рубля и давал «-0 ₽» для −0,04.
 
 **MOEX Calendar Service:**
 
@@ -1890,7 +2216,7 @@ class BaseLLMProvider(ABC):
     def count_tokens(self, text: str) -> int: ...
 
 class ClaudeProvider(BaseLLMProvider):
-    def __init__(self, api_key: str, model: str = "claude-sonnet-4-6-20250514"):
+    def __init__(self, api_key: str, model: str = "claude-opus-5-5"):
         ...
 
 class OpenAIProvider(BaseLLMProvider):
@@ -1929,9 +2255,7 @@ async def get_active_provider(self, user_id: int) -> BaseLLMProvider:
 ```
 AI_PROVIDER=claude            # 'claude' | 'openai' — используется только если в БД нет активного провайдера
 AI_API_KEY=                   # Используется только если в БД нет активного провайдера
-AI_MODEL=claude-sonnet-4-6-20250514
-AI_DAILY_LIMIT=100
-AI_MONTHLY_LIMIT=3000
+AI_MODEL=claude-opus-5-5     # дефолт кода (S8R-FIX-033, решение заказчика); AI_DAILY/MONTHLY_LIMIT удалены
 ```
 
 **Поддерживаемые провайдеры:**
@@ -1985,9 +2309,13 @@ SMA, EMA, Bollinger Bands, RSI, MACD, Stochastic, ATR, Volume MA, и други�
 
 **5.10.4 Rate Limiting / Budget:**
 
+`S8R-AUDIT-014`: таблица `ai_usage_daily(date PK, prompt_tokens, completion_tokens)` — расход серверного `AI_API_KEY` на инстанс (миграция `1d92db59f28d`); `AI_GLOBAL_DAILY_TOKEN_LIMIT`/`AI_GLOBAL_MONTHLY_TOKEN_LIMIT` (0 = выкл.); `check_budget` — per-user + глобальный потолок при серверном ключе (429), `increment_usage` — атомарный upsert и при fallback, per-user — атомарный UPDATE; `/ai/explain` учитывается; `/ai/status` не раскрывает provider/model серверного ключа. Потолок мягкий (проверка до запроса).
+
 `AIBudgetTracker` хранит количество использованных запросов в `daily_stats` (или in-memory counter, который flush-ится в БД). При достижении лимита -> возврат ошибки, UI переключается на режим B.
 
 ### 5.11 Code Sandbox
+
+**Лимиты исполнения (S8R-AUDIT-006):** компиляция стратегии и `cerebro.run` бэктеста — в spawn-процессе (`app/backtest/exec_limits.py`) с дедлайном `BACKTEST_EXEC_TIMEOUT_SEC` (SIGKILL, статус `failed` с причиной), отмена бэктеста убивает процесс (gotcha-83); комбинация Grid Search — с дедлайном от старта в воркере, зависший воркер — ошибка комбинации, Pool пересоздаётся; лимит памяти RLIMIT_AS (`BACKTEST_EXEC_MEMORY_LIMIT_MB` сверх базы процесса) — только Linux, на macOS не ставится; мониторинг памяти через psutil (эскиз §5.11.2) не реализован. `app/sandbox/executor.py` удалён (S8R-AUDIT-019): код стратегии компилируется только в `BacktestEngine._compile_strategy` из IR.
 
 **Ответственный: SEC**
 
@@ -2059,7 +2387,7 @@ class SandboxExecutor:
         if not analysis.is_safe:
             raise UnsafeCodeError(analysis.violations)
 
-        # 2. Compile через RestrictedPython
+        # 2. (эскиз до S8R-AUDIT-001; RestrictedPython удалён — S8R-AUDIT-050) Compile через RestrictedPython
         byte_code = compile_restricted(code, '<strategy>', 'exec')
 
         # 3. Запуск в subprocess с ограничениями
@@ -2081,11 +2409,21 @@ class SandboxExecutor:
 
 ### 5.12 Corporate Action Handler
 
+S8R-FIX-067: перед отбором облигаций для `bondization` тикеры открытых позиций с типом `unknown`/пустым (`UNTYPED_INSTRUMENT_TYPES`) дозапрашиваются по FIGI (`broker_figi` справочника, иначе сделки) через `MarketDataService.backfill_instrument_types`. Токен — счета владельца сессии: production вперёд, среди счетов контура — счёт сессии, неактивный заменяется другим активным счётом владельца; пары разных владельцев не смешиваются (S8R-AUDIT-003). Бюджет на прогон — `BOND_SCAN_TYPE_BACKFILL_MAX_REQUESTS=20` реально начатых запросов (FIGI из кэша промахов не считаются) и общий дедлайн 15 с; при остатке меньше `BOND_SCAN_TYPE_BACKFILL_MIN_SLICE_SEC=1` новые запросы не начинаются, FIGI не помечается. Найденные типы пишутся в `instruments` одной транзакцией и не позже дедлайна. Сеть — в `_fetch_iss`, вне единицы записи. Сбой — отбор по эвристике тикера.
+
 **Ответственный: BACK1**
 
 Модуль обработки корпоративных действий (сплиты, дивиденды, купоны).
 
-**Источник данных:** MOEX ISS API (`/iss/securities/{ticker}/dividends.json`, `/iss/statistics/engines/stock/markets/shares/securities/{ticker}`). Проверка ежедневно в 08:00 MSK через scheduler job `check_corporate_actions`.
+**Источники данных:** дивиденды — T-Invest `InstrumentsService.GetDividends` (S8R-FIX-122, с 2026-10-14); сплиты — MOEX ISS `/iss/statistics/engines/stock/splits.json`, купоны — `/iss/securities/{secid}/bondization.json` (S8R-AUDIT-091). Проверка каждые 6 часов через scheduler job `detect_corporate_actions` (S8R-FIX-008: прежний текст «ежедневно 08:00 MSK» расходился с кодом). Уведомление (`SchedulerService.detect_corporate_actions`, снимок `_DetectedAction` c `record_date`): дивиденд и купон — `закрытие реестра DD.MM.YYYY, последний день покупки DD.MM.YYYY` (реестр — `record_date`, у купона `ex_date` — дата выплаты; последний день покупки — `accrual_last_buy_date`); сплит — `первый день торгов в новом масштабе DD.MM.YYYY`. Календарь недоступен — только дата реестра. До S8R-FIX-122 вторая дата называлась `ex-date` и была на торговый день раньше настоящей.
+
+**Тикеры детекта и адресаты (S8R-FIX-129).** Джоба берёт тикеры `detection_tickers()` (верхний регистр, один на бумагу — иначе `SBER`/`sber` давали две строки и двойное начисление): сессии `active`/`paused` и сессии любого статуса, у которых есть сделки в `_ACCRUAL_TRADE_STATUSES`, открытые или закрытые не раньше `_DIVIDEND_HORIZON_DAYS` назад — начисление (`accrual_position_clauses`) статус сессии не смотрит, и без этого выплата позиции остановленной сессии не детектировалась. Остановленная сессия без таких сделок тикер не добавляет. Уведомление о дивиденде/купоне: владельцы сессий `active`/`paused` по тикеру плюс `accrual_recipient_user_ids(action)` — владельцы позиций, которым причитается выплата (те же условия, что у начисления); один пользователь — одно уведомление; сбой этого поиска (WARNING `corporate_action_recipients_failed`) не лишает уведомления владельцев живых сессий. О сплите — владельцы живых сессий плюс `split_position_user_ids(action)`: владельцы позиций, которые `process_split` пересчитывает (`filled`/`open`, открыта до 00:00 МСК дня сплита), статус сессии не важен (S8R-FIX-132).
+
+**Знак выплаты (S8R-FIX-131).** `process_dividend` / `process_coupon`: сумма позиции умножается на +1 для `is_long_direction(trade.direction)` и на −1 для шорта (вход шорта — `direction="sell"`): держатель шорта на отсечке компенсирует выплату. Купон: `знак × (купон − nkd_entry) × штуки`. Paper — изменение `balance`, sandbox/real — `DailyStat` за день. Уведомление держателю шорта — с суффиксом `; по короткой позиции сумма спишется` (S8R-FIX-133, `accrual_short_user_ids`).
+
+**Отсечка T+1 (S8R-FIX-122, решение заказчика 2026-10-14).** `accrual_last_buy_date(record_date)`: ex-date = последний торговый день ≤ даты реестра (`_trading_day_on_or_before`, календарь MOEX S8R-AUDIT-093; торги выходного дня торговыми днями календаря не считаются), последний день покупки — последний торговый день < ex-date. `accrual_opened_before` = 00:00 МСК дня после последнего дня покупки (naive UTC); `accrual_position_clauses`: `opened_at < порог` и (`closed_at IS NULL` или `closed_at ≥ порог`). Прежний `accrual_ex_date` (S8R-FIX-008) возвращал последний день покупки и ставил порог на его 00:00 — на торговый день раньше. Правило сверено с `last_buy_date` T-Invest по 13 выплатам (тест `test_fix_122_t1_cutoff.py`). Купон без `recorddate` ISS: `record_date` = торговый день перед `coupondate` (было: сама `coupondate`).
+
+**Дивиденды T-Invest (S8R-FIX-122).** ISS `securities/{secid}/dividends.json` отвечает 200 описанием бумаги (gotcha-70), дивиденды остались только в CCI по подписке — ISS-путь дивидендов удалён (`_iss_dividend_rows`, `iss_dividends_block_missing` больше нет). Адаптер: `TInvestAdapter.get_dividends(figi, from_, to)` — квота `INSTRUMENTS`, дедлайн `_unary`, повтор транзиентных сбоев `_read_with_retry` (только чтение), naive-границы — UTC; разбор `TInvestMapper.dividend_to_dividend_info` → `DividendInfo` (`app/broker/base.py`): `amount_per_share` — `Decimal` из `dividend_net` (`MoneyValue`), валюта в верхнем регистре, даты событий — календарный день МСК (брокер кодирует их полуночью UTC; пустой `Timestamp` → `None`). Детект: `_fetch_tinvest_dividends(tickers, today)` вне единицы записи — для каждого тикера (облигации пропускаются) владельцы сессий по тикеру (`_dividend_targets`: активные/на паузе вперёд, сессии со счётом вперёд) → `select_market_data_account(user, preferred_account_id=счёт сессии)` (production вперёд, gotcha-57; S8R-AUDIT-003 — токены владельцев не смешиваются) → `ensure_figi_lookup` тем же счётом → один адаптер на счёт за прогон (закрывается в `finally`); `_read_dividends` — один запрос. Владельцы перебираются, пока один не ответит (ревью п.3): нет счёта, FIGI или отказ по инструменту — следующий. Окно `_dividend_window`: от 00:00 МСК дня самой ранней сделки по тикеру (статусы `filled/open/closed`) до `today + 367` дней. Нет счёта ни у одного владельца — WARNING `dividends_no_broker_account`; FIGI не найден — `dividends_figi_unresolved`; отказ по инструменту — `detect_dividends_failed`. `TransientBrokerError` (WARNING `detect_tinvest_unavailable` с `broker_account_id`), `AuthBrokerError` и ошибка расшифровки ключа выводят из прогона **счёт** (`unusable`), а не весь прогон (ревью п.2): его тикеры достаются другим владельцам, оставшиеся без ответа — один WARNING `dividends_skipped_account_unavailable` со списком. Ошибки БД (выбор владельцев/счёта) пробрасываются. `_store_dividends(ticker, rows, today)`: `record_date` брокера → `ex_date` и `record_date` (ключ дедупа `uq_corp_action` как у ISS-эпохи), последний день покупки и дата выплаты брокера — в `description`; пропуск без реестра/суммы, `Cancelled` (INFO), не `RUB` и пустая валюта (WARNING `tinvest_dividend_currency_unsupported`; маппер пустую валюту рублями не считает). `_sync_pending_dividends` (ревью п.1): непроведённые дивиденды тикера с `ex_date` в окне ответа (`_DividendAnswer.window_from/to`) сверяются с ним — сумма изменилась → обновление (WARNING `tinvest_dividend_amount_changed`), выплаты нет в ответе (отмена, нулевая сумма, перенос реестра) → `DELETE` без начисления (WARNING `tinvest_dividend_withdrawn`); проведённые не трогаются. Дивиденд с реестром < `today` без получателей (`_has_accrual_recipients`) — `processed=True` (история без уведомления); причитающийся — непроведённым, его начислит `process_pending` (первый прогон после обновления начисляет пропущенные — решение заказчика 2026-10-14). Миграции нет.
 
 **Логика обработки:**
 
@@ -2109,6 +2447,16 @@ class CorporateActionHandler:
 ```
 
 ### 5.13 Tax Report Generator
+
+XLSX (openpyxl): строковые поля пишутся как текст (`xlsx_text`, `data_type='s'`) — не формула; числа — числами (S8R-AUDIT-065).
+
+База (S8R-AUDIT-095): `max(0, Σ share + bond + etf)` за год (единая база обращающихся ЦБ, ст. 214.1); тип — `instruments.type` (`_resolve_instrument_types`, один запрос на отчёт; `ensure_figi_lookup` пишет `InstrumentShort.instrument_type` вместе с FIGI), `_tax_category` → share/bond/etf, эвристика по тикеру — fallback с пометкой в файле отчёта.
+
+Лоты и файлы (S8R-AUDIT-096): `TaxLot.report_id` (FK, CASCADE); регенерация за год заменяет расчётные лоты (удаляются лоты прежних отчётов года в той же единице работы), прежние отчёты остаются доступны для скачивания — каждый отчёт хранит собственный файл `tax_report_{report.id}.{ext}`. FIFO не используется: одна сделка — один лот (`_build_lots`).
+
+S8R-FIX-043: `_prepare_inputs` до `persist_with_retry`, один раз на генерацию: сделки года, лотность (`_resolve_lot_size_fallbacks`) и дозапрос типов (`_prefetch_instrument_types` → `MarketDataService.ensure_instrument_types` — обёртка `backfill_instrument_types`, строки справочника одной транзакцией). Единица работы сети не делает; первая попытка берёт готовые сделки, повтор перечитывает их (gotcha-37). Дозапрос: тикеры лотов отчёта и сделок «P&L не определён» с типом `unknown`/пустым, вес — Σ|realized_pnl| по `ticker.upper()` с лотностью (у сделок без цены — |комиссия|, S8R-REV-FBE); один FIGI — один `GetInstrumentBy`; бюджет `TAX_TYPE_BACKFILL_MAX_REQUESTS=20`, общий дедлайн `TAX_TYPE_BACKFILL_TIMEOUT_SEC=15` (только сеть); промахи — `TtlCache` по FIGI (`grpc_codes`: TRANSIENT/LOST и запрос, оборванный дедлайном, — 15 мин; NOT_FOUND, пустой тип, чужой тикер — 24 ч; AUTH/RATE_LIMITED — не кэшируются); ответ пишется в `instruments` (type+figi) отдельной сессией; метрика `market_data.ensure_instrument_types`. Горячий путь `ensure_figi_lookup` тип не дозапрашивает. ПФИ = `PFI_TYPES` {futures, option, currency} — построчный раздел вне базы и итогов, результат в единицах цены, без суммы; прочие типы — `by_type["other"]` в базе. Строки файла — общий `_report_rows` для xlsx/csv.
+
+Комиссия лота (S8R-FIX-049): покупка и продажа берут комиссию своей стороны сделки (`entry_commission`/`exit_commission`); сделки, закрытые до миграции `c04dc4f891a2` (`commission_legacy=1`), — итог делится 50/50, как раньше.
 
 **Ответственный: BACK1**
 
@@ -2136,7 +2484,8 @@ class CorporateActionHandler:
 - Header (48px): логотип, виджет баланса (компактный), индикатор здоровья (цветной кружок), колокольчик уведомлений (с badge), username.
 - Content area: занимает оставшееся пространство.
 - Минимальная поддерживаемая ширина: 1280px.
-- Русский язык всюду. Формат чисел: `Intl.NumberFormat('ru-RU')`. Формат дат: `DD.MM.YYYY`.
+- **Узкий экран < `sm` (Mantine по умолчанию 48em = 768 px; S8R-FIX-108, ФТ §13.1).** `AppShell navbar.collapsed.mobile = !uiStore.mobileNavOpened` — ниже `sm` Mantine растягивает навбар на 100 % ширины, и без `collapsed.mobile` он закрывал страницу. Два `Burger` в `Header`: `hiddenFrom="sm"` — `toggleMobileNav` (`aria-label` «Открыть меню» / «Закрыть меню», `aria-expanded`, `data-testid="mobile-nav-burger"`), `visibleFrom="sm"` — прежний `toggleSidebar` (240↔60 px). Смена `location.key` закрывает меню (`AppLayout`, `closeMobileNav`). Строка шапки `wrap="nowrap"`, название скрыто ниже `xs`, поиск `flex: 0 1 400px`. `Sidebar` ниже `sm` всегда с подписями (свёрнутость десктопа там не действует); у каждого `NavLink` — `aria-label={item.label}` (S8R-FIX-099: в свёрнутом виде пункт без подписи не имел доступного имени). Ограничение: пункты — `<a>` без `href`, с клавиатуры не фокусируются (так было и до фикса).
+- Русский язык всюду. Формат чисел: `Intl.NumberFormat('ru-RU')`. Формат дат: `DD.MM.YYYY`. **Пояс показа — МСК (S8R-FIX-109):** `utils/formatters.ts` — `formatDate`/`formatDateTime`/`formatTime` с `timeZone: MSK_TIME_ZONE` (`'Europe/Moscow'`), строки backend (naive UTC) — через `parseBackendDate`; на них переведены журнал сделок, карточка и страница сессии, тултип P&L, время проверки счёта, даты налоговых отчётов. Места с собственным `toLocale*` без зоны (список и сделки бэктеста, уведомления, история версий) пока показывают пояс браузера.
 
 ### 6.2 Dashboard (Главный дашборд)
 
@@ -2193,6 +2542,8 @@ class CorporateActionHandler:
 - `TimeframeSelector` — кнопки 1м | 5м | 15м | 1ч | 4ч | Д | Н | М.
 - `TradeMarkers` — маркеры на графике (треугольник вверх = вход, треугольник вниз = выход) через `chart.addMarkers()`.
 - `DrawingTools` (Should) — toolbar справа: Trendline, Horizontal, Rectangle. Координаты сохраняются через API.
+  - **Привязка точек на intraday (sequential-index, S8R-FIX-102).** Бар sequential-серии несёт время свечи в `customValues.barTime` (и `setData`, и live-`update`). `DrawingPoint.t` — время свечи (источник правды), `logical` — номер бара на момент клика; при каждой отрисовке номер бара ищется по `t` в текущем массиве (`coords.ts`, `sequentialIndex.ts`), правее последнего бара — экстраполяция шагом ТФ, левее загруженного окна — точка не рисуется до дозагрузки. Старые точки (`t` — номер бара, разобранный как unix-время, год < 2000) рисуются по `logical`, как раньше; перетаскивание привязывает их к свече. Drag, vline, копия, концы long/short — в барах серии. Раньше в `t` писался индекс (`1969-12-31…`), и рисунок рисовался по `logical` — номер бара указывал на другую свечу при каждом сдвиге скользящего окна (`now − INITIAL_PERIOD_DAYS`) и после подгрузки истории слева. Дневные ТФ не менялись; API не менялся.
+  - **Смена набора (тикер:ТФ)** — первая загрузка: `autoScale:true` → начальный вид → фиксация `autoScale:false` в rAF. Раньше `autoScale:false` переживал `setData` нового набора, если его свечи были в кэше (график не перемонтируется), и шкала оставалась от прежнего ТФ (находка qa2 Н-6).
 - `OrderBookPanel` (Could) — выдвижная панель справа с уровнями bid/ask.
 - `TradesStreamPanel` (Could) — лента сделок внизу.
 
@@ -2206,7 +2557,7 @@ class CorporateActionHandler:
 **Четыре вкладки:**
 
 **Tab "Обзор":**
-- Сетка метрик (SimpleGrid 4×2): Чистая прибыль (₽ + %), Кол-во сделок, Доля прибыльных (Win Rate), Профит-фактор, Макс. просадка, Коэффициент Шарпа (по дневным доходностям), Ср. P&L на сделку (среднее по ВСЕМ), Ср. длительность (часы/дни по ТФ).
+- Сетка метрик (SimpleGrid 4×2): Чистая прибыль (₽ + %), Кол-во сделок, Доля прибыльных (Win Rate), Профит-фактор, Макс. просадка, Коэффициент Шарпа (годовой, по ТФ бэктеста — `metrics.sharpe_params`, S8R-AUDIT-077; было: по дневным доходностям), Ср. P&L на сделку (среднее по ВСЕМ), Ср. длительность (часы/дни по ТФ).
 - Цветовая кодировка: хорошо (#1a2e1a/#69db7c), нейтрально (#25262B/#C1C2C5), плохо (#2e1a1a/#ff8787). Макс. просадка — всегда нейтральный.
 - Benchmark-сравнение: горизонтальные бары (Стратегия / Buy & Hold / IMOEX).
 - Кнопки CSV и PDF в header.
@@ -2253,7 +2604,7 @@ class CorporateActionHandler:
 
 **Settings:**
 - **Профиль:** смена пароля, email.
-- **Брокеры:** список подключённых, добавление нового (форма: тип, API-ключ, discover → выбор счетов), удаление. Ключ отображается маскированным.
+- **Брокеры:** список подключённых, добавление нового (форма: тип, API-ключ, discover → выбор счетов), удаление. Ключ отображается маскированным. Имя счёта для показа — `utils/brokerAccountName(name, id)` (S8R-FIX-107): пустое или из пробелов имя (sandbox-счёт T-Invest приходит с `name=""`) → «№<id>»; используется в списке и модалках счетов, форме подключения, окне запуска, отказах конфликта и «Запустить заново», выборе счёта на «Счёте» (`??` пустую строку не ловил).
 - **Telegram:** привязка (показ токена, QR-код), статус привязки, отвязка.
 - **Уведомления:** матрица event_type × channel (чекбоксы).
 - **Риск-менеджмент:** поля из профиля пользователя (daily loss, max drawdown, position size, trade limit).
@@ -2291,9 +2642,15 @@ settingsStore:  { profile, brokerAccounts, notifSettings, fetch(), update() }
 
 - Алгоритм: Argon2id (библиотека `argon2-cffi`)
 - Параметры: `memory_cost=65536, time_cost=3, parallelism=4, hash_len=32, salt_len=16`
-- Валидация нового пароля: минимум 8 символов, минимум 1 буква + 1 цифра.
+- Валидация нового пароля (регистрация, создание администратором, смена): минимум **12** символов (до 128), минимум 1 буква + 1 цифра (S8R-AUDIT-043, тип `NewPassword`, правило отдаётся в `setup-status`). Вход со старыми паролями не проверяется политикой; при успешном входе хеш с устаревшими параметрами пересчитывается (`check_needs_rehash`). Хеширование и verify — в `asyncio.to_thread`.
 
 ### 7.2 Шифрование API-ключей брокеров
+
+`S8R-AUDIT-042`: шифртекст привязан к записи — к AAD новых записей добавляется контекст (`|broker_account:<id>` для ключей брокера, `|ai_provider:<id>` для ключей AI); формат (MAGIC + key_id, IV) не менялся. Чтение: с контекстом → header-only (записи 041) → легаси; шифртекст, переставленный в чужую строку, не читается, если он записан после 042. `account_id` при записи — обязательный параметр helper'ов. Старые записи привязываются CLI `rebind-encrypted-secrets` (и `rotate-encryption-key`); снимки до перепривязки содержат непривязанные шифртексты — полностью закрывает ротация ключа. Откат кода ниже 042 после перепривязки требует повторного ввода ключей.
+
+`S8R-AUDIT-041`: шифртекст = `MTK\x01` + key_id (8 байт HKDF, info `moex-terminal-key-id`) + AES-GCM, заголовок — AAD; формат без заголовка читается (обратная совместимость). Код до 041 новый формат не читает — откат кода после деплоя требует повторного ввода ключей. Относительный SQLite-путь в `DATABASE_URL` разрешается от корня backend/.
+
+`S8R-FIX-119`: `decrypt_broker_key` / `decrypt_broker_credentials` (`app/broker/crypto_helpers.py`) превращают `InvalidTag` в `BrokerKeyUnreadableError` — подкласс `InvalidTag` (прежние `except InvalidTag` в CLI ротации и `_read_token` работают как раньше) с текстом `BROKER_KEY_UNREADABLE_TEXT` («Ключ брокерского счёта не расшифровывается — введите ключ заново в «Настройки → Брокер».»). У `InvalidTag` текста нет (`str(exc) == ""`), отсюда были пустой блок «❌ » в Telegram `/balance`, 500 на `sandbox-balance` и «брокер не вернул текст» в «Закрыть все». HTTP — 409 `{detail, error_code: "broker_key_unreadable"}` (`register_exception_handlers`, любой endpoint); `close_failure_reason` берёт `detail`, запасной текст — «закрытие не удалось (<класс>), текста ошибки нет» (без ссылки на брокера); лог закрытия — та же причина и `error_type`.
 
 - Алгоритм: AES-256-GCM
 - Ключ шифрования: из `ENCRYPTION_KEY` в `.env` (32 байта base64-encoded)
@@ -2323,7 +2680,8 @@ class CryptoService:
 - Access Token TTL: 30 минут
 - Refresh Token TTL: 7 дней
 - Refresh Token: одноразовый; при каждом refresh — старый инвалидируется, выдаётся новый
-- При logout: access + refresh → в `revoked_tokens`
+- При logout: access + refresh → в `revoked_tokens`. `S8R-AUDIT-039`: logout всегда 204 и стирает три cookie (refresh — по path `/api/v1/auth` и прежнему `/api/v1/auth/refresh`), валидный access не требуется; отзыв одной транзакцией — access+rjti при валидном access (Bearer, иначе cookie), refresh-jti при валидном refresh (cookie, иначе тело ≤ 4 КБ); сбой БД не мешает стиранию. Refresh-cookie: HttpOnly, SameSite=Strict, path `/api/v1/auth`. Фронт: `refreshSession` → `refreshed | rejected | unavailable`; повтор только на 429 (≤ 3, `Retry-After` ≤ 10 с), 5xx/сеть — `unavailable` без повтора и без выхода, пауза 10 с; выход только на 401/403.
+- Субъект (`sub`), отзыв `jti`, `is_active` и версия токенов проверяются единым предикатом `authenticate_access_payload` в HTTP, на WS-upgrade (отказ — accept + close 4401, S8R-AUDIT-060) и в dash-mount `/api/v1/admin/metrics`. Уже открытые WS при logout/деактивации не разрываются до переподключения (S8R-FIX-017). Деактивированный пользователь: `POST /auth/login` — 401 «Аккаунт деактивирован»; Telegram/email-уведомления не уходят; бот на любую команду и привязку отвечает «Учётная запись отключена администратором» (S8R-AUDIT-013).
 - Версия токенов (S8R-AUDIT-035): claim `ver` = `users.token_version` (миграция `c5e8b2a7f913`, по умолчанию 0; токен без `ver` = версия 0). Проверяется в HTTP (`get_current_user`, `AdminAuthASGIMiddleware`), на WS-upgrade (`ws_authenticate`) и в `refresh`. Смена пароля и повторное предъявление использованного refresh (признак кражи) выполняют атомарный `token_version + 1` → все ранее выданные пары недействительны; `PATCH /auth/password` сразу отдаёт новую пару в cookie. Принятый риск: потерянный ответ `/refresh` с повтором старого cookie разлогинивает все устройства (отказ в безопасную сторону).
 - Секрет: `SECRET_KEY` в `.env` (в коде — `settings.SECRET_KEY`; имя `JWT_SECRET_KEY` в ранних редакциях ТЗ устарело). При `DEBUG=False`: ≥ 32 байт UTF-8, ≥ 8 различных символов, без префикса `dev-` и маркеров плейсхолдера `change-me`/`change_me`/`changeme` (S8R-AUDIT-034; порог 32 байт — по рецепту карточки и паритету с `ENCRYPTION_KEY`, прежние «64 символа» в коде не проверялись никогда)
 
@@ -2334,6 +2692,9 @@ class CryptoService:
 - Backend генерирует CSRF-токен при логине, возвращает в cookie `csrf_token` (SameSite=Strict, HttpOnly=False чтобы JS мог читать).
 - Frontend отправляет этот токен в заголовке `X-CSRF-Token` для всех POST/PATCH/DELETE запросов.
 - Backend проверяет совпадение cookie и заголовка.
+- `S8R-AUDIT-038`: при cookie-сессии (`access_token`/`refresh_token`) мутирующий запрос требует источник (`Origin`, иначе `Referer`) из `CORS_ORIGINS` и double-submit — без fail-open при отсутствии cookie. login/setup проверяют источник всегда (login-CSRF); logout/refresh — при cookie-сессии; все четыре освобождены от double-submit; без источника при cookie-сессии → 403. Клиенты без cookie (Bearer/CLI/Telegram webhook) не проверяются. Safe-запрос с cookie-сессией без `csrf_token` переиздаёт её (`set_csrf_cookie`). Allowlist (`app/common/origin.py`) нормализуется (http/https, регистр, `/`, порт по умолчанию; `*` и мусор отбрасываются) и общий для CORSMiddleware, WS и CSRF. SPA: `<meta name="referrer" content="strict-origin-when-cross-origin">`.
+- logout проверяет источник и без cookie-сессии (чужой Origin → 403) (S8R-AUDIT-039).
+- `S8R-AUDIT-040`: Secure у access/refresh/csrf и при их стирании — `app/common/cookies.cookie_secure`: `COOKIE_SECURE` не задан → в production всегда Secure, при `DEBUG=true` — по схеме запроса; `auto` — `url.is_secure` (X-Forwarded-Proto только от доверенного прокси: nginx пропускает `https` лишь от адресов cloudflared); `true`/`false` — принудительно.
 - Для WebSocket: двухэтапная авторизация (см. раздел 4.12).
 
 ### 7.5 Rate Limiting
@@ -2343,24 +2704,29 @@ class CryptoService:
 ```
 Общий лимит API:        100 req/min per user
 Торговые операции:       10 req/min per user
-Auth (login):            5 req/min per IP
+Auth (login/setup):      5 req/min по (IP, username) + потолок 20 req/min на IP
+Auth (refresh):          5 req/min по (sub, IP)
 AI chat:                 10 req/min per user
 ```
 
-При превышении: HTTP 429 с заголовком `Retry-After`.
+`S8R-AUDIT-037`: IP — IPv4-адрес или IPv6-префикс /64. Реальный IP выставляет uvicorn (`--proxy-headers --forwarded-allow-ips`, доверие только nginx `172.28.0.10`) из `X-Forwarded-For`, который nginx перезаписывает `$remote_addr`; `CF-Connecting-IP` переводит в `$remote_addr` сам nginx (`real_ip_header`, `set_real_ip_from`). IP-потолок проверяется до чтения тела; username берётся из JSON-тела ≤ 4 КБ, иначе ключ только по IP. Состояние in-memory на процесс, не более 10 000 ключей (вытеснение холодных). Блокировка после 5 неудачных входов запрещает только вход (не refresh); по истечении блокировки счётчик обнуляется.
+
+При превышении: HTTP 429 с заголовком `Retry-After`. AI SSE: ≤ 3 параллельных стрима на пользователя, слот занимается первым действием эндпоинта (403), освобождается в `__call__` ответа (S8R-AUDIT-058). Заголовок открыт для JS через CORS `expose_headers` (S8R-AUDIT-039).
 
 ### 7.6 HTTP Security Headers
 
-```python
-# middleware
-response.headers["X-Content-Type-Options"] = "nosniff"
-response.headers["X-Frame-Options"] = "DENY"
-response.headers["X-XSS-Protection"] = "0"  # CSP вместо XSS Protection
-response.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' ws://localhost:*"
-response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-```
+Два слоя (`S8R-AUDIT-057`):
+
+- **Backend** — `SecurityHeadersMiddleware` (`app/middleware/security_headers.py`) на ответы роутов: `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy`, HSTS, CSP (ослабленный — только для Dash-префикса `/api/v1/admin/metrics`), `Cache-Control: no-store` по умолчанию (`no-cache` при `ETag`; свой `Cache-Control` эндпоинта сохраняется). Файлы отчётов 3-НДФЛ и экспорта бэктеста — `no-store` явно. WS-хендшейки, preflight и 500 из `ServerErrorMiddleware` middleware не покрывает.
+- **nginx** (`nginx.conf`) — тот же набор на **все** ответы (SPA, статика, preflight, 500 backend, 502/504 самого nginx), если backend не прислал свой (`map $upstream_http_* $sec_*`); `add_header … always` только на уровне `server` (свой `add_header` в location отменил бы набор). CSP SPA: `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'` (Mantine/Blockly), `img-src 'self' data: blob: https://invest-brands.cdn-tinkoff.ru`, `media-src 'self'`, `connect-src 'self' ws://$http_host wss://$http_host`, `object-src 'none'`, `frame-ancestors 'none'`. Кэш: `/assets/` (хешированные) — `public, max-age=2592000, immutable`, остальное (index.html, SPA-fallback) — `no-cache`. Blockly media — локально `/blockly-media/`. Проверка конфигурации — job `nginx-config` в CI (`nginx -t` + curl-проба заголовков).
+
+**Периметр API** (`S8R-AUDIT-059`): Swagger/ReDoc/`/openapi.json` — только при `DEBUG=true`. CORS — явные `allow_methods` (GET/POST/PUT/PATCH/DELETE) и `allow_headers` (Authorization, Content-Type, X-CSRF-Token), `expose_headers` — Retry-After, Content-Disposition; `CORS_ORIGINS` со `*` при `DEBUG=false` — отказ старта (валидатор `Settings` и `check_production_env.sh`, общая нормализация `app/common/origin_syntax.py`), http-origin не-localhost — предупреждение.
+
+**Клиентская сессия и refresh** (`S8R-AUDIT-060`): эпоха сессии — только в `frontend/src/api/session.ts` (`resetSessionState('login'|'logout')`, `onSessionReset`); исход refresh, начатого в прежней эпохе, — `stale` для всех потребителей (HTTP-интерцептор, aiStreamClient, WS), повтор refresh проверяет эпоху перед каждой попыткой; `logout()` ждёт refresh в полёте (≤ 10 с), затем сбрасывает сессию и закрывает WS, затем `POST /auth/logout` — иначе параллельный refresh с отозванной cookie срабатывал как «кража» (reuse-detection) и выбрасывал пользователя на всех устройствах. Поздний 4401 в течение 10 с после свежего refresh — переподключение без нового POST.
 
 ### 7.7 Маскирование секретов в логах
+
+`S8R-AUDIT-042`: bot-token Telegram (`<5–12 цифр>:<35 символов>`, путь `/bot<токен>` на любом хосте) маскируется в итоговом тексте: процессор значений structlog `scrub_event_values` + обёртка финального рендерера; для stdlib-логгеров (PTB, uvicorn, apscheduler) — фабрика `LogRecord`: `msg`/`args` поэлементно (структура `args` сохраняется — форматтер access-лога uvicorn не ломается), traceback — в `exc_text` только при найденном секрете. Логгеры `httpx`/`httpcore` — WARNING, если уровень не задан явно. Токен T-Invest в логах — только `token_fingerprint` (sha256[:16]); маска ключа AI — `…abcd`. Реестры мультиплексоров и лимитеров T-Invest ключуются отпечатком токена.
 
 Процессор structlog `mask_secrets` (`app/common/logging_config.py`, S8R-AUDIT-036): значение поля, имя которого целиком или последним `_`-сегментом равно `api_key` / `token` / `secret` / `password` / `encryption_key` (регистронезависимо; `access_token`, `api_secret`, `bot_token` — маскируются, `token_version`, `token_prefix` — нет), заменяется на `***` целиком (хвост токена — тоже утечка, S8R-AUDIT-042; прежнее «`****` + последние 4 символа» не было реализовано). Маскируются только поля верхнего уровня вызова логгера; вложенные словари и текст сообщения — нет.
 
@@ -2391,6 +2757,10 @@ class Settings(BaseSettings):
 При `DEBUG=False` `model_validator` (`config.py::_weak_secret_reason`) для `SECRET_KEY` и `ENCRYPTION_KEY` проверяет по порядку: префикс `dev-` → маркер плейсхолдера `change-me`/`change_me`/`changeme` без учёта регистра (все значения, когда-либо лежавшие в `.env.example`) → длина ≥ 32 байт UTF-8 → ≥ 8 различных символов. Нарушение → `RuntimeError` при импорте настроек: процесс не стартует (прежний `warnings.warn` легко пропускался). Пороги — из `CryptoService` (одна точка истины). `ENCRYPTION_KEY` дополнительно проверяется в `lifespan` первым действием (`get_crypto_service()` в strict-режиме), а не лениво при первой операции шифрования. Preflight контейнера `scripts/check_production_env.sh` применяет те же четыре правила (sync-тесты в `tests/unit/test_config.py`). При `DEBUG=True` dev-дефолты допустимы.
 
 ---
+
+### 7.9 Изоляция данных пользователей (S8R-AUDIT-016)
+
+Записи пользователя (стратегии, версии, бэктесты, фоновые jobs, ценовые оповещения, разметка графиков) выбираются по id с фильтром владельца в том же SQL-запросе (`app/common/ownership.py`: `owned_select`, `get_owned_or_404`). Чужой и несуществующий id → одинаковый 404, оракула существования нет. 403 — только admin-доступ, CSRF/Origin и лимиты.
 
 ## 8. РАЗВЁРТЫВАНИЕ И ЭКСПЛУАТАЦИЯ
 
@@ -2456,7 +2826,7 @@ set +a
 cd backend
 source .venv/bin/activate
 alembic upgrade head  # Применить новые миграции при обновлении
-uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload &
+uvicorn app.main:app --host 127.0.0.1 --port 8000 &   # --reload — только dev (DEBUG=true), scripts/start.sh решает сам (S8R-FIX-033)
 BACKEND_PID=$!
 
 # Запуск frontend (dev mode) или раздача статики
@@ -2486,57 +2856,87 @@ frontend: cd frontend && pnpm dev --port 3000
 
 ### 8.2 .env.example
 
+Полный перечень настроек (имя, дефолт, назначение; оператору / служебные / compose) — `docs/env_vars.md` в репозитории кода; тест `test_config.py` сверяет его с `Settings` в обе стороны (S8R-AUDIT-051). Ниже — выдержка с фактическими именами.
+
 ```
 # === SECURITY ===
-JWT_SECRET_KEY=CHANGE_ME_min_64_characters_long_random_string_here_please
-ENCRYPTION_KEY=CHANGE_ME_base64_encoded_32_bytes
+SECRET_KEY=<≥ 32 байт, S8R-AUDIT-034>
+ENCRYPTION_KEY=<≥ 32 байт>
 
 # === AI ===
 AI_PROVIDER=claude
 AI_API_KEY=
-AI_MODEL=claude-sonnet-4-6-20250514
-AI_DAILY_LIMIT=100
-AI_MONTHLY_LIMIT=3000
+AI_MODEL=claude-opus-5-5   # дефолт кода (S8R-FIX-033)
+AI_GLOBAL_DAILY_TOKEN_LIMIT=1000000
+AI_GLOBAL_MONTHLY_TOKEN_LIMIT=20000000
 
 # === TELEGRAM ===
 TELEGRAM_BOT_TOKEN=
 
 # === EMAIL (optional) ===
 SMTP_HOST=
-SMTP_PORT=587
+SMTP_PORT=465
 SMTP_USER=
 SMTP_PASS=
-EMAIL_FROM=
+SMTP_FROM=
 
 # === DATABASE ===
 DATABASE_URL=sqlite+aiosqlite:///./data/terminal.db
 
 # === GENERAL ===
 LOG_LEVEL=INFO
-BACKUP_DIR=./backups
-BACKUP_RETENTION=7
+BACKUP_DIR=backups
+BACKUP_KEEP_LAST=7
+BACKUP_CRON=03:00
 ```
 
 ### 8.3 Backup
 
 - `sqlite3 .backup` в отдельный файл с timestamp.
-- Ротация: удаление файлов старше `BACKUP_RETENTION` дней.
+- Ротация: хранятся последние `BACKUP_KEEP_LAST` снимков.
 - CLI-утилита `python -m app.cli restore --backup /path/to/backup.db`.
 
 ### 8.4 Логирование
 
-- structlog с JSON-формато для файлов, human-readable для stdout.
-- Файлы: `logs/app.log`, `logs/broker.log`, `logs/audit.log`.
-- Ротация: `RotatingFileHandler`, 50 MB на файл, 5 бэкапов.
-- Broker-лог: каждый gRPC/HTTP вызов с таймингом, request/response body (секреты маскированы).
+Приведено к факту в `S8R-FIX-003`: прежний текст описывал подсистему, которой
+нет (три файла и `RotatingFileHandler` внутри приложения), и из-за этого
+эксплуатация ждала раздельных логов брокера и аудита, а на стенде рос один
+файл без предела — 25 МБ к 08.07.
+
+- **Один поток, stdout.** `structlog` → `ConsoleRenderer` (human-readable).
+  Отдельного JSON-рендерера и файловых handler'ов в `app/` нет; уровень —
+  `LOG_LEVEL` (по умолчанию INFO). Маскирование секретов — процессорами
+  `mask_secrets` / `scrub_event_values` и `_ScrubbingRenderer` поверх итоговой
+  строки, включая traceback (`S8R-AUDIT-042`).
+- **Файл — снаружи процесса.** Дев-стенд: `scripts/start.sh` дублирует stdout
+  в `backend/logs/dev.log` через `tee -a`. В Docker файла нет вовсе — логи
+  забирает `docker logs` (драйвер демона и решает про ротацию).
+- **Ротация — в `start.sh`**, по размеру: `rotate_log` при старте и
+  `watch_log_rotation` раз в минуту, `DEV_LOG_MAX_BYTES` × `DEV_LOG_KEEP`
+  копий. Внутри приложения ротации нет и не планируется: писатель — `tee`,
+  и два механизма на один файл расходились бы.
+- **Права.** `umask 077` перед созданием и `chmod 600` на файл и копии
+  (`S8R-FIX-003`): в лог попадают идентификаторы счетов, заголовки запросов и
+  тексты ошибок брокера, а права по умолчанию отдавали их любому локальному
+  пользователю машины.
+- **Аудит — не в логах.** Действия пользователя пишутся в таблицу `audit_log`
+  (§3.11) с append-only триггерами; файла `audit.log` нет.
+- **Вызовы брокера** логируются в общий поток событиями (`tinvest_*`), с
+  таймингом и маскированием; отдельного `broker.log` нет.
 
 ### 8.5 Health Check
 
-Endpoint `/api/v1/health` проверяет:
-1. Database: `SELECT 1` с таймаутом 5с.
-2. Broker connections: статус gRPC-канала для каждого активного аккаунта.
-3. AI provider: последний успешный вызов < 10 мин назад → OK; иначе → probe запрос.
-4. Telegram bot: проверка `getMe()`.
+Endpoint `/api/v1/health` — **readiness** (S8R-AUDIT-054):
+1. Database: `SELECT 1 FROM users LIMIT 1` (S8R-AUDIT-059: голый `SELECT 1` в SQLite не видит пропавшую схему) → `database: connected | disconnected`.
+2. Планировщик: `scheduler_running`, `scheduler_jobs` (число зарегистрированных задач).
+3. `cb_state` — агрегат Circuit Breaker по активным сессиям (`ok | warn | triggered | unknown`).
+4. `tinvest_connected` — жива ли фоновая задача стрима хотя бы одного мультиплексора T-Invest (gotcha-34); на статус не влияет (paper и ISS-viewer работают без брокера).
+5. `version` — версия пакета.
+
+`status: ok` + HTTP 200 — только при `database=connected` и `scheduler_running=true`; иначе `status: degraded` + **HTTP 503** с тем же телом. Healthcheck контейнера (compose, Dockerfile, `start_period` 60 с) смотрит на код ответа. Liveness — `GET /api/v1/health/live` → 200 всегда.
+Предел (S8R-FIX-031): вся работа `/health` с БД (проба, проверка токена, `cb_state`, `ai_configured`) — отдельная задача со своей сессией; ответ ждёт её ≤ 3 с (`_READINESS_TIMEOUT_SEC`, меньше `timeout` healthcheck Docker 5 с — Docker получает тело 503), иначе `database: "timeout"` + 503, `cb_state: "unknown"`, `ai_configured` — по серверному ключу (иначе null). Отмена не прерывает запрос в потоке aiosqlite, поэтому зависшая проба доживает в фоне; пока она моложе 60 с, новая не запускается (ответ сразу `timeout`), старше — запускается одна новая. Незабранная ошибка пробы — одно WARNING. Авторизованный ответ дополнительно несёт `ai_configured`/`telegram_configured` («настроено/нет», без сетевых вызовов, на статус не влияют). Проверки AI-провайдера и Telegram `getMe()` по сети в health не делаются.
+
+**Кому что отдаётся** (`S8R-AUDIT-059`): без токена — только `{status}` с тем же HTTP-кодом (healthcheck контейнера не меняется); токен есть и БД доступна — проверка как у `get_current_user` (`user_from_access_token`, первый кандидат Bearer → cookie): отвергнут → 401 (фронт обновляет пару), принят → полное тело; БД недоступна — в БД не ходим, полное тело по одной подписи токена (срок не проверяется; компромисс: отозванный, но подписанный токен при лежащей БД видит состояние систем), `cb_state=unknown`. Одна сессия БД на запрос.
 
 ### 8.6 Graceful Shutdown — ✅ реализовано S6
 
@@ -2553,9 +2953,17 @@ Endpoint `/api/v1/health` проверяет:
 
 **Recovery при следующем старте** (реализован в S5R + S6):
 - `restore_all()` в `runtime.py` находит сессии со статусом `active`/`suspended`.
+- `S8R-FIX-019`: весь `restore_all` обёрнут в `asyncio.wait_for` с общим бюджетом `RESTORE_TOTAL_BUDGET_SEC = 45` (`app/main.py`). У каждого унарного вызова брокера свой дедлайн ~10 с (S8R-AUDIT-030), и при молчащем брокере сумма частных дедлайнов превышала `start_period: 60s` healthcheck — Docker перезапускал backend, restore начинался заново. Запас 15 с — на `alembic upgrade head` и остальной старт, которые входят в тот же `start_period`. Превышение логируется (`session_runtime_restore_budget_exceeded`), не глотается; не уложились — HTTP поднимается без части сессий, их статус в БД остаётся `suspended`/`paused`, подберёт периодический проход или следующий старт.
+- `S8R-FIX-018`: `_run_shutdown_recovery` передаёт `_recover_orphan_exit_orders(pause_from=RESTORE_PAUSE_FROM)` — на остановке сессии уже `suspended`, и пауза «только из `active`» частичный выход не доставала. Фоновый цикл остаётся на умолчании `('active',)`. Постоянный отказ старта без владельца — `_pause_unrestorable(..., terminal=True)` → `stopped`: `paused` входит в `BLOCKING_SESSION_STATUSES` и осиротевшая сессия держала бы пару «счёт+тикер» и запрет на удаление счёта навсегда.
+- `S8R-FIX-020`: периодическая сверка берёт тот же приём, что restore — отбор сессий вынесен в `_sessions_to_reconcile()` (только БД, до сетевой части), портфели счетов греются параллельно через `_prefetch_restore_portfolios(..., log_prefix=...)` под одним бюджетом, дальше сверка идёт по тёплому кэшу. Последовательный проход тратил до ~55 с на счёт (`POSITION_CHECK_RETRIES`) и всё это время держал watchdog стримов (BUG-27) и доучёт осиротевших ордеров — они в том же цикле.
 - Real-сессии: сверка позиций через `get_real_positions()`, расхождения → pause + critical notification.
 - Paper-сессии: восстановление виртуального баланса из БД, notification `session_recovered`.
 - Возобновление подписок и мониторинга через `SessionRuntime.start()`.
+- `S8R-AUDIT-008`: `active` в БД ⇔ живой listener. `suspended → active` — после успешного `start()` (`_set_status_if`); не записалось — listener снимается. Внутри `restore_all` пауза по расхождению и частичному выходу — для `active` и `suspended` (`RESTORE_PAUSE_FROM`), фоновые проверки — только `active`; после recovery статусы перечитываются. Временный сбой `start()` → `suspended`, пара «счёт+тикер» сохраняется, `session_recovered` (warning), если статус записан; `NotFoundError` → `paused`, пара освобождается, без уведомления. `start()` не выходит молча: без владельца — `NotFoundError`, без таймфрейма — `ValidationError`. Не больше одного уведомления о паузе на сессию за restore.
+- `S8R-AUDIT-009`: `_prefetch_restore_portfolios` — портфели счетов restore-сессий параллельно (`gather`), дедлайн `POSITION_RECONCILE_TIMEOUT_SEC` на проход, повтор при `BrokerTimeoutError` (`RESTORE_PREFETCH_RETRY_DELAY_SEC`), результат — в `portfolio_cache`; чтение БД — до бюджета. Сверка restore — `cache_only`: нет кэша и есть `_confirmable_trade` (без выхода в полёте, с FIGI) → `PositionsUnconfirmedError` → `paused` + `position_mismatch_note` (если пусто) одной транзакцией, `recovery_mismatch` critical; запись паузы — 1 повтор, затем critical-лог. Путь без дедлайна (фон): `BrokerTimeoutError` → кэш `None` (перевод в одном месте `_load_portfolio`).
+- `S8R-AUDIT-010`: пара «счёт+тикер» раздаётся по тирам: `active` → `suspended` (с таймфреймом, исполнимые) → `paused`, внутри — по `id`; цикл — по упорядоченному списку. Судьба проигравшего дубликата — после цикла (`_settle_duplicate_loser`): победитель поднят → `paused` через `_pause_unrestorable` (`cause=duplicate_instrument`, одно уведомление `session_recovered` warning, `session.paused`); не поднят → `suspended` (повтор на следующем старте). Прежний тезис версии 2.7 (3) «статус не переписывается» отменён.
+- `S8R-AUDIT-011`: сигнатура сбоя песочницы (gotcha-56) — в портфеле sandbox только деньги при обязательных FIGI (`_required_figis`: подтверждаемые сделки сессий `active`/`suspended`) → перезапрос `POSITION_CHECK_RETRIES` (3–5) с задержкой `POSITION_CHECK_RETRY_DELAY_SEC` (5–10 с; вне диапазона — граница + warning); попытка не начинается, если не влезает в бюджет. Фон: счётчик подряд идущих неполных проходов по (счёт, FIGI) в памяти; < 3 — «сверка не выполнена» без паузы, 3 — расхождение подтверждено (пауза + critical), сброс счётчика; полный ответ сбрасывает. Ответ с другими бумагами без нашей — настоящий. Real-счёт — без повторов. Restore — причина в `portfolio_cache` (`_PortfolioUnconfirmed`: не ответил / без бумаг), честный текст пометки, одно critical.
+- `S8R-FIX-124` (найдено на живом стенде): с `S8R-FIX-020` периодическая сверка ходит через `_prefetch_restore_portfolios` (с дедлайном), а счётчик неполных проходов жил только в `_load_portfolio` без дедлайна — неполный ответ песочницы не подтверждался никогда, исчезнувшая у брокера позиция сессию не паузила. Теперь `_reconcile_active_sessions` зовёт предзагрузку с `count_incomplete_passes=True`: `_PortfolioIncomplete` идёт в `_count_incomplete_pass` (подтверждён на `POSITION_INCOMPLETE_CONFIRM_PASSES = 3` — портфель в кэш как «у брокера 0»), ответ по делу сбрасывает счётчики счёта; старт (без флага) — как прежде. Ручная сверка (`reconcile_session_with_broker`, `manual=True`) счётчик не двигает и не подтверждает: неполный ответ — `(True, None)`, «сверка не выполнена» (лог `manual_reconcile_incomplete_portfolio`); полный ответ сбрасывает счётчики только бумаг, присутствующих в нём (`_present_figis`); бумаги самой (остановленной) сессии добавлены в обязательные (`required`), иначе «только деньги» шло бы за настоящий ответ. Пауза сверкой (`_flag_position_mismatch`, `paused_now`) после commit публикует `session.paused` `{session_id, status: "paused", reason}` — раньше события не было вовсе (§11.6, S8R-FIX-097).
 
 ### 8.7 Целевые метрики производительности
 
@@ -2573,12 +2981,15 @@ Endpoint `/api/v1/health` проверяет:
 
 ### 8.8 Ротация секретов
 
-**CLI-утилиты:**
+**CLI-утилиты** (`S8R-AUDIT-041`):
 
-- `python -m app.cli rotate-encryption-key --old-key <base64> --new-key <base64>` — расшифровывает все API-ключи брокеров старым ключом, шифрует новым, обновляет БД в транзакции. После выполнения необходимо обновить `ENCRYPTION_KEY` в `.env`.
-- `python -m app.cli rotate-jwt-secret` — добавляет все активные токены в `revoked_tokens`. Все пользователи должны перелогиниться. Перед запуском обновить `JWT_SECRET_KEY` в `.env`.
+- `python -m app.cli rotate-encryption-key [--old-key=K --new-key=K]` (или `OLD_ENCRYPTION_KEY`/`NEW_ENCRYPTION_KEY`; значение, начинающееся с `-`, — только через `=`). Требует остановленного backend: проверяются `127.0.0.1:8000` и `backend:8000`/`BACKEND_COMPOSE_ADDR`, иначе код 3. Новый ключ — правила production-секрета, ≠ `SECRET_KEY`, без `$ # кавычек` и перевода строки. Порядок: read-only проверка старого ключа → снимок БД (`BackupService`) → перешифровка `broker_accounts`, `ai_provider_configs` одной транзакцией; строки без IV пропускаются; повтор идемпотентен по key_id; значения аргументов в выводе не появляются. CLI стартует и при слабых текущих ключах с `DEBUG=false`. После выполнения обновить `ENCRYPTION_KEY` в `.env`.
+- На старте сервера key_id ключа сверяется с данными: расхождение → лог `encryption_key_mismatch` (critical), старт не блокируется.
+- `python -m app.cli rotate-jwt-secret` — `users.token_version + 1` всем (S8R-AUDIT-035): все сессии завершаются. `SECRET_KEY` в `.env` меняет оператор, затем рестарт.
 
 ### 8.9 Стратегия миграции SQLite → PostgreSQL (фаза 2)
+
+**Фаза 1 (SQLite, S8R-AUDIT-097):** движок на `NullPool` — соединение на сессию, PRAGMA WAL / `busy_timeout=30000` / `foreign_keys=ON` на каждом соединении (листенер `connect`); in-memory БД — прежний пул. Причина — вложенные сессии (`create_notification`, `_persist_instrument_cache`): малый пул голодал бы. Цена — ≈ +0,65 мс на открытие сессии. Запись вне бэктеста (налоговый отчёт, корпоративные действия, избранное) при «database is locked» повторяется целиком (`persist_with_retry`, 3 попытки: откат → пауза вне локов → единица работы заново; сеть — вне единицы работы; проведённое корпоративное действие при повторе пропускается). При переходе на PostgreSQL — ограниченный пул.
 
 SQLite-специфичные решения, требующие замены при миграции:
 - Триггеры `prevent_audit_delete` / `prevent_audit_update` → PostgreSQL triggers (синтаксис `CREATE FUNCTION` + `CREATE TRIGGER`).
@@ -2608,7 +3019,7 @@ End users → Cloudflare edge (TLS termination, DDoS protection)
               └── moex-backend (python:3.11-slim)  :8000
                     ├── FastAPI + Uvicorn
                     ├── SQLAlchemy + alembic (миграции на старте)
-                    ├── APScheduler (backup_job, MOEX-calendar, T+1 unblock)
+                    ├── APScheduler (backup_job, MOEX-calendar, корп. действия, дневная статистика)
                     ├── tinkoff-investments gRPC (patched SDK)
                     └── volumes: sqlite-data, sqlite-backups
 ```
@@ -2654,7 +3065,7 @@ End users → Cloudflare edge (TLS termination, DDoS protection)
 | Модуль | Ключевые тест-кейсы |
 |---|---|
 | **auth** | Хеширование/верификация пароля; JWT генерация/валидация/отзыв; блокировка после 5 неудачных попыток; разблокировка через 15 мин |
-| **strategy/code_generator** | Генерация кода для каждого типа блока; edge-case: пустая стратегия; невалидные параметры |
+| **strategy/ir_codegen** | Генерация кода для каждого типа блока из IR; паритет с интерпретатором; edge-case: пустая стратегия; невалидные параметры |
 | **strategy/block_parser** | Парсинг валидного шаблона; отсутствующие секции; некорректный формат индикаторов |
 | **backtest/engine** | Расчёт P&L (long); учёт комиссии и проскальзывания; расчёт метрик (Sharpe, drawdown, profit factor); корректность equity curve; учёт лотности; учёт НКД для облигаций |
 | **trading/order_manager** | Создание market/limit/stop ордеров; валидация шага цены; округление до лотности |
@@ -2663,6 +3074,16 @@ End users → Cloudflare edge (TLS termination, DDoS protection)
 | **market_data/validator** | High < Low detection; gap detection с учётом календаря; аномальные значения; дубликаты |
 | **sandbox/ast_analyzer** | Все запрещённые конструкции; валидный код проходит; edge-case escape-техники |
 | **common/crypto** | Encrypt/decrypt round-trip; различные IV; невалидный ключ |
+
+**Окружение тестового движка (S8R-FIX-023/024, 2026-10-13).** `tests/conftest.py`:
+
+- `PRAGMA foreign_keys=ON` ставится на **каждое** соединение тестового движка — прод (`app/common/database.py`) проверку включает, а тесты шли без неё и не видели того класса ошибок, который на бою даёт `IntegrityError` в рантайме (фиктивный `user_id`, сделка на удалённую сессию, версия без стратегии). Снимается **только** на teardown: `Base.metadata.drop_all` роняет таблицы в порядке, который не удовлетворяет циклу `strategies ↔ strategy_versions`, и падал бы на `DROP TABLE strategy_versions`; проверять FK при сносе схемы незачем.
+- `GRPC_ENABLE_FORK_SUPPORT=0` выставляется **до** импортов, тянущих grpc: обработчики `pthread_atfork` ставятся при инициализации библиотеки, и та же переменная в окружении подпроцесса бесполезна. Это снимает SIGABRT «`fork_posix.cc`: Other threads are currently calling into gRPC» в тестах, запускающих подпроцессы (`test_config.py::test_preflight_*`), из-за которого в разных прогонах падали разные параметризации.
+- `faulthandler_timeout=400` живёт в `addopts` (`pyproject.toml`), а не в памяти оператора: зависший прогон даёт стеки, а не вечное ожидание.
+- Реестр `keyed_lock` — процессный (S8R-FIX-123): autouse-фикстура `_reset_keyed_locks` зовёт `app.common.locks._reset_for_tests()` до и после каждого теста. `asyncio.Lock`, переживший свой тест (ссылка из traceback, gotcha-71), привязан к его event loop, и следующий тест с тем же ключом падал «… is bound to a different event loop» (флак `delete_account_race`). В приложении цикл один, реестр не сбрасывается.
+- `audit_log.user_id` объявлен `ON DELETE SET NULL`, а таблица защищена append-only триггерами — конфигурации противоречат друг другу, и удаление пользователя с аудитом обрывается триггером. Поведение закреплено тестом (`tests/unit/test_audit_log_user_delete.py`, триггеры создаются из того же DDL, что в `alembic/env.py`); менять FK — перестройка append-only таблицы с историей, решение заказчика.
+
+**CLI в тестах (S8R-FIX-002).** Подпроцесс `python -m app.cli.*` обязан получать окружение, в котором валидатор настроек проходит (`DEBUG=true` + `DATABASE_URL` временной БД), и проверяться **по эффекту** (запись в БД, код возврата), а не по «код возврата не ноль»: иначе тест зелёный на процессе, упавшем до работы. Окружение подпроцесса не наследует переменные, совпадающие с полями `Settings` (S8R-FIX-096, `test_start_scripts._env_without_settings`): у pydantic-settings окружение сильнее файла, и `DEBUG=false` job'а CI перекрывал `DEBUG=true` временного `.env` — тест был зелёным только локально. Тест данных restore-CLI (`test_backup_cli`) запускается с `--server-stopped` и не зависит от занятости :8000; охрану порта проверяет отдельный тест на своём эфемерном порту.
 
 ### 9.2 Интеграционные тесты
 
@@ -2788,7 +3209,7 @@ QA-инженер встроен в процесс разработки с пе�
 | Strategy CRUD API + модели | BACK1 |
 | Code Generator: блоки → Python/Backtrader | BACK2 |
 | Template Parser (режим B) | BACK2 |
-| Code Sandbox: AST-анализ + RestrictedPython | SEC |
+| Code Sandbox: код только из IR блоков + AST-анализ + дочерний процесс с лимитами (RestrictedPython удалён, S8R-AUDIT-050) | SEC |
 | **CSRF protection (middleware, токены)** | SEC |
 | **Rate limiting внутреннего API** | SEC |
 | Blockly: кастомные блоки (индикаторы, условия, сигналы) | FRONT1 |
@@ -3017,20 +3438,25 @@ CREATE INDEX idx_bj_user_active ON backtest_jobs (user_id, status);
 
 `app/backtest/jobs.py`. Хранит `dict[job_id, asyncio.Task]` в памяти + persist в `backtest_jobs`. API: `submit(user_id, runner, job_type, params)` / `get(job_id)` / `list_user(user_id, status?)` / `cancel(job_id)` / `shutdown()`. Per-user cap=3, защищён `asyncio.Lock`. Создаётся в `lifespan` (`app/main.py:91`), сохраняется в `app.state.backtest_job_manager`. Cleanup на shutdown через `asyncio.shield` для финального `_update_status`.
 
+**Обычный бэктест — job `single` (S8R-FIX-127, решение заказчика 2026-10-14).** `POST /backtest` и `POST /backtest/{id}/rerun` ставят расчёт через менеджер (`_submit_single_backtest_job`, как `POST /backtest/run-async`), а не через `BackgroundTasks`: ответ 202 `{backtest_id, status:"running", job_id}` (поле `job_id` добавлено, остальное без изменений). Отмена — `POST /backtest/jobs/{job_id}/cancel` (маршрута `POST /backtest/{id}/cancel`, на который слал фронт, не было — «Не удалось отменить бэктест»): `CancelledError` прерывает и паузу `RateLimitWait`; бэктест → `cancelled`, событие `backtest.cancelled`. Фронт (`backtestStore.jobIds`, `BacktestProgress`) отменяет через `backtestApi.cancelJob` и показывает фактический итог (WS-событие / перечитывание бэктеста), а не локальный «Отменён»; `backtestApi.cancel` удалён. Cap=3 общий для `single`/`background`/`grid`; отказ — `BacktestJobLimitError` → 422 `{detail:"Превышен лимит параллельных бэктестов (макс. 3)", error_code:"backtest_job_limit"}`, предпроверка лимита — до создания строки `Backtest`. Ревью ветки (DEV-127R): после возврата раннера job попадает в `_finishing` — `cancel()` → False, эндпоинт `not_active`; запись итога (`done/error/cancelled`) и постановка `submit`/`_enqueue`, уборка строки бэктеста — через `run_through_cancels` (`anyio.CancelScope(shield=True)`); `_enforce_cap` — самовосстановление: строки `queued/running` без задачи процесса → job `error` «Задача бэктеста потеряна — запустите заново», бэктест → `failed`, в лимит не идут; `_mark_running` — best-effort, `settle_unfinished_backtest` переводит бэктест `single`, чей job кончился без раннера; `check_cap` до `db.add` в `/backtest`, `/rerun`, `/run-async` (страховка — в `submit`); `shutdown()` → `interrupted_reason`: идущий `single` → `failed` «Прервано: перезапуск сервера или сбой записи статуса под нагрузкой БД» (job — `cancelled`, как прежде); `DELETE /backtest/{id}` сначала `cancel_for_backtest`. Фронт: `cancelBacktest` — «Отмена…», перечитывание бэктеста до 5 с (шаг 0,5 с): `cancelled` → «Отменён», `completed` → результат и тост «Бэктест успел завершиться до отмены», `not_active` при `running` → тост «Расчёт этого бэктеста на сервере не найден…». S8R-FIX-128 (2026-10-15): «Запустить в фоне» своего счёта лимита по карточкам бейджа не ведёт (обычные бэктесты в бейдж не попадают, текст «…фоновых» расходился с сервером) — отказ только от сервера, тост `notifyJobLimit` с его текстом; `StrategyBacktestsTable` — `STATUS_BADGES` (значок + полное название в подсказке и `aria-label`): `cancelled` — «×» «Отменён», `queued`/`pending` — «...», неизвестный — «?» с кодом статуса. **Провал задачи доходит до job'а значением, а не через БД (2026-10-13).** `_run_backtest_task` возвращает `str | None` — текст ошибки; runner (`_make_single_backtest_runner`) по нему и принимает решение `job='error'`. Раньше решение принималось перечитыванием `backtests.status`, а пометка `failed` идёт через `persist_with_retry` с веткой «последний рубеж» на свежей сессии и веткой «подберёт реконсиляция» — в зазоре между пометкой и чтением провал превращался в `done` с ложным уведомлением «Бэктест завершён» (BUG-31 закрывал это по следствию). Перечитывание осталось источником метрик для `result_json` и запасной проверкой; фоновый путь `create_backtest` (`BackgroundTasks`) возвращаемое значение игнорирует. **`shutdown()` под потолком (S8R-FIX-009):** общий бюджет `SHUTDOWN_WAIT_SEC = 10.0` (меньше дедлайна торгового рантайма 45 с и `stop_grace_period` 60 с Docker). Раньше ожидание было без предела: отмена корутины не прерывает расчёт в потоке, а обработчик отмены дописывает результат в БД под write-локом SQLite — до `busy_timeout` (30 с), и контейнер успевал получить SIGKILL. Оставшиеся задачи — одним WARNING; исключения завершившихся забираются (иначе «Task exception was never retrieved» уже после остановки). **Одно уведомление на job (S8R-FIX-114).** `RUNNER_NOTIFIES_JOB_TYPES = {"single"}`: одиночный бэктест (`run-async`) уведомляет сам `_run_backtest_task` — тот же код, что у синхронного `POST /backtest` («SBER · 5m · P&L −4.26% · 18 сделок · Sharpe −0.25», `related_entity_type="backtest"`); менеджер для этих типов `_notify_completed` не зовёт. Раньше менеджер слал второе `backtest_completed` из прочерков («— (SBER, 5m): P&L —, Sharpe —») — в `params` job нет `strategy_name`, в `result` нет `metrics`. Grid Search уведомляет менеджер (`_completed_body`): заголовок «Grid Search завершён», тело «Grid Search · <тикер> · <ТФ> · комбинаций: N/M[ · с ошибкой: K][ · лучший Sharpe X, P&L ±Y%]» по первой строке `matrix` с числовым Sharpe (`matrix` отсортирована по убыванию Sharpe), `related_entity_type="backtest_job"`.
+
 ### 11.5 GridSearchEngine (multiprocessing.Pool)
 
 `app/backtest/grid.py`. ТЗ §5.3.4 соблюдён: `multiprocessing.Pool` (spawn-context, workers = `os.cpu_count() - 1`). Worker `_run_single_backtest(payload: dict) -> dict` — module-level pickle-friendly функция; импортирует `backtrader`/`pandas` сам, восстанавливает DataFrame из `list[dict]` свечей. OHLCV грузится один раз в main-процессе (`router.py::_prepare_grid_workload`) и передаётся как pickle-friendly base_payload. Pool управляется внутри `loop.run_in_executor(None, _drive_pool_sync)` — event loop не блокируется.
 
 Hard cap: ≤5 параметров, ≤1000 комбинаций (raise 422 ДО Pool.spawn). Overfitting flag: если `(sharpe[0] - sharpe[4]) / sharpe[0] > 0.5` → `overfitting_warning: true`. См. также gotcha-21 (UPDATE-секция).
 
+**Ожидание worker-слотов (S8R-FIX-009).** Слоты `GridWorkerSlots` общие на процесс (S8R-AUDIT-078). Пока их держит сосед, job остаётся в статусе `queued` и получает событие `waiting` с текстом причины (`SLOT_POLL_SEC = 1.0` между проверками); раньше он переходил в `running` и стоял на 0 % — на экране неотличимо от зависания. Отмена в этом состоянии работает штатно.
+
 ### 11.6 WS endpoints
 
 #### `/ws/trading-sessions/{user_id}` (контракт C1)
 
-`app/trading/ws_sessions.py`. Auth первым сообщением (`{action:"auth", token:"<jwt>"}`, JWT не в URL — gotcha-16). После auth_ok backend:
-1. Шлёт `{event:"snapshot", sessions: [...]}`.
+`app/trading/ws_sessions.py`. Авторизация — cookie при upgrade (S8R-FIX-017: прежнее «auth первым сообщением» устарело; JWT не в URL — gotcha-16). После `auth_ok` backend:
+1. Шлёт `{event:"snapshot", sessions: [...]}`. Снапшот — одна сессия БД и фиксированное число запросов (два агрегата по `IN`, связи сессии не грузятся; S8R-FIX-044); при сбое сводки — сессии с `positions`/`last_trade_at` = null.
 2. Подписывается на `trades:{session_id}` для каждой активной сессии + `system:{user_id}` (для новых сессий).
 3. Форвардит deltas: `position_update`, `trade_filled`, `pnl_update`, `session_state`.
+   - **`status` в `session_state` (S8R-FIX-097).** `session.paused` / `session.resumed` / `session.stopped` форвардятся как `session_state`, фронт вливает payload в карточку — поэтому каждый издатель кладёт `status`: `TradingSessionManager.pause_session` / `resume_session` / `stop_session` (`session.status`), `SessionRuntime._pause_unrestorable` (`target_status`: `paused` или `stopped`), пауза сверкой `_flag_position_mismatch` (S8R-FIX-124), CB — как и раньше. Без поля пауза «из другого места» не меняла карточку на `/trading` до перезагрузки. Публикация остановки рантайма при shutdown не тронута (статус там `suspended`).
 
 Cleanup: try/finally — отписка от всех каналов при WebSocketDisconnect.
 
@@ -3093,9 +3519,11 @@ ALTER TABLE users ADD COLUMN wizard_completed_at DATETIME NULL;
 
 Endpoint `POST /api/v1/users/me/wizard/complete` (модуль `app/users/`, после fix-волны 2026-04-26 — переехал из `/auth/me/...`). `GET /api/v1/users/me` отдаёт `UserResponse` с полем `wizard_completed_at: datetime | null`.
 
+`S8R-AUDIT-043`: `POST /api/v1/users/me/disclaimer/accept` → `{ ok, disclaimer_accepted_at }` — условный UPDATE (если пусто) + аудит `user.disclaimer_accepted` в одной транзакции; `disclaimer_accepted_at` отдаётся в `/auth/me` и `/users/me`. Гейт: `TradingService.start_session` и `resume_session` без принятия → 403 `{ detail, error_code: "disclaimer_required" }` (владелец и отметка — одним JOIN, владелец не найден → 404); автоматический restore — без гейта. Фронт: шаг «Риски» мастера вызывает accept; прошедшим мастер раньше — блокирующая `DisclaimerModal` (текст и подписи — ФТ §18.1, кнопка «Выйти»); 403 `disclaimer_required` → перепроверка профиля → модалка.
+
 ### 11.12 Account balance/history (контракт C9)
 
-Модуль `app/account/` (`schemas.py`, `service.py`, `router.py`). Endpoint `GET /api/v1/account/balance/history?days=N` → `[{ts, total_value, currency:'RUB'}]`. Источник — агрегация on-the-fly: `TradingSession.initial_capital` + cumulative `DailyStat.realized_pnl` + текущий `PaperPortfolio.balance` для today. Без snapshot-таблицы (overhead не оправдан для 30-точечного sparkline).
+Модуль `app/account/` (`schemas.py`, `service.py`, `router.py`). Endpoint `GET /api/v1/account/balance/history?days=N` → `[{ts, total_value, trading_pnl, active_capital, currency:'RUB'}]` (`active_capital` — S8R-FIX-073, капитал активных на дату сессий; отдаётся явно, чтобы фронт не восстанавливал состояние «активных сессий нет» вычитанием `total_value − trading_pnl`). Источник — агрегация on-the-fly: `TradingSession.initial_capital` + cumulative `DailyStat.realized_pnl` + текущий `PaperPortfolio.balance` для today. Без snapshot-таблицы (overhead не оправдан для 30-точечного sparkline).
 
 ### 11.13 NotificationService DI singleton (контракт C7)
 
@@ -3125,7 +3553,7 @@ Production publish-сайты:
 `app/notification/telegram_webhook.py`. Регистрация через `_app.add_handler(CallbackQueryHandler(self._handle_callback))` в `__init__`. Поддержка callback'ов:
 - `confirm_closeall` / `cancel_closeall` (S6) — оставлены.
 - `open_session:{session_id}` — ownership-check через JOIN `Strategy.user_id`. Deep link `{settings.FRONTEND_URL}/trading?session={id}`.
-- `open_chart:{TICKER}` — sanitize ticker `[A-Z0-9_]{1,20}`. Deep link `{settings.FRONTEND_URL}/chart/{TICKER}`.
+- `open_chart:{TICKER}` — канонический тикер, регистр сохраняется; формат — `TICKER_RE` (латиница, цифры, «.», «-», «_», 1–20, без «..», S8R-REV-FBE). Deep link `{settings.FRONTEND_URL}/chart/{TICKER}`.
 
 `TelegramNotifier.send` принимает `ticker` явно — `_build_keyboard(ticker)` строит `open_chart:{TICKER}`, а не `open_chart:{trade_id}`.
 

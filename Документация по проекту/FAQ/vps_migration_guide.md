@@ -45,7 +45,7 @@ pip install -e ".[dev]"
 alembic upgrade head
 
 # Скопировать .env с Mac Mini
-scp user@mac-mini:~/Documents/Claude_Code/Test/Develop/backend/.env /opt/moex-terminal/backend/.env
+scp user@mac-mini:~/Documents/Claude_Code/Moex-Terminal/Develop/backend/.env /opt/moex-terminal/backend/.env
 
 # Frontend
 cd ../frontend
