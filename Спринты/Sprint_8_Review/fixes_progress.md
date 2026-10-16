@@ -324,6 +324,16 @@ git push origin docs/s5r2-skeleton-track4   # ветка опережает remo
 После мержа PR LOW: вкладка GitHub → Insights → Dependency graph → Dependabot — проверить, что `backend/pyproject.toml` с git-зависимостью SDK разбирается без ошибки.
 
 ## Следующий шаг
+**2026-10-16 (17:18) — PR #73 смержен по команде заказчика → develop `d48c6f3`, стенд подтянут.**
+
+- `gh pr merge 73 --merge` по локальному гейту (CI стоит — квота Actions; develop с момента гейта не менялся, `4028d83`).
+- `git pull --ff-only` в `Develop/`: `4028d83 → d48c6f3`, изменился только `CLAUDE.md` — backend не перезапускался
+  (`--reload` смотрит `.py`), таймер `detect_corporate_actions` не сброшен (детект ≈23:01 по Mac); health 200, 5173 200.
+  Правка `.env.example` заказчика на месте.
+- Заказчик удалил `Develop/backend/.venv.old-Test` и локальную ветку `s8r/rename-paths` (`-d`, коммит был в
+  `origin/s8r/rename-paths`). Удалённая ветка `s8r/rename-paths` осталась — удалить на GitHub (кнопка в PR #73 или
+  `git push origin --delete s8r/rename-paths`).
+
 **2026-10-16 (17:15) — каталог переименован `Test` → `Moex-Terminal`, окружение восстановлено, стенд поднят.**
 
 - Проверка: docs `88ad7be`, код `develop 4028d83` = `origin/develop`, по одному worktree, хуков нет; `.env` на старый путь
