@@ -3,15 +3,16 @@
 # ТЕХНИЧЕСКОЕ ЗАДАНИЕ (ТЗ)
 ## Торговый терминал для рынка ценных бумаг РФ (MOEX)
 
-**Версия:** 3.6
-**Дата:** 2026-10-15
-**Основание:** Функциональные требования v4.6 от 2026-10-15
+**Версия:** 3.7
+**Дата:** 2026-10-17
+**Основание:** Функциональные требования v4.7 от 2026-10-17
 **Статус:** ✅ M4 Production-ready. Gate Sprint_8_Review пройден (PASS WITH NOTES), остаток приёмки (8 замечаний) и весь backlog доведения закрыты. Актуализировано по итогам код-ревью P0–P1, финальной приёмки и closeout-цикла S8R.
 
 ### История версий
 
 | Версия | Дата | Спринт | Ключевые изменения |
 |--------|------|--------|-------------------|
+| 3.7 | 2026-10-17 | S8R — `S8R-FIX-137`, `S8R-FIX-138` (решения заказчика 2026-10-17, вариант «а»); косметика `S8R-FIX-135`/`136` | Основание — ФТ v4.7. Код — в `develop` `70848d8` (PR #75, #76, смержены 2026-10-17 по локальным гейтам); рабочий стенд — по команде заказчика. **`/health.tinvest_connected`** (S8R-FIX-137): задача стрима жива **и** у мультиплексора нет опубликованной потери связи без восстановления (`TInvestStreamMultiplexer.connection_lost_reported`) — порог 30 с и фильтр рынка те же, что у уведомления. **`connection.lost.reason`** (S8R-FIX-138): `stream_loss_reason(exc, terminal=…)` в `app/broker/tinvest/errors.py` — текст и код в квадратных скобках (`_code_tag`), repr исключения — только в логах `multiplexer_disconnected` / `multiplexer_terminal_error`. Косметика (PR #75, `develop` `7d9bbbe`): `_format_timedelta` — «6ч 28м»; `roundForDisplay` во фронте — знак и цвет P&L от показанного числа. |
 | 3.6 | 2026-10-15 | S8R — `S8R-FIX-133` (решение заказчика 2026-10-15) | Основание — ФТ v4.6. Код — в `develop` `4028d83` (PR #72, смержен 2026-10-15 по локальным гейтам); рабочий стенд — после детекта корп. действий. Scheduler: уведомление о дивиденде/купоне пользователю из `CorporateActionService.accrual_short_user_ids(action)` (владельцы позиций по условиям начисления с `not is_long_direction`) — с суффиксом `; по короткой позиции сумма спишется`; `accrual_recipient_user_ids` и он — из одного запроса `_accrual_owner_directions`. |
 | 3.5 | 2026-10-15 | S8R — `S8R-FIX-131`, `S8R-FIX-132` (решения заказчика 2026-10-15) | Основание — ФТ v4.5. Код — в `develop` `585e297` (PR #70, #71, смержены 2026-10-15 по локальным гейтам); рабочий стенд — после детекта корп. действий. Модуль корп. действий: `process_dividend` и `process_coupon` — сумма со знаком `is_long_direction(trade.direction)` (шорт — минус, та же семантика, что у P&L/SL/TP, S8R-AUDIT-032); в логах `dividend_processed.total` / `coupon_processed.paper_total` — суммы со знаком. Scheduler: адресаты уведомления о сплите — плюс `split_position_user_ids(action)` (условия `process_split`: `filled`/`open`, открыта до 00:00 МСК дня сплита). Миграции нет. |
 | 3.4 | 2026-10-15 | S8R — `S8R-FIX-129` (решение заказчика 2026-10-15) | Основание — ФТ v4.4. Код — в `develop` `833ac34` (PR #69, смержен 2026-10-15 по локальным гейтам), рабочий стенд обновлён. §8 (scheduler) и модуль корп. действий: тикеры джобы `detect_corporate_actions` — `CorporateActionService.detection_tickers()`: сессии `active`/`paused` и сессии любого статуса со сделками в начисляемых статусах (`filled`/`open`/`closed`); адресаты уведомления о дивиденде/купоне — владельцы живых сессий тикера плюс `accrual_recipient_user_ids(action)` (те же условия, что у начисления, `accrual_position_clauses`), без дублей. Начисление (`process_dividend`/`process_coupon`) не менялось — статус сессии оно и раньше не смотрело. Миграции нет. |
@@ -2930,7 +2931,7 @@ Endpoint `/api/v1/health` — **readiness** (S8R-AUDIT-054):
 1. Database: `SELECT 1 FROM users LIMIT 1` (S8R-AUDIT-059: голый `SELECT 1` в SQLite не видит пропавшую схему) → `database: connected | disconnected`.
 2. Планировщик: `scheduler_running`, `scheduler_jobs` (число зарегистрированных задач).
 3. `cb_state` — агрегат Circuit Breaker по активным сессиям (`ok | warn | triggered | unknown`).
-4. `tinvest_connected` — жива ли фоновая задача стрима хотя бы одного мультиплексора T-Invest (gotcha-34); на статус не влияет (paper и ISS-viewer работают без брокера).
+4. `tinvest_connected` — жива ли фоновая задача стрима хотя бы одного мультиплексора T-Invest (gotcha-34) **и** нет ли у него опубликованной потери связи без восстановления (`connection_lost_reported`, S8R-FIX-137: обрыв дольше 30 с в торговые часы — `false` до `connection.restored`); на статус не влияет (paper и ISS-viewer работают без брокера).
 5. `version` — версия пакета.
 
 `status: ok` + HTTP 200 — только при `database=connected` и `scheduler_running=true`; иначе `status: degraded` + **HTTP 503** с тем же телом. Healthcheck контейнера (compose, Dockerfile, `start_period` 60 с) смотрит на код ответа. Liveness — `GET /api/v1/health/live` → 200 всегда.
@@ -3540,6 +3541,8 @@ Endpoint `POST /api/v1/users/me/wizard/complete` (модуль `app/users/`, п�
 | `order.error` | order_error | warning | "Ошибка выставления ордера" |
 | `connection.lost` | connection_lost | warning | "Соединение с T-Invest потеряно" |
 | `connection.restored` | connection_restored | info | "Соединение с T-Invest восстановлено" |
+
+Тело `connection.lost` — `{broker_name}: {reason}`; `reason` собирает `stream_loss_reason(exc)` (`app/broker/tinvest/errors.py`, S8R-FIX-138): «поток данных прерван, переподключение — автоматически [КОД]», при терминальной ошибке ключа (S8R-AUDIT-061) — человеческий текст `_human_text` и «поток данных остановлен [КОД]». Repr исключения в уведомление не попадает — он в логах `multiplexer_disconnected` / `multiplexer_terminal_error`.
 
 Production publish-сайты:
 - `trade.opened`: `app/trading/engine.py:846` (paper) + `:1201` (real)
