@@ -98,6 +98,10 @@ Backend требует оба поля через `model_validator` (`schemas.py
 
 ### A8. Сборка образов после закрепления зависимостей (S8R-AUDIT-050)
 На машине с Docker: `docker compose build --no-cache` — сборка идёт из lock с хэшами и по digest образов (у исполнителя Docker нет — сборка не проверялась). Лицензии GPL/LGPL в `docs/licenses.md` — решение заказчика (для self-hosted single-user обязательств не возникает; при распространении — пересмотреть). Локально: в общем venv `Develop/backend/.venv` setuptools 82.0.0 (CVE-2026-59890), в lock — 84.0.0 → `pip install -r backend/requirements-dev.lock --no-deps` или пересоздать venv; кэш pip-tools после генерации lock (~1,2 ГБ) — `rm -rf ~/Library/Caches/pip-tools`.
+2026-10-19 — Dependabot PR #77–#89 вошли в `develop` сводным PR #91 (`c55bbbf`) с правками и перегенерированным lock
+(nginx 1.31.7 — CVE-2026-93479; anthropic 1.x на `httpx2`; TA-Lib удалён). Сборка образов на машине с Docker по-прежнему
+не проверена. Урок: backend-PR Dependabot не обновляют lock — без ручной перегенерации образ ставит старые версии.
+Рабочий стенд переустановлен из lock 2026-10-19 — общий venv теперь с setuptools 84.0.0 (пункт про 82.0.0 выше снят).
 
 ## B. Гигиена до старта S9 — ✅ ЗАКРЫТ ЦЕЛИКОМ (2026-08-10)
 

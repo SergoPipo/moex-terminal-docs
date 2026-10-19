@@ -14,7 +14,7 @@
 git clone <REPO_URL> moex-terminal && cd moex-terminal
 
 # 2. Установить системные зависимости (macOS, Apple Silicon или Intel)
-./setup_macos.sh         # ta-lib + pango + cairo + Python 3.11 + Node 24
+./setup_macos.sh         # pango + cairo + Python 3.11 + Node 24
 
 # 3. Запустить локально (backend + frontend в dev-режиме)
 ./restart_dev.sh         # bash скрипт стартует uvicorn + vite через Procfile
