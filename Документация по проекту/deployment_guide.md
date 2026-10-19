@@ -100,7 +100,7 @@ cp .env.example backend/.env.production
 
 ```bash
 cd ~/Apps/moex-terminal/Develop
-docker compose build         # ~5-10 минут на первой сборке (компиляция ta-lib, install node deps)
+docker compose build         # ~5-10 минут на первой сборке (установка python- и node-зависимостей)
 docker compose up -d
 docker compose ps            # должно показать оба сервиса: Up X seconds (healthy)
 ```

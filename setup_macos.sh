@@ -107,24 +107,24 @@ if [ "$PYTHON_OK" = false ]; then
 fi
 
 # =============================================================================
-print_header "4. Node.js 20+"
+print_header "4. Node.js 24 LTS"
 # =============================================================================
 
 NODE_OK=false
 if command -v node &>/dev/null; then
     NODE_VERSION=$(node -v | sed 's/v//' | cut -d. -f1)
-    if [ "$NODE_VERSION" -ge 20 ]; then
+    if [ "$NODE_VERSION" -ge 24 ]; then
         NODE_OK=true
         print_skip "Node.js $(node -v)"
     fi
 fi
 
 if [ "$NODE_OK" = false ]; then
-    echo "Установка Node.js 20..."
-    brew install node@20
+    echo "Установка Node.js 24..."
+    brew install node@24
     # Линкуем, если не в PATH
-    brew link --overwrite node@20 2>/dev/null || true
-    print_step "Node.js 20 установлен"
+    brew link --overwrite node@24 2>/dev/null || true
+    print_step "Node.js 24 установлен"
 fi
 
 # =============================================================================
@@ -140,19 +140,7 @@ else
 fi
 
 # =============================================================================
-print_header "6. TA-Lib (C-библиотека для технических индикаторов)"
-# =============================================================================
-
-if brew list ta-lib &>/dev/null; then
-    print_skip "TA-Lib"
-else
-    echo "Установка TA-Lib..."
-    brew install ta-lib
-    print_step "TA-Lib установлен"
-fi
-
-# =============================================================================
-print_header "7. SQLite (свежая версия)"
+print_header "6. SQLite (свежая версия)"
 # =============================================================================
 
 if brew list sqlite &>/dev/null; then
@@ -164,7 +152,7 @@ else
 fi
 
 # =============================================================================
-print_header "8. Зависимости для WeasyPrint (генерация PDF)"
+print_header "7. Зависимости для WeasyPrint (генерация PDF)"
 # =============================================================================
 
 WEASY_DEPS=("cairo" "pango" "gdk-pixbuf" "libffi")
@@ -179,7 +167,7 @@ for dep in "${WEASY_DEPS[@]}"; do
 done
 
 # =============================================================================
-print_header "9. Git (обновление)"
+print_header "8. Git (обновление)"
 # =============================================================================
 
 if brew list git &>/dev/null; then
@@ -191,7 +179,7 @@ else
 fi
 
 # =============================================================================
-print_header "10. Проверка установки"
+print_header "9. Проверка установки"
 # =============================================================================
 
 echo ""
@@ -216,7 +204,6 @@ check_version "npm"       "npm --version"
 check_version "pnpm"      "pnpm --version"
 check_version "Git"       "git --version"
 check_version "SQLite"    "sqlite3 --version | cut -d' ' -f1"
-check_version "TA-Lib"    "brew info ta-lib --json | python3 -c 'import sys,json; print(json.load(sys.stdin)[0][\"versions\"][\"stable\"])'"
 check_version "Cairo"     "brew info cairo --json | python3 -c 'import sys,json; print(json.load(sys.stdin)[0][\"versions\"][\"stable\"])'"
 
 echo ""

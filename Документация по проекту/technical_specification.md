@@ -3,8 +3,8 @@
 # ТЕХНИЧЕСКОЕ ЗАДАНИЕ (ТЗ)
 ## Торговый терминал для рынка ценных бумаг РФ (MOEX)
 
-**Версия:** 3.7
-**Дата:** 2026-10-17
+**Версия:** 3.9
+**Дата:** 2026-10-19
 **Основание:** Функциональные требования v4.7 от 2026-10-17
 **Статус:** ✅ M4 Production-ready. Gate Sprint_8_Review пройден (PASS WITH NOTES), остаток приёмки (8 замечаний) и весь backlog доведения закрыты. Актуализировано по итогам код-ревью P0–P1, финальной приёмки и closeout-цикла S8R.
 
@@ -12,6 +12,8 @@
 
 | Версия | Дата | Спринт | Ключевые изменения |
 |--------|------|--------|-------------------|
+| 3.9 | 2026-10-19 | S8R — сводный бамп Dependabot #77–#89 (решения заказчика 2026-10-19) | Основание — ФТ v4.7 (требования не меняются). Код — PR #91 `deps/dependabot-2026-10-19`, смержен → `develop` `c55bbbf`. **§1.1:** FastAPI 0.143+ (с 0.137 `app.routes` — дерево с `_IncludedRouter`, обход маршрутов в тестах — `iter_route_contexts`, gotcha-86); AI SDK anthropic 1.15+ построен на `httpx2` и отвергает клиент `httpx` — `ClaudeProvider` создаёт `httpx2.AsyncClient(follow_redirects=False)`, `httpx2` — прямая зависимость (gotcha-85); **TA-Lib удалён** (не импортировался нигде, индикаторы — `bt.indicators` Backtrader); админ-метрики — plotly 7.1 (plotly.js 4): у всех графиков `showSendToCloud: False`, кнопки выгрузки в облако Plotly нет. **§1.2:** React 19.3+, Zustand 5.0+, React Router 7.18+ (декларативный режим). **§8.1:** Node.js 24 LTS (jsdom 30 и vitest 5 не работают на Node 20), TA-Lib C library не нужна. Образы: nginx 1.31.7 (CVE-2026-93479 и др.), python:3.11-slim и node:24-alpine — новые digest. |
+| 3.8 | 2026-10-19 | S8R — `S8R-FIX-139` (решение заказчика 2026-10-19, вариант «а») | Основание — ФТ v4.7 (требование не меняется: «позиция, о которой знает брокер, но не знает терминал, показывается, но сессию не останавливает» — ФТ v3.6). **§5.4, сверка позиций** (`SessionRuntime._reconcile_broker_positions`, предзагрузка `_prefetch_restore_portfolios`): портфель читается без справочника брокера (`fetch_instrument_info=False`, S8R-AUDIT-048), поэтому тикер позиции = FIGI; метка `source="strategy"` теперь ставится и по FIGI тикеров сессий счёта из локального справочника `instruments` (`_directory_figis`, БД, без сети, вне сетевого бюджета), а фильтр «бумага этой сессии» узнаёт инструмент и по FIGI. Обязательные бумаги для правила gotcha-56 (`_required_figis`) не меняются; сбой чтения справочника — прежнее поведение. Найдено ордерным сценарием 2026-10-19 (M2). Код — ветка `s8r/fix-139-manual-position-figi` `473951b` → PR #90, смержен → `develop` `479a429` (2026-10-19). |
 | 3.7 | 2026-10-17 | S8R — `S8R-FIX-137`, `S8R-FIX-138` (решения заказчика 2026-10-17, вариант «а»); косметика `S8R-FIX-135`/`136` | Основание — ФТ v4.7. Код — в `develop` `70848d8` (PR #75, #76, смержены 2026-10-17 по локальным гейтам); рабочий стенд — по команде заказчика. **`/health.tinvest_connected`** (S8R-FIX-137): задача стрима жива **и** у мультиплексора нет опубликованной потери связи без восстановления (`TInvestStreamMultiplexer.connection_lost_reported`) — порог 30 с и фильтр рынка те же, что у уведомления. **`connection.lost.reason`** (S8R-FIX-138): `stream_loss_reason(exc, terminal=…)` в `app/broker/tinvest/errors.py` — текст и код в квадратных скобках (`_code_tag`), repr исключения — только в логах `multiplexer_disconnected` / `multiplexer_terminal_error`. Косметика (PR #75, `develop` `7d9bbbe`): `_format_timedelta` — «6ч 28м»; `roundForDisplay` во фронте — знак и цвет P&L от показанного числа. |
 | 3.6 | 2026-10-15 | S8R — `S8R-FIX-133` (решение заказчика 2026-10-15) | Основание — ФТ v4.6. Код — в `develop` `4028d83` (PR #72, смержен 2026-10-15 по локальным гейтам); рабочий стенд — после детекта корп. действий. Scheduler: уведомление о дивиденде/купоне пользователю из `CorporateActionService.accrual_short_user_ids(action)` (владельцы позиций по условиям начисления с `not is_long_direction`) — с суффиксом `; по короткой позиции сумма спишется`; `accrual_recipient_user_ids` и он — из одного запроса `_accrual_owner_directions`. |
 | 3.5 | 2026-10-15 | S8R — `S8R-FIX-131`, `S8R-FIX-132` (решения заказчика 2026-10-15) | Основание — ФТ v4.5. Код — в `develop` `585e297` (PR #70, #71, смержены 2026-10-15 по локальным гейтам); рабочий стенд — после детекта корп. действий. Модуль корп. действий: `process_dividend` и `process_coupon` — сумма со знаком `is_long_direction(trade.direction)` (шорт — минус, та же семантика, что у P&L/SL/TP, S8R-AUDIT-032); в логах `dividend_processed.total` / `coupon_processed.paper_total` — суммы со знаком. Scheduler: адресаты уведомления о сплите — плюс `split_position_user_ids(action)` (условия `process_split`: `filled`/`open`, открыта до 00:00 МСК дня сплита). Миграции нет. |
@@ -132,13 +134,13 @@
 | Компонент | Технология | Версия | Обоснование |
 |---|---|---|---|
 | Язык | Python | 3.11+ | Минимум 3.10 (ФТ), рекомендуется 3.11+ для `asyncio.TaskGroup` и улучшенной производительности. CI тестирует на 3.10 и 3.11+ |
-| Web-фреймворк | FastAPI | 0.110+ | Async-native, авто-генерация OpenAPI, WebSocket поддержка, высокая производительность |
+| Web-фреймворк | FastAPI | 0.143+ | Async-native, авто-генерация OpenAPI, WebSocket поддержка, высокая производительность. С 0.137 `app.routes` — дерево (`_IncludedRouter`): обход маршрутов — через `iter_route_contexts`, иначе проверки маршрутов проходят впустую (gotcha-86) |
 | ASGI-сервер | Uvicorn | 0.29+ | Стандарт для FastAPI, поддержка HTTP/WS |
 | ORM | SQLAlchemy | 2.0+ | Зрелая ORM с поддержкой SQLite и PostgreSQL; async через asyncio extension |
 | Миграции | Alembic | 1.13+ | Стандарт для SQLAlchemy, обратимые миграции, авто-генерация |
 | СУБД (фаза 1) | SQLite | 3.40+ | Нулевая конфигурация для локального deploy; WAL-режим для конкурентного чтения |
 | Бэктестинг | Backtrader | 1.9.78+ | Требование ФТ; зрелая библиотека стратегий |
-| Технические индикаторы | TA-Lib (обёртка: ta-lib python) | 0.4.28+ | Широкий набор индикаторов, C-оптимизация |
+| Технические индикаторы | Backtrader (`bt.indicators`) | — | TA-Lib удалён 2026-10-19: нигде не импортировался, песочница пускает только `datetime`/`math`/`decimal`/`backtrader` |
 | Брокер gRPC | grpcio + tinkoff-investments | 0.2.0+ (tinkoff SDK) | Официальный SDK T-Invest API |
 | Задачи по расписанию | APScheduler | 3.10+ | In-process планировщик, не требует внешних зависимостей |
 | Хеширование паролей | Argon2id (argon2-cffi) | 23.1+ | Рекомендация OWASP, winner PHC |
@@ -146,26 +148,28 @@
 | JWT | PyJWT | 2.8+ | Компактный, проверенный |
 | Sandbox | — (RestrictedPython удалён, S8R-AUDIT-050/S8R-FIX-047) | — | Исполняется только код, сгенерированный из IR блоков (`ir_codegen`), в дочернем процессе с лимитами (S8R-AUDIT-001/006, §5.11) |
 | Telegram | python-telegram-bot | 21.0+ | Async, поддержка inline-кнопок, webhook |
-| HTTP-клиент | httpx | 0.27+ | Async, для MOEX ISS и AI-провайдеров |
+| HTTP-клиент | httpx | 0.27+ | Async, для MOEX ISS и OpenAI-совместимых AI-провайдеров |
+| AI SDK | anthropic + httpx2, openai | 1.15+ / 2.13+, 3.31+ | anthropic ≥ 1.0 построен на `httpx2` и отвергает клиент `httpx`: `ClaudeProvider` создаёт `httpx2.AsyncClient(follow_redirects=False)`, `httpx2` — прямая зависимость (gotcha-85) |
 | Валидация | Pydantic | 2.6+ | Нативная интеграция с FastAPI |
 | Логирование | structlog | 24.1+ | Структурированные логи (JSON), контекстное логирование |
 | Данные | pandas | 2.2+ | Манипуляция OHLCV, интеграция с Backtrader |
-| Научные вычисления | numpy | 1.26+ | Зависимость pandas/Backtrader/TA-Lib |
+| Научные вычисления | numpy | 1.26+ | Зависимость pandas/Backtrader |
 | PDF-отчёты | WeasyPrint | 62.0+ | Генерация PDF из HTML-шаблонов (бэктест-отчёт) |
 | Excel-экспорт | openpyxl | 3.1+ | Генерация xlsx (налоговый отчёт, журнал сделок) |
+| Админ-метрики | Plotly Dash (plotly 7.1+, plotly.js 4) | — | Графики `/api/v1/admin/metrics`; в plotly.js 4 кнопка выгрузки в облако Plotly включена по умолчанию — у всех графиков `showSendToCloud: False` |
 
 ### 1.2 Frontend
 
 | Компонент | Технология | Версия | Обоснование |
 |---|---|---|---|
-| Фреймворк | React | 18.3+ | Обширная экосистема, совместимость с Blockly |
+| Фреймворк | React | 19.3+ | Обширная экосистема, совместимость с Blockly |
 | Язык | TypeScript | 5.4+ | Типизация снижает баги в сложном UI |
 | Сборщик | Vite | 5.4+ | Скорость HMR, ESM-native |
 | UI-библиотека | Mantine | 7.8+ | Готовые dark-theme компоненты, таблицы, формы; русская локализация |
 | Графики | TradingView Lightweight Charts | 4.1+ | Требование ФТ; MIT, canvas, производительность |
 | Блочный редактор | Google Blockly | 11.0+ | Требование ФТ; drag-and-drop, кастомные блоки |
-| Состояние | Zustand | 4.5+ | Минималистичный, без boilerplate |
-| Маршрутизация | React Router | 6.22+ | Стандарт для React SPA |
+| Состояние | Zustand | 5.0+ | Минималистичный, без boilerplate. В v5 селектор, возвращающий новый объект/массив, даёт бесконечный ререндер — такие селекторы не писать (или `useShallow`) |
+| Маршрутизация | React Router (`react-router-dom`) | 7.18+ | Стандарт для React SPA; декларативный режим (`BrowserRouter`/`Routes`), навигация идёт в `startTransition` |
 | HTTP-клиент | Axios | 1.7+ | Интерцепторы для JWT, отмена запросов |
 | WebSocket | Нативный WebSocket + reconnecting-websocket | 4.4+ | Авто-переподключение |
 | Таблицы | TanStack Table | 9.3+ | Сортировка, фильтрация, пагинация. С 2026-10-13 (S8R-FIX-079) — v9: фичи перечисляются явно (`tableFeatures({...})`), модели строк создаются фабриками `create*RowModel` вместо геттеров `get*RowModel`, состояние читается `table.state`, ячейки — `getAllCells()`, сортировщик колонки — `sortFn`. Набор фич входит в типы (`ColumnDef<TFeatures, TData, TValue>`), поэтому объявляется один раз на таблицу и переиспользуется хелпером колонок. Правило `react-hooks/incompatible-library` v9-таблицу не трогает — подавление снято |
@@ -1675,7 +1679,7 @@ class GeneratedStrategy(bt.Strategy):
 ```
 
 Маппинг блоков на код:
-- `indicator` -> `bt.indicators.XXX` или `talib.XXX`
+- `indicator` -> `bt.indicators.XXX`
 - `condition` -> Python-выражение в `next()`
 - `entry_signal` -> `self.buy()` с условиями
 - `exit_signal` -> `self.sell()` / `self.close()`
@@ -2287,7 +2291,7 @@ AI_MODEL=claude-opus-5-5     # дефолт кода (S8R-FIX-033, решени�
 - Фьючерсы не поддерживаются.
 
 ДОСТУПНЫЕ ИНДИКАТОРЫ:
-SMA, EMA, Bollinger Bands, RSI, MACD, Stochastic, ATR, Volume MA, и другие из TA-Lib.
+SMA, EMA, Bollinger Bands, RSI, MACD, Stochastic, ATR, Volume MA и другие индикаторы Backtrader.
 
 ТВОЯ ЗАДАЧА:
 1. Помочь пользователю сформулировать торговую стратегию.
@@ -2771,8 +2775,8 @@ class Settings(BaseSettings):
 
 **Системные предусловия:**
 - Python 3.11+ с pip
-- Node.js 20+ с pnpm (или npm)
-- Системные библиотеки: TA-Lib C library (libta-lib), компилятор C (gcc/clang)
+- Node.js 24 LTS с pnpm (jsdom 30 и vitest 5 на Node 20 не работают)
+- Системные библиотеки: pango и cairo (WeasyPrint); TA-Lib C library больше не нужна (зависимость удалена 2026-10-19)
 
 **Конфигурация сборки (`backend/pyproject.toml`):**
 - В `[tool.setuptools.packages.find]` указать `include = ["app*"]`, чтобы setuptools не включал директории `data/`, `alembic/` как пакеты (flat-layout error).
@@ -3029,7 +3033,7 @@ End users → Cloudflare edge (TLS termination, DDoS protection)
 
 | Компонент | Образ / технология | Назначение |
 |-----------|--------------------|------------|
-| `moex-backend` | python:3.11-slim, multi-stage (ta-lib build deps → runtime) | FastAPI + uvicorn |
+| `moex-backend` | python:3.11-slim (по digest), multi-stage (builder → runtime) | FastAPI + uvicorn |
 | `moex-frontend` | node:24-alpine (builder) → nginx:alpine (runtime) | SPA static + reverse proxy |
 | `sqlite-data` (named volume) | bind to /app/data/app.sqlite | Production БД (WAL-mode) |
 | `sqlite-backups` (named volume) | bind to /app/backups/ | APScheduler backup_job snapshots |
