@@ -1,0 +1,1471 @@
+{
+ "about": "Эталон D8: ручная разметка 108 заголовков RSS 19–21.10.2026 (бумаги, охват, тип, тональность для компании).\ntickers_dict — что нашёл словарь; tickers_true — верные бумаги TQBR; scope: company / sector / market / none;\nsentiment: + / − / 0 / ? (неоднозначно).",
+ "items": [
+  {
+   "i": 0,
+   "src": "interfax",
+   "pub": "2026-10-21T18:38:00+03:00",
+   "title": "Песков заявил, что лицензию OFAC на продажу зарубежных активов \"ЛУКОЙЛа\" можно продлить \"без труда\"",
+   "link": "https://www.interfax.ru/business/1124054",
+   "tickers_dict": [
+    "LKOH"
+   ],
+   "tickers_true": [
+    "LKOH"
+   ],
+   "scope": "company",
+   "type": "санкции",
+   "sentiment": "+"
+  },
+  {
+   "i": 1,
+   "src": "interfax",
+   "pub": "2026-10-21T18:02:00+03:00",
+   "title": "Вопрос о судьбе зарубежных активов \"ЛУКОЙЛа\" обсуждается с представителями США",
+   "link": "https://www.interfax.ru/business/1124047",
+   "tickers_dict": [
+    "LKOH"
+   ],
+   "tickers_true": [
+    "LKOH"
+   ],
+   "scope": "company",
+   "type": "санкции",
+   "sentiment": "0"
+  },
+  {
+   "i": 2,
+   "src": "kommersant_biz",
+   "pub": "2026-10-21T19:04:30+03:00",
+   "title": "Ушаков: Россия и США обсуждают дальнейшую судьбу иностранных активов ЛУКОЙЛа",
+   "link": "https://www.kommersant.ru/doc/9044155",
+   "tickers_dict": [
+    "LKOH"
+   ],
+   "tickers_true": [
+    "LKOH"
+   ],
+   "scope": "company",
+   "type": "санкции",
+   "sentiment": "0"
+  },
+  {
+   "i": 3,
+   "src": "kommersant_biz",
+   "pub": "2026-10-21T16:11:13+03:00",
+   "title": "СПБ Биржа вошла в НАУФОР как оператор ЦФА",
+   "link": "https://www.kommersant.ru/doc/9043945",
+   "tickers_dict": [
+    "SPBE"
+   ],
+   "tickers_true": [
+    "SPBE"
+   ],
+   "scope": "company",
+   "type": "бизнес",
+   "sentiment": "+"
+  },
+  {
+   "i": 4,
+   "src": "kommersant_biz",
+   "pub": "2026-10-21T14:42:38+03:00",
+   "title": "Новак назвал примерные сроки заключения сделки по «Силе Байкала» // Новак: «Газпром» и CNPC могут до конца года выйти на сделку по «Силе Байкала»",
+   "link": "https://www.kommersant.ru/doc/9043819",
+   "tickers_dict": [
+    "GAZP"
+   ],
+   "tickers_true": [
+    "GAZP"
+   ],
+   "scope": "company",
+   "type": "сделка",
+   "sentiment": "+"
+  },
+  {
+   "i": 5,
+   "src": "kommersant_biz",
+   "pub": "2026-10-21T13:22:47+03:00",
+   "title": "Акции «Акрона» и «Фосагро» выросли на заявлении Путина о поставках удобрений в США",
+   "link": "https://www.kommersant.ru/doc/9043700",
+   "tickers_dict": [
+    "AKRN",
+    "PHOR"
+   ],
+   "tickers_true": [
+    "AKRN",
+    "PHOR"
+   ],
+   "scope": "company",
+   "type": "экспорт",
+   "sentiment": "+"
+  },
+  {
+   "i": 6,
+   "src": "kommersant_biz",
+   "pub": "2026-10-20T18:13:13+03:00",
+   "title": "«Газпром» символически сократил инвестиционную программу на 2026 год // «Газпром» снизил объем инвестиционной программы с 1,1 трлн до 1,096 трлн рублей",
+   "link": "https://www.kommersant.ru/doc/9043152",
+   "tickers_dict": [
+    "GAZP"
+   ],
+   "tickers_true": [
+    "GAZP"
+   ],
+   "scope": "company",
+   "type": "инвестпрограмма",
+   "sentiment": "0"
+  },
+  {
+   "i": 7,
+   "src": "kommersant_biz",
+   "pub": "2026-10-20T17:55:19+03:00",
+   "title": "«Вкусвилл» начал проверку роллов после сообщений о кишечной палочке",
+   "link": "https://www.kommersant.ru/doc/9043108",
+   "tickers_dict": [
+    "VKCO"
+   ],
+   "tickers_true": [],
+   "scope": "none",
+   "type": "",
+   "sentiment": ""
+  },
+  {
+   "i": 8,
+   "src": "kommersant_biz",
+   "pub": "2026-10-20T17:19:09+03:00",
+   "title": "Здоровая коммерция // Ozon обогнал Wildberries по доле продаж",
+   "link": "https://www.kommersant.ru/doc/9042629",
+   "tickers_dict": [
+    "OZON"
+   ],
+   "tickers_true": [
+    "OZON"
+   ],
+   "scope": "company",
+   "type": "бизнес",
+   "sentiment": "+"
+  },
+  {
+   "i": 9,
+   "src": "kommersant_biz",
+   "pub": "2026-10-20T15:36:31+03:00",
+   "title": "Суд Амстердама запретил банку ING закрывать счет оператора проектов «Газпрома»",
+   "link": "https://www.kommersant.ru/doc/9042963",
+   "tickers_dict": [
+    "GAZP"
+   ],
+   "tickers_true": [
+    "GAZP"
+   ],
+   "scope": "company",
+   "type": "суд",
+   "sentiment": "+"
+  },
+  {
+   "i": 10,
+   "src": "kommersant_biz",
+   "pub": "2026-10-20T12:26:05+03:00",
+   "title": "Акции «Группы Астра» подешевели почти на 4% после новостей о взломе",
+   "link": "https://www.kommersant.ru/doc/9042787",
+   "tickers_dict": [
+    "ASTR"
+   ],
+   "tickers_true": [
+    "ASTR"
+   ],
+   "scope": "company",
+   "type": "инцидент",
+   "sentiment": "−"
+  },
+  {
+   "i": 11,
+   "src": "kommersant_biz",
+   "pub": "2026-10-20T11:44:53+03:00",
+   "title": "Чистая прибыль «Северстали» снизилась в 1,6 раза за девять месяцев // Чистая прибыль «Северстали» составила 19,3 млрд рублей за девять месяцев",
+   "link": "https://www.kommersant.ru/doc/9042717",
+   "tickers_dict": [
+    "CHMF"
+   ],
+   "tickers_true": [
+    "CHMF"
+   ],
+   "scope": "company",
+   "type": "отчётность",
+   "sentiment": "−"
+  },
+  {
+   "i": 12,
+   "src": "kommersant_biz",
+   "pub": "2026-10-20T11:21:54+03:00",
+   "title": "«Северсталь» не выплатит дивиденды за девять месяцев из-за отрицательного FCF",
+   "link": "https://www.kommersant.ru/doc/9042697",
+   "tickers_dict": [
+    "CHMF"
+   ],
+   "tickers_true": [
+    "CHMF"
+   ],
+   "scope": "company",
+   "type": "дивиденды",
+   "sentiment": "−"
+  },
+  {
+   "i": 13,
+   "src": "kommersant_biz",
+   "pub": "2026-10-20T10:41:45+03:00",
+   "title": "Индекс Мосбиржи обновил максимум за четыре месяца",
+   "link": "https://www.kommersant.ru/doc/9042656",
+   "tickers_dict": [
+    "MOEX"
+   ],
+   "tickers_true": [],
+   "scope": "market",
+   "type": "индекс",
+   "sentiment": ""
+  },
+  {
+   "i": 14,
+   "src": "kommersant_biz",
+   "pub": "2026-10-20T10:28:27+03:00",
+   "title": "ВТБ перечислил самые популярные операции с цифровым рублем",
+   "link": "https://www.kommersant.ru/doc/9042647",
+   "tickers_dict": [
+    "VTBR"
+   ],
+   "tickers_true": [
+    "VTBR"
+   ],
+   "scope": "company",
+   "type": "бизнес",
+   "sentiment": "0"
+  },
+  {
+   "i": 15,
+   "src": "kommersant_biz",
+   "pub": "2026-10-20T09:51:46+03:00",
+   "title": "Продавцы пожаловались в ФАС на условия участия в акциях Ozon",
+   "link": "https://www.kommersant.ru/doc/9042623",
+   "tickers_dict": [
+    "OZON"
+   ],
+   "tickers_true": [
+    "OZON"
+   ],
+   "scope": "company",
+   "type": "регулятор",
+   "sentiment": "−"
+  },
+  {
+   "i": 16,
+   "src": "kommersant_biz",
+   "pub": "2026-10-19T20:20:36+03:00",
+   "title": "Пройдемся по пунктам // Ozon будет взимать плату с владельцев ПВЗ",
+   "link": "https://www.kommersant.ru/doc/9042321",
+   "tickers_dict": [
+    "OZON"
+   ],
+   "tickers_true": [
+    "OZON"
+   ],
+   "scope": "company",
+   "type": "бизнес",
+   "sentiment": "?"
+  },
+  {
+   "i": 17,
+   "src": "kommersant_biz",
+   "pub": "2026-10-19T19:35:08+03:00",
+   "title": "Владельцы акций VK смогут получить налоговую льготу",
+   "link": "https://www.kommersant.ru/doc/9042377",
+   "tickers_dict": [
+    "VKCO"
+   ],
+   "tickers_true": [
+    "VKCO"
+   ],
+   "scope": "company",
+   "type": "налоги",
+   "sentiment": "+"
+  },
+  {
+   "i": 18,
+   "src": "kommersant_biz",
+   "pub": "2026-10-19T16:59:54+03:00",
+   "title": "Ozon с декабря введет плату для владельцев ПВЗ",
+   "link": "https://www.kommersant.ru/doc/9042157",
+   "tickers_dict": [
+    "OZON"
+   ],
+   "tickers_true": [
+    "OZON"
+   ],
+   "scope": "company",
+   "type": "бизнес",
+   "sentiment": "?"
+  },
+  {
+   "i": 19,
+   "src": "kommersant_biz",
+   "pub": "2026-10-19T15:58:27+03:00",
+   "title": "Минэнерго: системы накопления электроэнергии появятся в Подмосковье и Крыму",
+   "link": "https://www.kommersant.ru/doc/9042139",
+   "tickers_dict": [
+    "AFKS"
+   ],
+   "tickers_true": [],
+   "scope": "none",
+   "type": "",
+   "sentiment": ""
+  },
+  {
+   "i": 20,
+   "src": "kommersant_biz",
+   "pub": "2026-10-19T14:44:30+03:00",
+   "title": "МТС соберет заявки по облигациям на 10 млрд рублей",
+   "link": "https://www.kommersant.ru/doc/9042073",
+   "tickers_dict": [
+    "MTSS"
+   ],
+   "tickers_true": [
+    "MTSS"
+   ],
+   "scope": "company",
+   "type": "облигации",
+   "sentiment": "0"
+  },
+  {
+   "i": 21,
+   "src": "kommersant_biz",
+   "pub": "2026-10-19T11:42:21+03:00",
+   "title": "Главное на рынке недвижимости к утру 19 октября // Анна Акиньшина решила уйти с поста гендиректора «Самолета»",
+   "link": "https://www.kommersant.ru/doc/9041892",
+   "tickers_dict": [
+    "SMLT"
+   ],
+   "tickers_true": [
+    "SMLT"
+   ],
+   "scope": "company",
+   "type": "менеджмент",
+   "sentiment": "−"
+  },
+  {
+   "i": 22,
+   "src": "prime",
+   "pub": "2026-10-21T19:16:44+03:00",
+   "title": "Курс юаня на Мосбирже снизился до 12,23 рубля",
+   "link": "https://1prime.ru/20261021/yuan-874491141.html",
+   "tickers_dict": [
+    "MOEX"
+   ],
+   "tickers_true": [],
+   "scope": "market",
+   "type": "валюта",
+   "sentiment": ""
+  },
+  {
+   "i": 23,
+   "src": "prime",
+   "pub": "2026-10-21T18:31:00+03:00",
+   "title": "Песков рассказал о контактах России и США по зарубежным активам \"Лукойла\"",
+   "link": "https://1prime.ru/20261021/peskov-874488817.html",
+   "tickers_dict": [
+    "LKOH"
+   ],
+   "tickers_true": [
+    "LKOH"
+   ],
+   "scope": "company",
+   "type": "санкции",
+   "sentiment": "0"
+  },
+  {
+   "i": 24,
+   "src": "prime",
+   "pub": "2026-10-21T18:07:22+03:00",
+   "title": "Россия и США обсуждают тему санкций против \"Лукойла\", заявил Ушаков",
+   "link": "https://1prime.ru/20261021/ushakov-874487795.html",
+   "tickers_dict": [
+    "LKOH"
+   ],
+   "tickers_true": [
+    "LKOH"
+   ],
+   "scope": "company",
+   "type": "санкции",
+   "sentiment": "0"
+  },
+  {
+   "i": 25,
+   "src": "prime",
+   "pub": "2026-10-21T18:05:14+03:00",
+   "title": "В \"Шереметьево\" внедрена автоматизированная система обработки багажа",
+   "link": "https://1prime.ru/20261021/sheremetevo-874487402.html",
+   "tickers_dict": [
+    "AFKS"
+   ],
+   "tickers_true": [],
+   "scope": "none",
+   "type": "",
+   "sentiment": ""
+  },
+  {
+   "i": 26,
+   "src": "prime",
+   "pub": "2026-10-21T17:49:59+03:00",
+   "title": "ЦБ уличил трейдера в использовании инсайдерской информации на Мосбирже",
+   "link": "https://1prime.ru/20261021/tsb-874486524.html",
+   "tickers_dict": [
+    "MOEX"
+   ],
+   "tickers_true": [],
+   "scope": "market",
+   "type": "регулятор",
+   "sentiment": ""
+  },
+  {
+   "i": 27,
+   "src": "prime",
+   "pub": "2026-10-21T17:25:33+03:00",
+   "title": "\"Камаз\" сократил чистый убыток по РСБУ на 35%",
+   "link": "https://1prime.ru/20261021/kamaz-874484922.html",
+   "tickers_dict": [
+    "KMAZ"
+   ],
+   "tickers_true": [
+    "KMAZ"
+   ],
+   "scope": "company",
+   "type": "отчётность",
+   "sentiment": "+"
+  },
+  {
+   "i": 28,
+   "src": "prime",
+   "pub": "2026-10-21T16:33:36+03:00",
+   "title": "В России расширят систему выявления псевдопроизводителей",
+   "link": "https://1prime.ru/20261021/rossija-874480266.html",
+   "tickers_dict": [
+    "AFKS"
+   ],
+   "tickers_true": [],
+   "scope": "none",
+   "type": "",
+   "sentiment": ""
+  },
+  {
+   "i": 29,
+   "src": "smartlab_news",
+   "pub": "2026-10-21T19:13:47+03:00",
+   "title": "СПБ Биржа стала членом НАУФОР как оператор информсистем по выпуску ЦФА",
+   "link": "https://smart-lab.ru/blog/1365279.php",
+   "tickers_dict": [
+    "SPBE"
+   ],
+   "tickers_true": [
+    "SPBE"
+   ],
+   "scope": "company",
+   "type": "бизнес",
+   "sentiment": "+"
+  },
+  {
+   "i": 30,
+   "src": "smartlab_news",
+   "pub": "2026-10-21T19:05:07+03:00",
+   "title": "МГКЛ: доля гендиректора Алексея Лазутина выросла с 12,7% до 28% по итогам внебиржевых сделок",
+   "link": "https://smart-lab.ru/blog/1365274.php",
+   "tickers_dict": [
+    "MGKL"
+   ],
+   "tickers_true": [
+    "MGKL"
+   ],
+   "scope": "company",
+   "type": "акционеры",
+   "sentiment": "+"
+  },
+  {
+   "i": 31,
+   "src": "smartlab_news",
+   "pub": "2026-10-21T18:18:47+03:00",
+   "title": "Песков: контакты РФ и США по зарубежным активам Лукойла идут, лицензию можно продлить без труда",
+   "link": "https://smart-lab.ru/blog/1365242.php",
+   "tickers_dict": [
+    "LKOH"
+   ],
+   "tickers_true": [
+    "LKOH"
+   ],
+   "scope": "company",
+   "type": "санкции",
+   "sentiment": "+"
+  },
+  {
+   "i": 32,
+   "src": "smartlab_news",
+   "pub": "2026-10-21T17:57:03+03:00",
+   "title": "Ушаков: судьба зарубежных активов Лукойла в связи с санкциями обсуждается с представителями США",
+   "link": "https://smart-lab.ru/blog/1365231.php",
+   "tickers_dict": [
+    "LKOH"
+   ],
+   "tickers_true": [
+    "LKOH"
+   ],
+   "scope": "company",
+   "type": "санкции",
+   "sentiment": "0"
+  },
+  {
+   "i": 33,
+   "src": "smartlab_news",
+   "pub": "2026-10-21T17:53:15+03:00",
+   "title": "Северсталь ожидает отрицательный FCF по итогам 2026 г., выход на устойчивый положительный поток - в 2027 г — компания",
+   "link": "https://smart-lab.ru/blog/1365227.php",
+   "tickers_dict": [
+    "CHMF"
+   ],
+   "tickers_true": [
+    "CHMF"
+   ],
+   "scope": "company",
+   "type": "прогноз",
+   "sentiment": "−"
+  },
+  {
+   "i": 34,
+   "src": "smartlab_news",
+   "pub": "2026-10-21T17:00:01+03:00",
+   "title": "ГАЗ-Тек РСБУ 9м2026: Выручка ₽40,4 млн (+82,6% г/г), чистая прибыль ₽1,6 млрд (-3,3% г/г)",
+   "link": "https://smart-lab.ru/blog/1365184.php",
+   "tickers_dict": [
+    "GAZT"
+   ],
+   "tickers_true": [
+    "GAZT"
+   ],
+   "scope": "company",
+   "type": "отчётность",
+   "sentiment": "?"
+  },
+  {
+   "i": 35,
+   "src": "smartlab_news",
+   "pub": "2026-10-21T16:58:59+03:00",
+   "title": "КАМАЗ РСБУ 9М 2026 г: выручка ₽214,23 млрд (+5,2% г/г), убыток ₽18,9 млрд (против убытка ₽29 млрд годом ранее)",
+   "link": "https://smart-lab.ru/blog/1365182.php",
+   "tickers_dict": [
+    "KMAZ"
+   ],
+   "tickers_true": [
+    "KMAZ"
+   ],
+   "scope": "company",
+   "type": "отчётность",
+   "sentiment": "+"
+  },
+  {
+   "i": 36,
+   "src": "smartlab_news",
+   "pub": "2026-10-21T16:53:03+03:00",
+   "title": "🔎КАМАЗ Отчет РСБУ",
+   "link": "https://smart-lab.ru/blog/1365176.php",
+   "tickers_dict": [
+    "KMAZ"
+   ],
+   "tickers_true": [
+    "KMAZ"
+   ],
+   "scope": "company",
+   "type": "отчётность",
+   "sentiment": "0"
+  },
+  {
+   "i": 37,
+   "src": "smartlab_news",
+   "pub": "2026-10-21T16:48:13+03:00",
+   "title": "Индекс Мосбиржи критично отнесся к словам помощника президента про то, что предложения ЕС не несут большой ценности, упав почти на 1% до 2448",
+   "link": "https://smart-lab.ru/blog/1365175.php",
+   "tickers_dict": [
+    "MOEX"
+   ],
+   "tickers_true": [],
+   "scope": "market",
+   "type": "индекс",
+   "sentiment": "−"
+  },
+  {
+   "i": 38,
+   "src": "smartlab_news",
+   "pub": "2026-10-21T16:44:52+03:00",
+   "title": "🔎ГАЗ-Тек Отчет РСБУ",
+   "link": "https://smart-lab.ru/blog/1365170.php",
+   "tickers_dict": [
+    "GAZT"
+   ],
+   "tickers_true": [
+    "GAZT"
+   ],
+   "scope": "company",
+   "type": "отчётность",
+   "sentiment": "0"
+  },
+  {
+   "i": 39,
+   "src": "smartlab_news",
+   "pub": "2026-10-21T16:08:17+03:00",
+   "title": "Алроса: СД 23 октября рассмотрит утверждение Положения о дивидендной политике в новой редакции — Раскрытие",
+   "link": "https://smart-lab.ru/blog/1365148.php",
+   "tickers_dict": [
+    "ALRS"
+   ],
+   "tickers_true": [
+    "ALRS"
+   ],
+   "scope": "company",
+   "type": "дивиденды",
+   "sentiment": "?"
+  },
+  {
+   "i": 40,
+   "src": "smartlab_news",
+   "pub": "2026-10-21T14:51:11+03:00",
+   "title": "ЦБ: Максимальная ставка по вкладам в рублях в Топ-10 банков РФ во II декаде октября не изменилась и осталась на уровне 13,06%",
+   "link": "https://smart-lab.ru/blog/1365110.php",
+   "tickers_dict": [
+    "VKCO"
+   ],
+   "tickers_true": [],
+   "scope": "sector",
+   "type": "банки",
+   "sentiment": ""
+  },
+  {
+   "i": 41,
+   "src": "smartlab_news",
+   "pub": "2026-10-21T13:34:57+03:00",
+   "title": "Венгерская MOL опровергла слова вице-премьера Сербии о продаже доли Газпрома в NIS, подвижек в переговорах нет",
+   "link": "https://smart-lab.ru/blog/1365078.php",
+   "tickers_dict": [
+    "GAZP"
+   ],
+   "tickers_true": [
+    "GAZP"
+   ],
+   "scope": "company",
+   "type": "сделка",
+   "sentiment": "−"
+  },
+  {
+   "i": 42,
+   "src": "tass_econ",
+   "pub": "2026-10-21T19:09:18+03:00",
+   "title": "Эрдоган пригласил Алиева на саммит Организации тюркских государств в Анкаре",
+   "link": "https://tass.ru/mezhdunarodnaya-panorama/28239149",
+   "tickers_dict": [
+    "RU000A106XE5"
+   ],
+   "tickers_true": [],
+   "scope": "none",
+   "type": "",
+   "sentiment": ""
+  },
+  {
+   "i": 43,
+   "src": "tass_econ",
+   "pub": "2026-10-21T18:58:42+03:00",
+   "title": "Т-банк: эмитентам ценных бумаг стоит сосредоточиться на коротких флоатерах и ЦФА",
+   "link": "https://tass.ru/ekonomika/28239103",
+   "tickers_dict": [
+    "T"
+   ],
+   "tickers_true": [
+    "T"
+   ],
+   "scope": "company",
+   "type": "бизнес",
+   "sentiment": "0"
+  },
+  {
+   "i": 44,
+   "src": "tass_econ",
+   "pub": "2026-10-21T18:20:50+03:00",
+   "title": "Реализацию 12 проектов по ремонту систем водоснабжения начнут на Ставрополье в 2027 г.",
+   "link": "https://tass.ru/ekonomika/28238097",
+   "tickers_dict": [
+    "AFKS"
+   ],
+   "tickers_true": [],
+   "scope": "none",
+   "type": "",
+   "sentiment": ""
+  },
+  {
+   "i": 45,
+   "src": "tass_econ",
+   "pub": "2026-10-21T18:19:54+03:00",
+   "title": "Модернизацию системы теплоснабжения Кисловодска намерены провести до 2030 года",
+   "link": "https://tass.ru/obschestvo/28237865",
+   "tickers_dict": [
+    "AFKS"
+   ],
+   "tickers_true": [],
+   "scope": "none",
+   "type": "",
+   "sentiment": ""
+  },
+  {
+   "i": 46,
+   "src": "tass_econ",
+   "pub": "2026-10-21T18:19:02+03:00",
+   "title": "Песков: контакты России и США по продаже зарубежных активов \"Лукойла\" идут",
+   "link": "https://tass.ru/ekonomika/28238995",
+   "tickers_dict": [
+    "LKOH"
+   ],
+   "tickers_true": [
+    "LKOH"
+   ],
+   "scope": "company",
+   "type": "санкции",
+   "sentiment": "0"
+  },
+  {
+   "i": 47,
+   "src": "tass_econ",
+   "pub": "2026-10-21T17:59:30+03:00",
+   "title": "Активистка Райски: европейская система целенаправленно разрушает институт семьи",
+   "link": "https://tass.ru/obschestvo/28237277",
+   "tickers_dict": [
+    "AFKS"
+   ],
+   "tickers_true": [],
+   "scope": "none",
+   "type": "",
+   "sentiment": ""
+  },
+  {
+   "i": 48,
+   "src": "prime",
+   "pub": "2026-10-21T16:18:16+03:00",
+   "title": "Ядров допустил изменение программ субсидирования авиарейсов",
+   "link": "https://1prime.ru/20261021/pereformatirovanie-874479184.html",
+   "tickers_dict": [],
+   "tickers_true": [],
+   "scope": "sector",
+   "type": "авиация",
+   "sentiment": ""
+  },
+  {
+   "i": 49,
+   "src": "smartlab_news",
+   "pub": "2026-10-21T14:39:10+03:00",
+   "title": "Силуанов призывает остановиться с дополнительными налогами для банков, так как экономика РФ нуждается в новых кредитах",
+   "link": "https://smart-lab.ru/blog/1365105.php",
+   "tickers_dict": [],
+   "tickers_true": [],
+   "scope": "sector",
+   "type": "банки, налоги",
+   "sentiment": "−"
+  },
+  {
+   "i": 50,
+   "src": "rbc",
+   "pub": "2026-10-21T19:07:41+03:00",
+   "title": "РСФ с Дегтяревым отменил 5 конкурсов на ₽2,6 млрд после критики Путина",
+   "link": "https://www.rbc.ru/sport/21/10/2026/6ad8d5c86352cc3f1333e68f",
+   "tickers_dict": [],
+   "tickers_true": [],
+   "scope": "none",
+   "type": "",
+   "sentiment": ""
+  },
+  {
+   "i": 51,
+   "src": "rbc",
+   "pub": "2026-10-21T17:39:35+03:00",
+   "title": "Ушаков рассказал, где могут пройти новые переговоры с США и Украиной",
+   "link": "https://www.rbc.ru/politics/21/10/2026/6ad8ce1098444cb10b61cbfb",
+   "tickers_dict": [],
+   "tickers_true": [],
+   "scope": "market",
+   "type": "геополитика",
+   "sentiment": ""
+  },
+  {
+   "i": 52,
+   "src": "tass_econ",
+   "pub": "2026-10-21T19:17:10+03:00",
+   "title": "РФ откроет в КНР национальные павильоны и продолжит ярмарки \"Сделано в России\"",
+   "link": "https://tass.ru/politika/28239081",
+   "tickers_dict": [],
+   "tickers_true": [],
+   "scope": "none",
+   "type": "",
+   "sentiment": ""
+  },
+  {
+   "i": 53,
+   "src": "kommersant_biz",
+   "pub": "2026-10-20T12:52:49+03:00",
+   "title": "Wildberries запустила оплату государственными электронными сертификатами",
+   "link": "https://www.kommersant.ru/doc/9042804",
+   "tickers_dict": [],
+   "tickers_true": [],
+   "scope": "none",
+   "type": "",
+   "sentiment": ""
+  },
+  {
+   "i": 54,
+   "src": "kommersant_biz",
+   "pub": "2026-10-20T13:34:59+03:00",
+   "title": "Курс доллара на Forex опустился ниже 82 рублей впервые с 11 августа",
+   "link": "https://www.kommersant.ru/doc/9042856",
+   "tickers_dict": [],
+   "tickers_true": [],
+   "scope": "market",
+   "type": "валюта",
+   "sentiment": ""
+  },
+  {
+   "i": 55,
+   "src": "rbc",
+   "pub": "2026-10-21T17:30:58+03:00",
+   "title": "ЦБ уличил трейдера «Велес Капитала» в инсайдерской торговле",
+   "link": "https://www.rbc.ru/quote/21/10/2026/6ad8c4069a79473871501e17",
+   "tickers_dict": [],
+   "tickers_true": [],
+   "scope": "none",
+   "type": "",
+   "sentiment": ""
+  },
+  {
+   "i": 56,
+   "src": "rbc",
+   "pub": "2026-10-21T18:47:38+03:00",
+   "title": "Ушаков заявил, что встреча Путина, Трампа и Си не решит кризис на Украине",
+   "link": "https://www.rbc.ru/rbcfreenews/6ad8d8bc7df80739f7131205",
+   "tickers_dict": [],
+   "tickers_true": [],
+   "scope": "market",
+   "type": "геополитика",
+   "sentiment": ""
+  },
+  {
+   "i": 57,
+   "src": "tass_econ",
+   "pub": "2026-10-21T18:59:24+03:00",
+   "title": "Дмитриев сопроводил фотографии с Уиткоффом песней \"И солнце взойдет\"",
+   "link": "https://tass.ru/politika/28239091",
+   "tickers_dict": [],
+   "tickers_true": [],
+   "scope": "none",
+   "type": "",
+   "sentiment": ""
+  },
+  {
+   "i": 58,
+   "src": "tass_econ",
+   "pub": "2026-10-21T19:01:22+03:00",
+   "title": "Годовая инфляция в РФ с 13 по 19 октября зафиксирована на уровне 7,15%",
+   "link": "https://tass.ru/ekonomika/28239129",
+   "tickers_dict": [],
+   "tickers_true": [],
+   "scope": "market",
+   "type": "инфляция",
+   "sentiment": ""
+  },
+  {
+   "i": 59,
+   "src": "kommersant_biz",
+   "pub": "2026-10-20T13:21:39+03:00",
+   "title": "АвтоВАЗ прокомментировал данные о сокращении дилерской сети в Москве",
+   "link": "https://www.kommersant.ru/doc/9042845",
+   "tickers_dict": [],
+   "tickers_true": [],
+   "scope": "none",
+   "type": "",
+   "sentiment": ""
+  },
+  {
+   "i": 60,
+   "src": "kommersant_biz",
+   "pub": "2026-10-21T17:38:17+03:00",
+   "title": "Новак: Россия будет экспортировать только не востребованный в стране дизель",
+   "link": "https://www.kommersant.ru/doc/9044049",
+   "tickers_dict": [],
+   "tickers_true": [],
+   "scope": "sector",
+   "type": "нефтепродукты",
+   "sentiment": ""
+  },
+  {
+   "i": 61,
+   "src": "prime",
+   "pub": "2026-10-21T16:21:19+03:00",
+   "title": "Новак рассказал, откуда пойдет дизельное топливо в США",
+   "link": "https://1prime.ru/20261021/novak-874479461.html",
+   "tickers_dict": [],
+   "tickers_true": [],
+   "scope": "none",
+   "type": "",
+   "sentiment": ""
+  },
+  {
+   "i": 62,
+   "src": "prime",
+   "pub": "2026-10-21T18:56:46+03:00",
+   "title": "Пользователи \"Википедии\" по всему миру пожаловались на сбои в ее работе",
+   "link": "https://1prime.ru/20261021/polzovateli-874489754.html",
+   "tickers_dict": [],
+   "tickers_true": [],
+   "scope": "none",
+   "type": "",
+   "sentiment": ""
+  },
+  {
+   "i": 63,
+   "src": "kommersant_biz",
+   "pub": "2026-10-21T08:37:15+03:00",
+   "title": "«Метро Кэш энд Керри» оштрафовали на 300 тысяч рублей за продукты без этикеток",
+   "link": "https://www.kommersant.ru/doc/9043409",
+   "tickers_dict": [],
+   "tickers_true": [],
+   "scope": "none",
+   "type": "",
+   "sentiment": ""
+  },
+  {
+   "i": 64,
+   "src": "kommersant_biz",
+   "pub": "2026-10-21T18:05:06+03:00",
+   "title": "Яйца невысокого полета // Продажи перепелиных яиц снизились на 12,1% за год",
+   "link": "https://www.kommersant.ru/doc/9044064",
+   "tickers_dict": [],
+   "tickers_true": [],
+   "scope": "none",
+   "type": "",
+   "sentiment": ""
+  },
+  {
+   "i": 65,
+   "src": "smartlab_news",
+   "pub": "2026-10-21T16:30:19+03:00",
+   "title": "Ушаков: Путин проинформировал Уиткоффа, что мы, в принципе, готовы возобновить трехсторонние переговоры в 10-х числах ноября",
+   "link": "https://smart-lab.ru/blog/1365158.php",
+   "tickers_dict": [],
+   "tickers_true": [],
+   "scope": "market",
+   "type": "геополитика",
+   "sentiment": "+"
+  },
+  {
+   "i": 66,
+   "src": "tass_econ",
+   "pub": "2026-10-21T18:27:11+03:00",
+   "title": "В Поморье уполномоченным по взаимодействию с госвластью стала Елена Вторыгина",
+   "link": "https://tass.ru/obschestvo/28239001",
+   "tickers_dict": [],
+   "tickers_true": [],
+   "scope": "none",
+   "type": "",
+   "sentiment": ""
+  },
+  {
+   "i": 67,
+   "src": "tass_econ",
+   "pub": "2026-10-21T18:58:21+03:00",
+   "title": "ООН следит за развитием ситуации вокруг переговоров России и США по Украине",
+   "link": "https://tass.ru/mezhdunarodnaya-panorama/28239111",
+   "tickers_dict": [],
+   "tickers_true": [],
+   "scope": "none",
+   "type": "",
+   "sentiment": ""
+  },
+  {
+   "i": 68,
+   "src": "interfax",
+   "pub": "2026-10-21T17:58:00+03:00",
+   "title": "Роналду поддержал получившего тяжелую травму Кварацхелию",
+   "link": "https://www.sport-interfax.ru/1124045",
+   "tickers_dict": [],
+   "tickers_true": [],
+   "scope": "none",
+   "type": "",
+   "sentiment": ""
+  },
+  {
+   "i": 69,
+   "src": "tass_econ",
+   "pub": "2026-10-21T19:12:45+03:00",
+   "title": "В Алтайском крае завершились конкурсы педагогических студотрядов",
+   "link": "https://tass.ru/obschestvo/28239153",
+   "tickers_dict": [],
+   "tickers_true": [],
+   "scope": "none",
+   "type": "",
+   "sentiment": ""
+  },
+  {
+   "i": 70,
+   "src": "prime",
+   "pub": "2026-10-21T17:13:11+03:00",
+   "title": "Российские геологи разведают запасы вольфрама, лития, марганца и золота",
+   "link": "https://1prime.ru/20261021/geologi-874483613.html",
+   "tickers_dict": [],
+   "tickers_true": [],
+   "scope": "none",
+   "type": "",
+   "sentiment": ""
+  },
+  {
+   "i": 71,
+   "src": "tass_econ",
+   "pub": "2026-10-21T18:47:13+03:00",
+   "title": "Титов: спрос на игристое вино перед Новым годом сохранится на уровне 2025 года",
+   "link": "https://tass.ru/ekonomika/28239073",
+   "tickers_dict": [],
+   "tickers_true": [
+    "ABRD"
+   ],
+   "scope": "company",
+   "type": "бизнес",
+   "sentiment": "+"
+  },
+  {
+   "i": 72,
+   "src": "tass_econ",
+   "pub": "2026-10-21T18:09:53+03:00",
+   "title": "Ушаков назвал главную тему на переговорах России, США и Украины",
+   "link": "https://tass.ru/politika/28238959",
+   "tickers_dict": [],
+   "tickers_true": [],
+   "scope": "market",
+   "type": "геополитика",
+   "sentiment": ""
+  },
+  {
+   "i": 73,
+   "src": "tass_econ",
+   "pub": "2026-10-21T19:01:07+03:00",
+   "title": "В России промпроизводители в сентябре повысили цены на товары на 2,5%",
+   "link": "https://tass.ru/ekonomika/28239123",
+   "tickers_dict": [],
+   "tickers_true": [],
+   "scope": "market",
+   "type": "инфляция",
+   "sentiment": ""
+  },
+  {
+   "i": 74,
+   "src": "tass_econ",
+   "pub": "2026-10-21T18:49:48+03:00",
+   "title": "В ДНР завершат ремонт и строительство восьми спортивных объектов в 2027 году",
+   "link": "https://tass.ru/obschestvo/28238095",
+   "tickers_dict": [],
+   "tickers_true": [],
+   "scope": "none",
+   "type": "",
+   "sentiment": ""
+  },
+  {
+   "i": 75,
+   "src": "kommersant_biz",
+   "pub": "2026-10-21T02:27:41+03:00",
+   "title": "Разрешите поснимать // Доля арендных сделок на офисном рынке выросла до 62%",
+   "link": "https://www.kommersant.ru/doc/9043119",
+   "tickers_dict": [],
+   "tickers_true": [],
+   "scope": "none",
+   "type": "",
+   "sentiment": ""
+  },
+  {
+   "i": 76,
+   "src": "tass_econ",
+   "pub": "2026-10-21T19:00:18+03:00",
+   "title": "The Atlantic: Трамп хочет заключить мирное соглашение по Украине на саммите G20",
+   "link": "https://tass.ru/mezhdunarodnaya-panorama/28239113",
+   "tickers_dict": [],
+   "tickers_true": [],
+   "scope": "none",
+   "type": "",
+   "sentiment": ""
+  },
+  {
+   "i": 77,
+   "src": "interfax",
+   "pub": "2026-10-21T19:03:00+03:00",
+   "title": "Менеджер Тарасов допустил проведение четвертого боя между Яном и Двалишвили в UFC",
+   "link": "https://www.sport-interfax.ru/1124062",
+   "tickers_dict": [],
+   "tickers_true": [],
+   "scope": "none",
+   "type": "",
+   "sentiment": ""
+  },
+  {
+   "i": 78,
+   "src": "smartlab_news",
+   "pub": "2026-10-21T17:05:54+03:00",
+   "title": "Минфин РФ разместил на аукционе ОФЗ-ПД 26235 в объеме ₽99,792 млрд при спросе ₽184,007 млрд, средневзвешенная доходность - 15,76% годовых",
+   "link": "https://smart-lab.ru/blog/1365190.php",
+   "tickers_dict": [],
+   "tickers_true": [],
+   "scope": "market",
+   "type": "ОФЗ",
+   "sentiment": ""
+  },
+  {
+   "i": 79,
+   "src": "kommersant",
+   "pub": "2026-10-20T11:10:26+03:00",
+   "title": "Мишустин рассказал о росте товарооборота России и ШОС // Мишустин: большинство расчетов между странами ШОС ведется в нацвалютах",
+   "link": "https://www.kommersant.ru/doc/9042696",
+   "tickers_dict": [],
+   "tickers_true": [],
+   "scope": "none",
+   "type": "",
+   "sentiment": ""
+  },
+  {
+   "i": 80,
+   "src": "kommersant",
+   "pub": "2026-10-20T13:01:51+03:00",
+   "title": "Силуанов счел небольшим плановый дефицит бюджета России на уровне 2% ВВП",
+   "link": "https://www.kommersant.ru/doc/9042821",
+   "tickers_dict": [],
+   "tickers_true": [],
+   "scope": "market",
+   "type": "бюджет",
+   "sentiment": ""
+  },
+  {
+   "i": 81,
+   "src": "interfax",
+   "pub": "2026-10-21T18:17:00+03:00",
+   "title": "Уиткофф вернулся в Осло после переговоров с Путиным в Санкт-Петербурге",
+   "link": "https://www.interfax.ru/world/1124050",
+   "tickers_dict": [],
+   "tickers_true": [],
+   "scope": "none",
+   "type": "",
+   "sentiment": ""
+  },
+  {
+   "i": 82,
+   "src": "kommersant_biz",
+   "pub": "2026-10-19T16:30:52+03:00",
+   "title": "Россия осталась вторым после Китая крупнейшим импортером грузинской продукции",
+   "link": "https://www.kommersant.ru/doc/9042091",
+   "tickers_dict": [],
+   "tickers_true": [],
+   "scope": "none",
+   "type": "",
+   "sentiment": ""
+  },
+  {
+   "i": 83,
+   "src": "tass_econ",
+   "pub": "2026-10-21T19:07:40+03:00",
+   "title": "Журналист Дэй: смена настроя Трампа по Украине способствует урегулированию конфликта",
+   "link": "https://tass.ru/mezhdunarodnaya-panorama/28239145",
+   "tickers_dict": [],
+   "tickers_true": [],
+   "scope": "none",
+   "type": "",
+   "sentiment": ""
+  },
+  {
+   "i": 84,
+   "src": "interfax",
+   "pub": "2026-10-21T18:25:00+03:00",
+   "title": "Шохин заявил об обсуждении с кабмином идеи обложения сверхприбыли, а не сверхдоходов",
+   "link": "https://www.interfax.ru/business/1124048",
+   "tickers_dict": [],
+   "tickers_true": [],
+   "scope": "market",
+   "type": "налоги",
+   "sentiment": "−"
+  },
+  {
+   "i": 85,
+   "src": "rbc",
+   "pub": "2026-10-21T19:10:03+03:00",
+   "title": "Россия заняла 50-е место в мировом рейтинге силы паспортов",
+   "link": "https://www.rbc.ru/politics/21/10/2026/6ad8dca89a79473871501e59",
+   "tickers_dict": [],
+   "tickers_true": [],
+   "scope": "none",
+   "type": "",
+   "sentiment": ""
+  },
+  {
+   "i": 86,
+   "src": "prime",
+   "pub": "2026-10-21T18:06:48+03:00",
+   "title": "Центробанк опубликовал официальный курс валют на четверг",
+   "link": "https://1prime.ru/20261021/tsentrobank-874487552.html",
+   "tickers_dict": [],
+   "tickers_true": [],
+   "scope": "none",
+   "type": "",
+   "sentiment": ""
+  },
+  {
+   "i": 87,
+   "src": "prime",
+   "pub": "2026-10-21T16:28:51+03:00",
+   "title": "Дмитриев назвал встречу с Уиткоффом продуктивной",
+   "link": "https://1prime.ru/20261021/dmitriev--874479953.html",
+   "tickers_dict": [],
+   "tickers_true": [],
+   "scope": "none",
+   "type": "",
+   "sentiment": ""
+  },
+  {
+   "i": 88,
+   "src": "tass_econ",
+   "pub": "2026-10-21T19:16:06+03:00",
+   "title": "В Адыгее с помощью инфраструктурных кредитов привлекли 22,9 млрд рублей инвестиций",
+   "link": "https://tass.ru/ekonomika/28239157",
+   "tickers_dict": [],
+   "tickers_true": [],
+   "scope": "none",
+   "type": "",
+   "sentiment": ""
+  },
+  {
+   "i": 89,
+   "src": "kommersant_biz",
+   "pub": "2026-10-20T11:00:00+03:00",
+   "title": "Инвесторы взялись за ракетки // Сеть «X4 Падел» выкупила конкурента Rocket Padel",
+   "link": "https://www.kommersant.ru/doc/9042452",
+   "tickers_dict": [],
+   "tickers_true": [],
+   "scope": "none",
+   "type": "",
+   "sentiment": ""
+  },
+  {
+   "i": 90,
+   "src": "smartlab_news",
+   "pub": "2026-10-21T17:54:53+03:00",
+   "title": "Официальные курсы валют на 22 октября: ¥ — ₽12,2806, $ — ₽81,9739, € — ₽91,9337",
+   "link": "https://smart-lab.ru/blog/1365228.php",
+   "tickers_dict": [],
+   "tickers_true": [],
+   "scope": "market",
+   "type": "валюта",
+   "sentiment": ""
+  },
+  {
+   "i": 91,
+   "src": "kommersant_biz",
+   "pub": "2026-10-19T18:43:32+03:00",
+   "title": "Банк России установил курс доллара ниже 83 руб. впервые за два месяца",
+   "link": "https://www.kommersant.ru/doc/9042314",
+   "tickers_dict": [],
+   "tickers_true": [],
+   "scope": "market",
+   "type": "валюта",
+   "sentiment": ""
+  },
+  {
+   "i": 92,
+   "src": "tass_econ",
+   "pub": "2026-10-21T18:57:08+03:00",
+   "title": "В Москве проведут два космических чемпионата",
+   "link": "https://tass.ru/obschestvo/28239087",
+   "tickers_dict": [],
+   "tickers_true": [],
+   "scope": "none",
+   "type": "",
+   "sentiment": ""
+  },
+  {
+   "i": 93,
+   "src": "prime",
+   "pub": "2026-10-21T19:05:49+03:00",
+   "title": "В России за неделю подешевел бензин на АЗС",
+   "link": "https://1prime.ru/20261021/rosstat-874490374.html",
+   "tickers_dict": [],
+   "tickers_true": [],
+   "scope": "none",
+   "type": "",
+   "sentiment": ""
+  },
+  {
+   "i": 94,
+   "src": "rbc",
+   "pub": "2026-10-21T17:49:08+03:00",
+   "title": "Премьер Бельгии заявил, что «прошелся огнеметом» в споре о активах России",
+   "link": "https://www.rbc.ru/politics/21/10/2026/6ad8c4c7acd127579b70572a",
+   "tickers_dict": [],
+   "tickers_true": [],
+   "scope": "none",
+   "type": "",
+   "sentiment": ""
+  },
+  {
+   "i": 95,
+   "src": "interfax",
+   "pub": "2026-10-21T19:10:00+03:00",
+   "title": "РФ и Украина согласились с идеей США о трехсторонней встрече на техническом уровне",
+   "link": "https://www.interfax.ru/world/1124066",
+   "tickers_dict": [],
+   "tickers_true": [],
+   "scope": "market",
+   "type": "геополитика",
+   "sentiment": "+"
+  },
+  {
+   "i": 96,
+   "src": "tass_econ",
+   "pub": "2026-10-21T18:43:19+03:00",
+   "title": "Красноярские власти выработают предложения по развитию спорта",
+   "link": "https://tass.ru/sport/28239065",
+   "tickers_dict": [],
+   "tickers_true": [],
+   "scope": "none",
+   "type": "",
+   "sentiment": ""
+  },
+  {
+   "i": 97,
+   "src": "kommersant",
+   "pub": "2026-10-19T01:40:24+03:00",
+   "title": "Не торговлей едины // МВФ оценил высоту барьеров внутри Евросоюза",
+   "link": "https://www.kommersant.ru/doc/9041395",
+   "tickers_dict": [],
+   "tickers_true": [],
+   "scope": "none",
+   "type": "",
+   "sentiment": ""
+  },
+  {
+   "i": 98,
+   "src": "prime",
+   "pub": "2026-10-21T16:15:00+03:00",
+   "title": "Алиханов призвал повышать пошлины на импорт уже локализованной продукции",
+   "link": "https://1prime.ru/20261021/import-874478227.html",
+   "tickers_dict": [],
+   "tickers_true": [],
+   "scope": "none",
+   "type": "",
+   "sentiment": ""
+  },
+  {
+   "i": 99,
+   "src": "tass_econ",
+   "pub": "2026-10-21T18:46:22+03:00",
+   "title": "РАН: проект \"АРКА-М\" позволит исследовать фундаментальные процессы на Солнце",
+   "link": "https://tass.ru/kosmos/28239075",
+   "tickers_dict": [],
+   "tickers_true": [],
+   "scope": "none",
+   "type": "",
+   "sentiment": ""
+  },
+  {
+   "i": 100,
+   "src": "kommersant_biz",
+   "pub": "2026-10-19T00:20:07+03:00",
+   "title": "Фурам покатило на родине // Спрос на автоперевозки грузов по России вырос в третьем квартале на 20%",
+   "link": "https://www.kommersant.ru/doc/9041455",
+   "tickers_dict": [],
+   "tickers_true": [],
+   "scope": "none",
+   "type": "",
+   "sentiment": ""
+  },
+  {
+   "i": 101,
+   "src": "prime",
+   "pub": "2026-10-21T16:57:57+03:00",
+   "title": "Володин призвал возвращать пассажирский транспорт на российские реки",
+   "link": "https://1prime.ru/20261021/volodin-874482666.html",
+   "tickers_dict": [],
+   "tickers_true": [],
+   "scope": "none",
+   "type": "",
+   "sentiment": ""
+  },
+  {
+   "i": 102,
+   "src": "smartlab_news",
+   "pub": "2026-10-21T15:18:15+03:00",
+   "title": "Правительство РФ призывает увеличивать долю вин российского производства в отечественных магазинах, необходимо расширить ассортимент",
+   "link": "https://smart-lab.ru/blog/1365125.php",
+   "tickers_dict": [],
+   "tickers_true": [],
+   "scope": "none",
+   "type": "",
+   "sentiment": ""
+  },
+  {
+   "i": 103,
+   "src": "kommersant",
+   "pub": "2026-10-19T01:40:24+03:00",
+   "title": "Смешать, но не взбалтывать // Металлурги просят готовить специалистов отрасли по отдельной группе учебных программ",
+   "link": "https://www.kommersant.ru/doc/9041466",
+   "tickers_dict": [],
+   "tickers_true": [],
+   "scope": "none",
+   "type": "",
+   "sentiment": ""
+  },
+  {
+   "i": 104,
+   "src": "tass_econ",
+   "pub": "2026-10-21T18:20:48+03:00",
+   "title": "КНР поддерживает усилия РФ по обеспечению территориальной целостности",
+   "link": "https://tass.ru/politika/28238993",
+   "tickers_dict": [],
+   "tickers_true": [],
+   "scope": "none",
+   "type": "",
+   "sentiment": ""
+  },
+  {
+   "i": 105,
+   "src": "kommersant_biz",
+   "pub": "2026-10-19T13:06:36+03:00",
+   "title": "Пенсионный фонд Южной Кореи потерял $137 млрд из-за падения акций Samsung",
+   "link": "https://www.kommersant.ru/doc/9041953",
+   "tickers_dict": [],
+   "tickers_true": [],
+   "scope": "none",
+   "type": "",
+   "sentiment": ""
+  },
+  {
+   "i": 106,
+   "src": "prime",
+   "pub": "2026-10-21T18:25:20+03:00",
+   "title": "Выхода из топливного кризиса во Франции не наблюдается, заявил эксперт",
+   "link": "https://1prime.ru/20261021/frantsiya-874488687.html",
+   "tickers_dict": [],
+   "tickers_true": [],
+   "scope": "none",
+   "type": "",
+   "sentiment": ""
+  },
+  {
+   "i": 107,
+   "src": "tass_econ",
+   "pub": "2026-10-21T18:02:22+03:00",
+   "title": "В НАО начали проверку для установления причин пожара на полигоне ТКО",
+   "link": "https://tass.ru/obschestvo/28238923",
+   "tickers_dict": [],
+   "tickers_true": [],
+   "scope": "none",
+   "type": "",
+   "sentiment": ""
+  }
+ ]
+}
