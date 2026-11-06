@@ -3,15 +3,20 @@
 # ТЕХНИЧЕСКОЕ ЗАДАНИЕ (ТЗ)
 ## Торговый терминал для рынка ценных бумаг РФ (MOEX)
 
-**Версия:** 3.9
-**Дата:** 2026-10-19
-**Основание:** Функциональные требования v4.7 от 2026-10-17
-**Статус:** ✅ M4 Production-ready. Gate Sprint_8_Review пройден (PASS WITH NOTES), остаток приёмки (8 замечаний) и весь backlog доведения закрыты. Актуализировано по итогам код-ревью P0–P1, финальной приёмки и closeout-цикла S8R.
+**Версия:** 4.4
+**Дата:** 2026-11-06
+**Основание:** ФТ v4.12 от 2026-11-06
+**Статус:** ✅ M4 Production-ready. Gate Sprint_8_Review пройден (PASS WITH NOTES), остаток приёмки (8 замечаний) и весь backlog доведения закрыты. Актуализировано по итогам код-ревью P0–P1, финальной приёмки и closeout-цикла S8R. С 2026-10-23 идёт развитие по плану 008; v4.0 — блок A-01 «Хранилище баров» (сборка сдана 2026-10-24, в рабочем терминале ещё нет; дефект 4 тестового стенда — ряды «как было» с пересчётом по дроблениям при чтении, `ohlcv_lot_history`, head `a858647f24e6`; дефекты 5–6 — день архива в основном ряду только при точном совпадении с итогом дня ISS `history` TQBR; дефект 7 — итог дня ISS по календарным дням без торгов выходного дня, `get_daily_volumes`). v4.1 — блок A-03 «Часы торгов, стопы внутри бара, дилер» (в `develop` с 2026-11-04, PR #112, `dd6d8fa`; в рабочем терминале ещё нет): таблица периодов расписания `trading_schedule_periods`, правила `entry_verdict`/`exit_verdict`, стоп и тейк внутри бара, список «закрыть при первой возможности», поток одной подпиской с каналом `dealer:`, стопы у дилера за `DEALER_STOPS_ENABLED`, уровневые алерты на модели `Alert`; head `d92b7dd5c939`. v4.2 — блок A-05 «Дефекты этапа 1» (в `develop` с 2026-11-04, PR #113, `185b9be`; в рабочем терминале ещё нет): отчёт разбора описания `ParseReport` в `strategy_versions.parse_report` и 422 `description_has_problems`, размер позиции бэктеста в лотах одной формулой (`strategy/sizing.py`, `backtests.lot_size`, пометка «лоты штуками»), фоновый повтор внешней доставки по строкам `notification.dispatch` (`retry_notification_delivery`, `notifications.channels_failed`), пометка «MOEX ISS · задержка 15 мин» (`marketDataStore.lastSource`); T+1 приведено к Model A (ФТ §7.4); head `cdb15f21e5ca`. v4.3 — блок Б-02 «Графики: панели и виды» (в `develop` с 2026-11-05, PR #111, `4c70407`; в рабочем терминале ещё нет): раскладка графиков одним JSON-документом на пользователя (`chart_layouts`, `GET/PUT /api/v1/chart-layout`, ADR 0024), ряды свечей по ключу «источник : тикер : ТФ : adjust» и один `CandleStream` на «источник : тикер : ТФ» (ADR 0025, 0029), рисунки по «пользователь + бумага» (`/api/v1/charts/{ticker}/drawings`, индекс `idx_drawing_user_ticker`, ADR 0026), дилерские свечи второй серией с дробным временем (ADR 0027) по `GET /candles/dealer?adjust` и каналу `dealer:`, виды и шкалы панели, слияние кадра `bar_pending`; head `0acf47e6607f`. v4.4 — блок Б-01 «Новости: сборщик, архив, лента» (в `develop` с 2026-11-06, PR #116, `3c65d27`; в рабочем терминале ещё нет): модуль `app/news/` — шесть таблиц `news_*` (архив только с заголовком и ссылкой, ADR 0101; разметка — запись на разметчика с полями ИИ D8, ADR 0102), сборщик семи источников раз в 60 с (`news_collect`), словарь акций TQBR из ISS + `news_dictionary_terms` (ADR 0104), реакция «до / после» по 1m ISS от точного времени публикации (`news_reactions`, ADR 0103), лента `GET /api/v1/news` с курсором и страница `/news`; новых настроек в `config.py` нет; head `b01e7a5c3d92`.
 
 ### История версий
 
 | Версия | Дата | Спринт | Ключевые изменения |
 |--------|------|--------|-------------------|
+| 4.4 | 2026-11-06 | План 008 — блок Б-01 «Новости: сборщик, архив, лента»: пункт D7 в объёме блока (бриф и решения заказчика 2026-10-25) | Основание — ФТ v4.12. Код — ветка `feat/008-b01-news` от `develop` `76480cc` (Autopilot semi/strict, 68 требований манифеста, из них R62–R68 отложены по брифу — другие блоки и перевешивание миграции по команде заказчика; таски `34c0d1c` T01, `0cbdda5` T03, `c5d48f4` T02, `0c2005b` T04, ремонт `3f97db7` F1 (кодировка лент, настоящий ответ ЦБ) и `10d9057` F2 (подпись типа целиком), сдача `8309a80`; `0fe5542` — замер словаря вынесен в `backend/scripts/news_benchmark.py`; перед мержем — `d7dc5a8` (влит `develop` с Б-0, A-01, A-03, A-05: миграция перевешена на `cdb15f21e5ca`), `a4e320c` (влит `develop` `4c70407` с Б-02 и #114: миграция перевешена на `0acf47e6607f`; кандидат тестового стенда 05–06.11), `35bf917` (влит `develop` `45a67bd`, PR #115); по тестовому стенду — `e769c1e` (псевдоним «GloraX» → `GLRX` в посеве ревизии)); влита в `develop` 2026-11-06 (PR #116, мерж `3c65d27`); в рабочий терминал — тегом после приёмки на стенде. **§3:** шесть новых таблиц `news_sources`, `news_items`, `news_labels`, `news_tickers`, `news_reactions`, `news_dictionary_terms` (§3.26, §3.23); одна ревизия `b01e7a5c3d92` поверх `0acf47e6607f` (head; обратима; посев — 7 источников и 217 терминов словаря; замер — `deployment_guide.md` §7). **§4.0, §4.14 (новый):** `GET /api/v1/news` (фильтры `ticker`/`source`/`type`, курсор `published_at|id`, `limit` 1..200), `GET /news/sources`, `GET /news/tickers` — только вошедшему, без входа 401; проценты реакции — строкой. **§5.9, §5.14 (новый):** задания `news_collect` и `news_reactions` (`IntervalTrigger(seconds=60)`, `misfire_grace_time=600`, `max_instances=1`); `FeedFetcher` (таймауты 5/15 с, срок 30 с на источник, тело ≤ 2 МБ, отказ от DTD/ENTITY и UTF-16/32, `ElementTree` с `# nosec B405/B314`, прокси окружения), `NewsCollector` (`INSERT … ON CONFLICT DO NOTHING`, транзакция на источник, сбой — в строку источника), `DictionaryProvider`/`TickerDictionary` (TQBR из ISS, кэш 24 ч, `_ALIASES`/`_EXCLUSIONS` в БД), `label_unlabeled`, `ReactionWorker`/`compute_reaction` (1m ISS, срок P + 75 мин, 20 за проход, 10 попыток; OZON — −0,2118 / −0,8207 %). **§2.1, §6.1, §6.9, §6.10 (новый):** модуль `news/` в дереве; страница `NewsPage` (`/news`), `newsStore` (курсор, «поколение» ответов, `refresh()` раз в 60 с), `newsApi`, пункт меню «Новости». Новых настроек в `config.py` нет — интервалы и пороги в `app/news/constants.py`. Решения — ADR 0101–0104. Известные ограничения — §3.26, §5.14, §6.10. |
+| 4.3 | 2026-11-05 | План 008 — блок Б-02 «Графики: панели и виды»: G1 без дефекта 9, G2, правило A4, переключатели «внебиржевые часы» (A1) и «как было» (бриф и решения заказчика 2026-10-26) | Основание — ФТ v4.11. Код — ветка `feat/008-b02-chart-panels` от `develop` `917d9dc` (Autopilot semi/strict, 57 требований манифеста + D01, D02; таски `2985df8` T01, `d36ed8a`+`bc08eb6`+`53f8a10` T02, `194d079` T03, `a466be6`+`bff1c71` T04, `12c7cb1` T05, `521cddd` T06, ремонт `2c7c944` F1 и `bcb7ece` F2, сдача `366c36a`; по тестовому стенду — `8e4db57` (избранные ТФ в заголовке каждой панели), `1b7803e` (перекрестие не залипает на живых свечах), `7461bb6` (легенда после снимка из кэша, связь символа при том же тикере), `ad20e04` (очередь `PUT` раскладки, предел документа 64 КиБ, без повтора подписки до `auth_ok`), `dad3c68` (пометка ISS и подпись источника — под легендой); перед мержем — `1670a33` (влит `develop` с A-03 и A-05: миграция перевешена на `cdb15f21e5ca`, ADR 0012–0017 перенумерованы в 0024–0029, пометка ISS A-05 перенесена в ряды панелей) и `71852b2` (влит `develop` с #114)); влита в `develop` 2026-11-05 (PR #111, `4c70407`; CI 4 из 4, backend 7393 passed, покрытие 92,20 %, vitest 1976); в рабочий терминал — тегом после приёмки на стенде. **§3:** новая таблица `chart_layouts` (§3.25, §3.23); `chart_drawings` — индекс `idx_drawing_user_ticker (user_id, ticker)` вместо `idx_drawing_lookup` (§3.14), строки не переписываются; одна ревизия `0acf47e6607f` поверх `cdb15f21e5ca` (head; обратима; замер — `deployment_guide.md` §7). **§4.0, §4.13 (новый), §11.10:** `GET/PUT /api/v1/chart-layout` (`ChartLayoutDoc` версии 1; 422 на неверный документ и сверх 64 КиБ); рисунки — `GET|POST /api/v1/charts/{ticker}/drawings` (ТФ в теле, `ChartDrawingCreate.timeframe: Timeframe`), `DELETE /api/v1/charts/{ticker}/drawings?timeframe=` (обязателен), прежние `/{ticker}/{tf}/drawings` сняты без переходного периода; `GET /market-data/candles/dealer` — query `adjust`; у `/candles?adjust`, `/candles/dealer` и `/candles/subscribe?source=dealer` появился потребитель. **§2.3, §3.5.1, §5.6:** дилерский канал и `get_dealer_candles(…, adjust)` читает панель графика. **§6.4, §6.9:** страница графика из панелей (`ChartPage`, `ChartLayoutBar`, `ChartPanel`, `ChartPanelHeader`, макет А), `chartLayoutStore` (дебаунс 500 мс, очередь `PUT`, D01 — ADR 0028), `chartCrosshairStore`, ряды `marketDataStore.series` / `streamChannels` (`seriesKey`, `streamKey`, `ensureSeries`, D02 — ADR 0029), `useCandleStream` / `CandleStream` вместо `useChartLiveData`, `mergeLiveCandle` (кадр `bar_pending`), `priceSeries.ts` (5 видов, 3 шкалы, `LOG_HINT_RATIO = 3`), `sequentialIndex.barIndexForTime` / `dealerSequentialData`, `coords.ts` по номеру бара основного ряда, рисунки `byTicker` + ключ localStorage `drawings:{user}:{ticker}` версии 2 (`migrateLocalDrawingKeys`), пометка ISS — `SeriesState.lastSource` + `useIssDelay`; фильтр 07–20 UTC удалён. Известные ограничения — §4.13, §6.4. |
+| 4.2 | 2026-11-04 | План 008 — блок A-05 «Дефекты этапа 1»: B12, C4, D5, E3, текст дефекта 14 (бриф и решения заказчика 2026-10-25) | Основание — ФТ v4.10. Код — ветка `feat/008-a05-stage1-defects` от `develop` `76480cc` (Autopilot semi/strict, 42 требования манифеста; таски `4b38508` T01, `7c35de5` T05, `e1d4909` T02, `9543a5d`+`dc255f0` T04, `bfb3f0c` T03, `2ed27a3` T06, ремонт `284f9de` F1, сдача `2481f7a`; перед мержем — `891970f` (влит `develop` с Б-0, A-01, A-03: миграция перевешена на `d92b7dd5c939`; тень `parity.interpreter_trades` совмещает правила аукционов A-03 с проверкой денег A-05) и `d2508bf` (тесты уведомлений — файловая БД + `NullPool` вместо `:memory:` + `StaticPool`, gotcha-95: CI ловил откат чужой незакоммиченной отметки «доставлено»)); влита в `develop` 2026-11-04 (PR #113, `185b9be`; CI на `d2508bf` 4 из 4, backend 7341 passed / 12 skipped, покрытие 92,12 %); в рабочий терминал — тегом после приёмки на стенде. **§3:** колонки `strategy_versions.parse_report` (§3.4), `backtests.lot_size` (§3.6), `notifications.channels_failed` (§3.12); `backtest_trades.volume_lots` — лоты (§3.7); одна ревизия `cdb15f21e5ca` поверх `d92b7dd5c939` (head; обратима; замер — `deployment_guide.md` §7). **§3.20** (и строка §3.0) приведены к коду: колонка `payload` (не `payload_json`), индекса нет, строк не чистят; payload `notification.dispatch`; `notifications.channels_sent` — CSV, а не JSON. **§2.4, §4.8, §5.7:** «гарантированная доставка не реализована» снято — outbox работает с S8R-AUDIT-086/FIX-065; с A-05 строку `notification.dispatch` пишет каждое уведомление с запланированным Telegram/почтой (`_create_notification_impl`, `_plan_external_channels`), повтор по сроку — `NotificationService.retry_due_deliveries` (`DELIVERY_RETRY_DELAYS_SEC = (10, 60, 300, 1800)`, `DELIVERY_MAX_ATTEMPTS = 5`), сторож `_dispatch_in_flight`, отметка `channels_failed` → `NotificationResponse.undelivered_channels`. **§5.9:** задача `retry_notification_delivery` (`IntervalTrigger(seconds=10)`, `misfire_grace_time=600`, `max_instances=1`). **§4.2, §5.2.2а (новый):** `block_parser` — `ParseIssue`, `ParseReport`, `is_reference_format`, построчный разбор формата ИИ-чата (приоритет И/ИЛИ/НЕ, правила уровней); `POST /strategy/parse-template` → `report`; `POST /strategy/{id}/versions` → 422 `{detail, error_code: "description_has_problems", report}`; `VersionResponse.parse_report`; копии версии переносят отчёт; идемпотентность версии сравнивает и `text_description`. **§4.3, §5.3.1б (новый):** `strategy/sizing.py` — `PERCENT_LOT_EXPR` с лотом и комиссией, `percent_lot_size`, `shares_for_lots`, `position_cost`, `SERVICE_STRATEGY_PARAMS`; кодоген объявляет `lot_size`/`commission_pct`, `engine.service_strategy_kwargs`; `backtest/lot.py` — `resolve_backtest_lot`, `is_legacy_share_lots`, `lot_unverified_warning`, `directory_lots`; ответы `GET /backtest/{id}` и списков — `lot_size`, `legacy_share_lots`; `strategy-params` без служебных параметров; экспорт — «Акций». **§6.3–6.5, §6.8:** `ParseReportView`, `strategyStore.parseReport`, тост отказа; `CandlestickChart` — `chart-source-delay` по `marketDataStore.lastSource`; `LegacyShareLotsBadge`, предупреждение «Лоты штуками», «шт.» в сделках; `UndeliveredChannels`. **Дефект 14 (T+1):** §3.10, §5.4.4, таблица «Дополнения v1.6» и реестр Спринта 5 приведены к Model A — paper T+1 по деньгам не моделирует (ФТ §7.4); мёртвая ветка `PaperBrokerAdapter.place_order` — A-06 с B4. Известные ограничения — §3.20, §5.2.2а, §5.3.1б, §5.7, §6.4. |
+| 4.1 | 2026-11-04 | План 008 — блок A-03 «Часы торгов, стопы внутри бара, дилер» (бриф и решения заказчика 2026-10-26) | Основание — ФТ v4.9. Код — ветка `feat/008-a03-trading-hours-stops` от `develop` `917d9dc` (Autopilot semi/strict, 86 требований манифеста; таски `bced169` T01, `9795d3f` T03, `7358e3c` T02, `b6382f4` T07, `920226e`+`e43d8e9` T04, `1359e55` T05, `92c8fd6` T06, ремонт `c5cbc38` F1, `4147030` F3, `9a08236` F2, сдача `87b923a`; после сдачи — исправления: `bb8799e` (найдено на тестовом стенде 02–03.11: имя площадки `TradingSchedules` без регистра — живой T-Invest отвечает заглавными, и стенд работал на запасных часах; ночной вход при полном лимите позиций отбрасывается, а не откладывается), `bbb632d` (известный баг сборки, по слову заказчика: стоп внутри бара — сделка вне снимка наблюдателя по текущей цене, а не по low минуты с ценами до входа), `0952d9c` (только тест «Закрыть все» в Telegram с фиксированным «сейчас» — падал ночью и в праздник 04.11, найдено CI-прогоном)); влита в `develop` 2026-11-04 (PR #112, `dd6d8fa`; CI 4 из 4, backend 7123 passed / 12 skipped; локально 7134 passed / 1 skipped, покрытие 92,63 %); в рабочий терминал — тегом после приёмки на стенде. Архитектура и решения в репозитории кода: `docs/architecture.md`, `docs/adr/0012…0023`, `CONTEXT.md`. **§3:** новые таблицы `trading_schedule_periods`, `trading_schedule_empty_days` (§3.24), `alerts`, `alert_triggers` (§3.13 — вместо `price_alerts`, активные строки переносятся); колонки `live_trades.exit_retry_kind/exit_retry_since/exit_retry_notified_at` (§3.9), `backtest_trades.price_note` (§3.7); одна ревизия `d92b7dd5c939` поверх `a858647f24e6` (head; обратима; замер — `deployment_guide.md` §7). **§2.3, §4.0, §4.12:** публичный WS-канал `dealer:{ticker}:{tf}` (1m–4h; контракт с Б-02), `POST /market-data/candles/subscribe?source=exchange\|dealer`, `GET /market-data/price-alerts/quote`, `POST /price-alerts` без `condition` (направление ставит сервер; 409/422), `/market-status` — статусы `closing_auction`, `dealer`. **§5.5:** чтения T-Invest `get_trading_schedules`, `get_last_price`, `get_price_step`, `get_trading_status`, `get_dealer_order_book`; в очередь алертов мультиплексора — только биржевые свечи. **§5.9, §5.9.1 (новый):** `scheduler/trading_schedule.py` — `TradingSchedule` (кэш процесса, синхронное чтение), `fallback_day`, история из минут ISS SBER с 13.06.2018 (`backfill_from_iss`), T-Invest `TradingSchedules` площадки `moex_mrng_evng_e_wknd_dlr` на сегодня + 7 (`sync_from_tinvest`); задачи `sync_trading_schedule`, `refresh_weekend_trading_schedule`, `backfill_trading_schedule_iss`; `get_market_status` по фазе таблицы. **§5.4.6 (новый):** `common/trading_hours.py` — `entry_verdict`, `exit_verdict(ExitKind)` → `ALLOW`/`DEFER`/`DEALER_CHECK`/`DENY` (ADR 0013, 0019, 0020); `trading/pending_exits.py` (ADR 0014); `_IntrabarRiskWatcher` + `RiskMonitor.check_sl_tp_intrabar` (ADR 0015); `_SessionListener` закрывает бар по `bar.closed` / страховочному таймеру / следующему бару, `_DeferredEntry` (ADR 0016); `trading/dealer_exit.py` (ADR 0022). **§5.3:** `AuctionAwareBroker`, цена Д/W/M из сохранённых минут (`_StoredMinuteOpens`, ADR 0017, 0018), теневой прогон `parity` по тем же правилам; `TRADING_MINUTES_PER_DAY = 805` — число. **§5.4.5, §5.6.6:** `MARKET_DATA_STREAM_MODE` по умолчанию `single_include_weekend` (ADR 0021): дилерские свечи потока — `ohlcv_dealer` (`BarLoader.store_stream_dealer_minutes`, без покрытия), канал `dealer:`, риск-монитор; фильтр O=H=L=C в `get_candles` удалён; `bar_close.py` и CB читают таблицу периодов; `bar.closed` читают сессии. **§5.6.7 (новый):** уровневые алерты — `Alert`/`AlertTrigger`, `PriceAlertMonitor` (high/low минуты, гэп, повторное взведение), `common/price_step.py`, шаг цены `instruments.min_price_increment` (`ensure_lot_size`, раз в сутки), ADR 0023. **§5.7:** `system.alert` → `event_type` `alert` («Алерт», настройки наследует от `price_alert`). **§5.8:** окно часов CB по умолчанию 07:00–23:50, аукционы блокируют вход во всех режимах, `_get_trading_day_start` — `trading_day_start` по таблице, аварийное закрытие — `ExitKind.FORCED` + список, свежесть цены D — в торговых днях (G01). **§6.1, §6.4, §6.7:** `StatusFooter` (статусы `closing_auction`, `dealer`), `PriceAlertModal` (без «Выше/Ниже», текущая цена, подсказка направления, точность по шагу цены, `D04`), `riskLimits.ts` — 07:00–23:50, `EVENT_TYPE_LABELS.alert`. Известные ограничения — §5.3, §5.4.6, §5.6.6, §5.6.7, §5.8, §5.9.1. |
+| 4.0 | 2026-10-24 | План 008 — блок A-01 «Хранилище баров» (решения заказчика 2026-10-23/24) | Основание — ФТ v4.8. Код — ветка `feat/008-a01-bar-storage` (Autopilot, сборка сдана 2026-10-24, 11 коммитов от `e07044b`: `9c6915f`…`d8260b9`; после сдачи — исправления по тестовому стенду: `71d5a5f` (TLS архива, скрипт сверки), `ccf0302` (архив по uid), `11bd9f0` (дефект 4: «как было», дробления, лот на дату), `9f43de4` (дефекты 5–6: день архива — только при точном совпадении с ISS `history`, устойчивая смена лота, эталонные дни в фикстурах, правки по двум ревью), `2b7c97a` (дефект 7: объём дня ISS — по календарным дням, торги выходного и праздничного дня вычитаются из итога следующего рабочего дня)); в `develop` и рабочий терминал не попал. Архитектура и решения в репозитории кода: `docs/architecture.md`, `docs/adr/0001…0009`, `CONTEXT.md`. **§3.5:** `ohlcv_cache` — только `1m` и `D`, индекс `idx_ohlcv_lookup` удалён (остался `uq_ohlcv_lookup`); новые таблицы `ohlcv_coverage`, `ohlcv_dealer`, `ohlcv_volume_check`, `ohlcv_backfill_target`, `ohlcv_lot_history` (§3.5.1–3.5.5); цепочка миграций `b9d2f6a14c83` → `e5a7c2d90b16` → `c4e81f3a9d27` → `f1b3d8e62a54` → `a858647f24e6` (head; data-миграции необратимы, схема обратима; замеры на копии рабочей БД — `deployment_guide.md` §7). **§4.0:** `GET /api/v1/market-data/candles/dealer` (задел для Б-02). **§5.4.5:** подписка T-Invest только на `1m`, остальные ТФ (в том числе D/W/M) — агрегатор поверх потока минут; второе соединение закрытых минут (`waiting_close`); `MARKET_DATA_STREAM_MODE`. **§5.6 и новый §5.6.6:** таблица покрытия вместо `_find_gaps`/`_tail_tolerance`/`check_cache_coverage`; `BarLoader` — единственный писатель свечей T-Invest; `aggregation.py` — один агрегатор для истории и потока (LRU `AggregateCache`); `bar_close.py` — одно правило «бар закрыт» (конец периода или конец торгов + 2 с); `ClosedBarTracker` и событие шины `bar.closed` (канал `bars:{ticker}:{tf}`, `complete`/`revised`; не уведомление, вне `EVENT_MAP`, клиентам по WS не отдаётся); дилерский ряд `ohlcv_dealer`; объём в штуках (лоты × лот), сверка с ISS (`ohlcv_volume_check`, порог 1 %); шов `TINVEST_MINUTE_SEAM` 2018-06-13; цена из кэша (`last_cached_bar`, `closed_bar_close_before`) — из хранимого ряда по правилу «бар закрыт»; фоновая догрузка при входе (`auth/router.py` → `backfill.run_backfill`, архивы `history-data` ≤ 30 запросов/мин); живая D/W/M и сессии на D/W/M из потока минут. **§6.4, §6.6:** таймфрейм `30m` (`TimeframeSelector`, `LaunchSessionModal`: 9 значений). Годовой Sharpe `30m` — по прежней формуле (A-06). **Дефект 4 тестового стенда (решение заказчика 2026-10-24) — §3.5, §3.5.3, §3.5.5, §4.0, §5.6.6, §5.9, §5.12:** ряды `ohlcv_cache`/`ohlcv_dealer` хранятся «как было» (цена и штуки своего дня): свечи `GetCandles` (1m, D, дилерские) раньше границы наступившего дробления перед записью — `splits.to_as_was` (цена × rt/rf, объём × rf/rt), ISS — только цена, архив `history-data` — как есть, объём = лоты × лот на дату (`lot_history.ArchiveLots`, новая таблица `ohlcv_lot_history`); дробления — `corporate_actions` (`action_type='split'`), граница — `split_opened_before(ex_date)`; чтение по умолчанию с учётом дроблений — единственное место пересчёта `MarketDataService._read_stored` и `_latest_bar`, ключ LRU включает наступившие дробления; `closed_bar_close_before` (оценка CB закрытых неоценённых сделок) — в масштабе момента сделки, `last_cached_bar` — в текущем; загрузчик перечитывает дробления на каждое окно `GetCandles`, момент пересчёта — время ответа окна; новое дробление с наступившей границей — `forget_bars_before_new_splits` **до** записи дробления, в той же сессии (строки до границы вместе с покрытием и сверками удаляются; сбой — ERROR, дробления в этот прогон не пишутся); планировщик и без живых сессий вызывает `detect_corporate_actions([])` — синхронизирует дробления; лот на дату: ISS не знает бумагу — лот истории или текущий (WARNING `archive_lot_iss_empty`), сбой записи истории лота загрузку не останавливает; сверка объёма — «как было» с «как было»; `GET /market-data/candles?adjust=splits\|none` (по умолчанию `splits`; задел Б-02); текст предупреждения бэктеста о сплите — «… цены и объёмы до него пересчитаны в текущий масштаб»; ревизия `a858647f24e6` — `ohlcv_lot_history` и удаление всех рядов свечей прежнего масштаба (`ohlcv_cache`, `ohlcv_dealer`, `ohlcv_coverage`, `ohlcv_volume_check`; на рабочей БД — только 269 строк ISS D); тест миграций голову больше не закрепляет; известные ограничения пересчёта — §5.6.6. **Дефекты 5 и 6 тестового стенда (четвёртый заход 2026-10-24; ADR 0011) — §3.5, §3.5.3, §3.5.5, §5.5.3, §5.6.6:** эталон дня — ISS `history` TQBR (`MOEXISSClient.get_daily_volumes`), дневка `candles.json` бывает неверна (10.04.2025, SBER 01.08.2025); день архива `history-data` идёт в основной ряд, только если Σ лотов минут окна биржевых часов (`EXCHANGE_WINDOWS`, UTC 03:50–20:50 / 06:50–20:50 / 06:50–15:50, первое совпавшее) × лот из `ALLOWED_LOTS` ∪ {текущий} точно равна итогу дня (`ArchiveLots.admit` вместо `lots_for`); пишутся только минуты окна; решение — по всем минутам суток; иначе `GetCandles` (биржа не торговала, нет точного совпадения, лот не подтверждён, ISS недоступен), без минут и без торгов — «сделок не было» без запроса; допуски `VOLUME_TOLERANCE`/`LOT_KEEP_TOLERANCE` сняты; смена лота — только устойчивая (`_drop_unconfirmed`), в `ohlcv_lot_history` — только подтверждённые; `history` пуст — `candles.json` есть → `GetCandles`, нет → окно с утренней сессией и лот истории/текущий (WARNING `archive_lot_iss_empty`); сверка объёма — по `history`, `candles.json` — только для дней без него; эталонные дни — `test_reference_days.py`, `fixtures/reference_days/`, `scripts/record_bar_reference_days.py`; ограничения — архив не используется для бумаг вне TQBR, «как было» дилерского ряда T 15–16.04.2026 ×10 (Б-02). |
 | 3.9 | 2026-10-19 | S8R — сводный бамп Dependabot #77–#89 (решения заказчика 2026-10-19) | Основание — ФТ v4.7 (требования не меняются). Код — PR #91 `deps/dependabot-2026-10-19`, смержен → `develop` `c55bbbf`. **§1.1:** FastAPI 0.143+ (с 0.137 `app.routes` — дерево с `_IncludedRouter`, обход маршрутов в тестах — `iter_route_contexts`, gotcha-86); AI SDK anthropic 1.15+ построен на `httpx2` и отвергает клиент `httpx` — `ClaudeProvider` создаёт `httpx2.AsyncClient(follow_redirects=False)`, `httpx2` — прямая зависимость (gotcha-85); **TA-Lib удалён** (не импортировался нигде, индикаторы — `bt.indicators` Backtrader); админ-метрики — plotly 7.1 (plotly.js 4): у всех графиков `showSendToCloud: False`, кнопки выгрузки в облако Plotly нет. **§1.2:** React 19.3+, Zustand 5.0+, React Router 7.18+ (декларативный режим). **§8.1:** Node.js 24 LTS (jsdom 30 и vitest 5 не работают на Node 20), TA-Lib C library не нужна. Образы: nginx 1.31.7 (CVE-2026-93479 и др.), python:3.11-slim и node:24-alpine — новые digest. |
 | 3.8 | 2026-10-19 | S8R — `S8R-FIX-139` (решение заказчика 2026-10-19, вариант «а») | Основание — ФТ v4.7 (требование не меняется: «позиция, о которой знает брокер, но не знает терминал, показывается, но сессию не останавливает» — ФТ v3.6). **§5.4, сверка позиций** (`SessionRuntime._reconcile_broker_positions`, предзагрузка `_prefetch_restore_portfolios`): портфель читается без справочника брокера (`fetch_instrument_info=False`, S8R-AUDIT-048), поэтому тикер позиции = FIGI; метка `source="strategy"` теперь ставится и по FIGI тикеров сессий счёта из локального справочника `instruments` (`_directory_figis`, БД, без сети, вне сетевого бюджета), а фильтр «бумага этой сессии» узнаёт инструмент и по FIGI. Обязательные бумаги для правила gotcha-56 (`_required_figis`) не меняются; сбой чтения справочника — прежнее поведение. Найдено ордерным сценарием 2026-10-19 (M2). Код — ветка `s8r/fix-139-manual-position-figi` `473951b` → PR #90, смержен → `develop` `479a429` (2026-10-19). |
 | 3.7 | 2026-10-17 | S8R — `S8R-FIX-137`, `S8R-FIX-138` (решения заказчика 2026-10-17, вариант «а»); косметика `S8R-FIX-135`/`136` | Основание — ФТ v4.7. Код — в `develop` `70848d8` (PR #75, #76, смержены 2026-10-17 по локальным гейтам); рабочий стенд — по команде заказчика. **`/health.tinvest_connected`** (S8R-FIX-137): задача стрима жива **и** у мультиплексора нет опубликованной потери связи без восстановления (`TInvestStreamMultiplexer.connection_lost_reported`) — порог 30 с и фильтр рынка те же, что у уведомления. **`connection.lost.reason`** (S8R-FIX-138): `stream_loss_reason(exc, terminal=…)` в `app/broker/tinvest/errors.py` — текст и код в квадратных скобках (`_code_tag`), repr исключения — только в логах `multiplexer_disconnected` / `multiplexer_terminal_error`. Косметика (PR #75, `develop` `7d9bbbe`): `_format_timedelta` — «6ч 28м»; `roundForDisplay` во фронте — знак и цвет P&L от показанного числа. |
@@ -64,7 +69,7 @@
 | **§7 Auth (Model A)** | Оба JWT — в cookie, не в `localStorage`. Три cookie: `access_token` (`path=/`), `refresh_token` (`path=/api/v1/auth/refresh`), `csrf_token` (TTL = refresh), все HttpOnly+Secure кроме csrf (double-submit). `login/setup/refresh` возвращают тело **без токенов** (`AuthMetaResponse`), `logout` стирает все три. Refresh читается из cookie и защищён CSRF double-submit (убран из exempt-списка). Бутстрап клиента — `GET /auth/me` под loading-гейтом. Cross-tab single-flight refresh на `navigator.locks` (grace-окно сознательно не вводилось). | P1 auth-hardening |
 | **§7 CSRF: правило для не-axios клиентов** | Interceptor двойной отправки CSRF живёт в axios-инстансе (`api/client.ts`). **Любой клиент, который ходит мимо него** (SSE через `fetch`, `EventSource`, ручные `fetch`), обязан сам подставлять `X-CSRF-Token` из cookie — иначе `CSRFMiddleware` видит «cookie есть, заголовка нет» и отбивает запрос 403. Единый источник токена — экспортируемый `getCSRFToken()`; дублировать регулярку разбора cookie запрещено. Каждый такой клиент покрывается тестом на заголовок. | S8R BUG-32 (класс BUG-21) |
 | **§7 WebSocket** | Авторизация по cookie **на upgrade** (`common/ws_auth.py`, применяется к трём точкам), первым кадром сервер шлёт `auth_ok`, проверка `Origin`. Токен в query-string не используется. Отказ — accept → close (S8R-AUDIT-060: close до accept uvicorn превращал в HTTP 403, браузер видел 1006): 4401 без reason — истёк JWT (клиент делает один общий refresh и переподключается), 4401 `revoked`/`logout` — сессию закрыл сервер (тихий стоп без refresh), 4403 — нет доступа, 1013 — сбой БД при проверке (обычный обрыв). Клиент — `WsReconnectController` во всех WS-хуках: backoff ≤ 30 с, после 10 обрывов подряд — баннер «Нет связи с сервером» с «Повторить». | P1 W3 + auth-hardening |
-| **§3/§5 Денежный учёт paper** | Единая точка мутации — `PaperPortfolioAccountant`. Семантика полей: `balance` = свободный кэш, `blocked_amount` = капитал открытых позиций по цене входа, `equity = balance + blocked_amount`. Buy-fill списывает и **отклоняет** при нехватке; ручное/all-close и SL/TP-close кредитуют с учётом `lot_size`. Инертный T+1 нейтрализован для paper (`unblock_settled_funds` → no-op, `available = balance`). Инвариант, закреплённый тестом: `Δequity == trade.pnl − trade.commission` (с `quantize` — точно и для облигаций; при нулевой ставке комиссии вырождается в прежний `Δequity == trade.pnl`). Комиссия удерживается из `balance` и **не** попадает в `blocked_amount` — иначе закрытие вернуло бы её как часть cost_basis. Следствие: CB-drawdown работает на paper. | BE-TRAD-06 + Q4 (`S8R-PAPER-NO-COMMISSION`) |
+| **§3/§5 Денежный учёт paper** | Единая точка мутации — `PaperPortfolioAccountant`. Семантика полей: `balance` = свободный кэш, `blocked_amount` = капитал открытых позиций по цене входа, `equity = balance + blocked_amount`. Buy-fill списывает и **отклоняет** при нехватке; ручное/all-close и SL/TP-close кредитуют с учётом `lot_size`. Расчёты T+1 по деньгам paper не моделирует: `available = balance`, функций разблокировки (`unblock_settled_funds`, `_auto_unblock_if_settled`) в коде нет; остаток прежней ветки T+1 в `PaperBrokerAdapter.place_order` помечен `DEAD PATH` и уходит в A-06 с B4 (уточнено в v4.2, ФТ §7.4). Инвариант, закреплённый тестом: `Δequity == trade.pnl − trade.commission` (с `quantize` — точно и для облигаций; при нулевой ставке комиссии вырождается в прежний `Δequity == trade.pnl`). Комиссия удерживается из `balance` и **не** попадает в `blocked_amount` — иначе закрытие вернуло бы её как часть cost_basis. Следствие: CB-drawdown работает на paper. | BE-TRAD-06 + Q4 (`S8R-PAPER-NO-COMMISSION`) |
 | **§6 Слой разметки графика** | `series.attachPrimitive()` не запрашивает перерисовку — примитив обязан звать `param.requestUpdate()` в `attached()`, иначе фигура не рисуется до постороннего redraw. Выбор фигуры под курсором — одна функция `primitives/pick.ts::pickTopHit` (перебор от верхнего слоя к нижнему) для **всех** обработчиков: click, hover, контекстное меню, drag; иначе захват фигуры проваливается в панорамирование графика. Анкоры (`p1`/`p2`, `corner-*`) отдаются hit-тестом только у выделенной фигуры → после выделения hit-тест пере-опрашивается. Подробности: `Develop/stack_gotchas/gotcha-36-attachprimitive-no-redraw.md`. | S8R BUG-33 / BUG-34 |
 | **§8 Deployment: миграции** | `alembic/env.py` обязан уважать `DATABASE_URL` из окружения. Приоритет URL: программный override (`config.set_main_option`, тесты) > `DATABASE_URL` > значение из `alembic.ini`; async-драйверы (`+aiosqlite`/`+asyncpg`) срезаются, т.к. Alembic ходит синхронно. Без этого миграции молча уходят в БД из ini — при отдельном пути к данным (Docker/прод) обновится не тот файл. | S8R FIND-06 |
 | **§8 Deployment: выкатка** | Разовый **drain открытых paper-сессий** перед обновлением на релиз с BE-TRAD-06: позиции, открытые старой схемой учёта, на границе деплоя дают расхождение `blocked_amount`. Процедура — `deployment_guide.md` §7. | BE-TRAD-06 |
@@ -274,6 +279,16 @@ moex-terminal/
 │   │   │   ├── service.py
 │   │   │   ├── moex_calendar.py
 │   │   │   └── jobs.py
+│   │   ├── news/                    # Новости (v4.4, Б-01): сборщик, архив, словарь, реакция, лента (§5.14)
+│   │   │   ├── router.py            # /api/v1/news* (§4.14)
+│   │   │   ├── service.py           # NewsService — задания планировщика
+│   │   │   ├── collector.py         # проход по источникам → news_items
+│   │   │   ├── feeds.py             # HTTP к лентам, разбор RSS и ISS sitenews
+│   │   │   ├── dictionary.py        # словарь акций TQBR, сопоставление заголовка
+│   │   │   ├── labeling.py          # разметка словарём
+│   │   │   ├── reactions.py         # реакция «до / после» по 1m ISS
+│   │   │   ├── queries.py, schemas.py, models.py
+│   │   │   └── constants.py         # интервалы, пороги, лимиты (без адресов лент)
 │   │   ├── ai/                      # AI-интеграция
 │   │   │   ├── router.py
 │   │   │   ├── service.py
@@ -381,6 +396,10 @@ Backend поддерживает мультиплексированное WebSoc
 Канал "backtest:{backtest_id}"     — прогресс бэктеста
 ```
 
+> **Внутренний канал шины (A-01, v4.0):** `bars:{ticker}:{timeframe}` (событие `bar.closed`, §5.6.6) — только `event_bus` внутри процесса; подписка клиента на него отклоняется (`forbidden`, как на любой неизвестный канал). Клиентам по-прежнему отдаётся `market:{ticker}:{timeframe}` (`candle.update`). С A-03 (v4.1) событие читают торговые сессии (`_SessionListener.listen_bar_events`, §5.4.6).
+
+> **Дилерский канал (A-03, v4.1; ADR 0021):** `dealer:{ticker}:{timeframe}` — обновления дилерских свечей T-Invest (часы дилера), ТФ только `DEALER_TIMEFRAMES` = 1m, 5m, 15m, 30m, 1h, 4h (иначе `invalid_channel`). Публичный, как `market:` (`backtest/ws.py::_authorize_channel`, разбор — `market_data/schemas.py::parse_stream_channel`, общий с REST `/candles/subscribe`). События и состав данных — как у основного канала: `{channel, event: "candle.update", data: {timestamp, open, high, low, close, volume, stream_gen, bar_complete, bar_pending}}`. Держит ту же подписку T-Invest на 1m, что основной ключ того же ТФ. Контракт общий с блоком Б-02 (показ на графике) — меняется только после вопроса заказчику; ~~потребителя на фронте пока нет~~. С v4.3 (Б-02) потребитель — переключатель «Внебиржевые часы» панели графика: `useCandleStream(…, 'dealer')` шлёт `POST /candles/subscribe?…&source=dealer` и принимает только канал с префиксом `dealer:` (иначе `null` и `console.warn`); кадры — в дилерский ряд через то же слияние, что основные (§6.4, ADR 0027).
+
 ### 2.4 Принцип внутреннего взаимодействия модулей
 
 Модули взаимодействуют через dependency injection (FastAPI `Depends`) и вызов сервисных слоёв напрямую (не через HTTP). Каждый модуль экспортирует `service` — единственную точку входа для других модулей. Модели (SQLAlchemy) могут иметь foreign keys на модели других модулей — это допустимо в монолите.
@@ -409,6 +428,8 @@ S8R-FIX-063 ч.2: `cb_unpriced_trade` без своей строки настр�
 
 S8R-FIX-065: `trade.closed` и `position.mismatch` (закрытие, paper SL/TP, отмена pending, сверка после переоткрытия, вход без цены, остаток входа) — строка `pending_events` той же транзакцией, что запись. После снятия локов `close_trade` и отключения адаптера (`publish_staged_after`): шина (WS), доставка своих строк фоновой задачей (`deliver_staged` → `NotificationService.deliver_staged_events`); при отмене — обе фоном. Дедупликация — по `processed_at`. Нет получателя — строка не пишется. Повтор при старте — `OUTBOX_REPLAY_EVENTS` (+`trade.closed`, `position.mismatch`).
 
+A-05 (ТЗ v4.2, ФТ §10.1): строки фактов выше гарантируют in-app уведомление; внешнюю доставку (Telegram/почта) гарантирует вторая строка — `notification.dispatch`. Её пишет **каждое** уведомление, у которого запланирован хотя бы один внешний канал, в транзакции INSERT уведомления (`NotificationService._create_notification_impl`, как раньше `stage_notification` ценового алерта); повтор по сроку — задача планировщика `retry_notification_delivery` раз в 10 с (§5.7, §5.9).
+
 ---
 
 ## 3. СХЕМА БАЗЫ ДАННЫХ
@@ -431,8 +452,8 @@ S8R-FIX-065: `trade.closed` и `position.mismatch` (закрытие, paper SL/T
 | `corporate_actions` | `amount`, `description`, `record_date`, `created_at` | `detected_at` |
 | `daily_stats` | — | `unrealized_pnl` (удалено миграцией `e2f3a4b5c6d7`), `peak_equity` (удалено миграцией `a7c1d9e2b4f8`, S8R-FIX-013) |
 | `live_trades` | `figi`, `lot_size`, `client_order_id`, `commission_source`, `exit_broker_order_id`, `exit_client_order_id`, `exit_order_placed_at` | — |
-| `pending_events` | `payload` | `payload_json` |
-| `price_alerts` | `figi`, `condition`, `target_price` | `direction`, `price_level` |
+| `pending_events` | `payload` | `payload_json` (§3.20 приведён к модели в v4.2: `payload`, индекса `idx_pending_unprocessed` нет) |
+| `price_alerts` (удалена ревизией `d92b7dd5c939`, A-03; данные — в `alerts`, §3.13) | `figi`, `condition`, `target_price` | `direction`, `price_level` |
 | `strategies` | `description` | — |
 | `strategy_versions` | `comment`, `created_by` | — |
 | `trading_sessions` | `timeframe`, `strategy_name`, `commission_pct`, `peak_equity`, `consecutive_broker_rejections`, `position_mismatch_at`, `position_mismatch_note` | — |
@@ -514,6 +535,7 @@ strategy_versions
 ├── generated_code: Text, NOT NULL                -- Python-код для Backtrader
 ├── parameters_json: Text, NULLABLE               -- JSON с параметрами стратегии
 ├── ai_chat_history: Text, NULLABLE               -- JSON истории диалога с AI
+├── parse_report: Text, NULLABLE                  -- A-05 (v4.2): JSON `ParseReport.to_dict()` — отчёт разбора описания (§5.2.2а); NULL — не составлялся (версия до `cdb15f21e5ca` или текст не в формате ИИ-чата)
 ├── created_at: DateTime, NOT NULL
 ├── UNIQUE: uq_strategy_version (strategy_id, version_number)
 └── INDEX: idx_sv_strategy (strategy_id)
@@ -525,19 +547,119 @@ strategy_versions
 ohlcv_cache
 ├── id: Integer, PK, autoincrement
 ├── ticker: String(20), NOT NULL
-├── timeframe: String(5), NOT NULL                -- '1m','5m','15m','1h','4h','D','W','M'
-├── timestamp: DateTime, NOT NULL                 -- Время открытия свечи (UTC)
+├── timeframe: String(10), NOT NULL               -- только '1m' и 'D' (v4.0, A-01): остальные ТФ собирает агрегатор, в БД не пишутся
+├── timestamp: DateTime, NOT NULL                 -- Время открытия свечи (наивное UTC); метка D: T-Invest 00:00 UTC, ISS 21:00 UTC предыдущих суток
 ├── open: Numeric(18, 8), NOT NULL
 ├── high: Numeric(18, 8), NOT NULL
 ├── low: Numeric(18, 8), NOT NULL
 ├── close: Numeric(18, 8), NOT NULL
-├── volume: BigInteger, NOT NULL
-├── source: String(10), DEFAULT 'tinvest'         -- 'tinvest', 'moex_iss'
-├── UNIQUE: uq_ohlcv (ticker, timeframe, timestamp)
-└── INDEX: idx_ohlcv_lookup (ticker, timeframe, timestamp)
+├── volume: BigInteger, NOT NULL                  -- штуки своего дня («как было»), у всех источников одна единица
+├── source: String(20), NULL                      -- 'tinvest', 'moex_iss' (NULL — строки до введения поля; в `_not_iss_source` считаются T-Invest)
+└── UNIQUE: uq_ohlcv_lookup (ticker, timeframe, timestamp)   -- единственный индекс таблицы
 ```
 
-**Примечание по производительности:** Для OHLCV-кеша при 5 годах дневных данных ~1250 записей на инструмент — вполне подъёмно для SQLite. При минутном таймфрейме за 5 лет — ~600 000 записей на инструмент. Индекс `idx_ohlcv_lookup` обеспечивает O(log n) поиск. При переходе на PostgreSQL рекомендуется партиционирование по `ticker`.
+Запись любого ТФ, кроме `1m` и `D`, в `_save_to_cache` — `ValueError`. Ряд — `(ticker, timeframe, source)`; в основном ряду T-Invest только биржевые свечи (источник свечи `EXCHANGE`), дилерские — в `ohlcv_dealer` (§3.5.1).
+
+**Масштаб строк — «как было» (v4.0, дефект 4 тестового стенда, решение заказчика 2026-10-24; `app/market_data/splits.py`).** OHLC и `volume` строки — в ценах и штуках её дня; то же в `ohlcv_dealer`. Источники отдают разную базу: архив `history-data` и ISS `history` — «как было»; `GetCandles` (1m, D, дилерские) — пересчитан к текущему состоянию бумаги (T, дробление 1→10 с 17.04.2026, 22.10.2025: архив O 3021,8 и 3 615 777 шт, `GetCandles` — 302,18 и 36 157 770); ISS `candles.json` пересчитывает по дроблению только цену. Поэтому перед записью:
+- свеча `GetCandles` раньше границы дробления, наступившего к моменту ответа окна, — `to_as_was`: цена × rt/rf, объём × rf/rt (`BarLoader._store_window`; дробления перечитываются на каждое окно);
+- свеча ISS (1m/D, viewer без T-Invest) — `to_as_was(…, scale_volume=False)`: только цена × rt/rf (`_iss_stored_series`);
+- минута архива — как есть, только биржевые минуты дня, принятого `ArchiveLots.admit` (окно биржевых часов); объём = лоты × лот на дату (§3.5.5), а не × текущий лот.
+
+Дробления — `corporate_actions` с `action_type='split'` (§3.19; ISS `splits.json`, `ratio_from/ratio_to` — та же семантика, что у `process_split`: после дробления цена × rf/rt, объём × rt/rf), `load_splits(db, ticker)`. Граница — `split_opened_before(ex_date)`: 00:00 МСК `ex_date` (первый торговый день в новом масштабе), наивное UTC; строка раньше границы — в старом масштабе. Дробление, граница которого ещё не наступила, ряд не меняет. Цена округляется до 8 знаков (`Numeric(18, 8)`), объём — до целых штук (половина — вверх).
+
+Чтение по умолчанию — с учётом наступивших дроблений: строки раньше границы — цена × rf/rt, объём × rt/rf (`adjust_for_splits`; цена из кэша — `adjust_price`). Пересчёт хранимых строк — только в `MarketDataService._read_stored` (ряды) и `_latest_bar` (цена из кэша: `last_cached_bar` — в текущем масштабе, `closed_bar_close_before` — в масштабе момента сделки); производный ТФ ISS, который не кэшируется, — в `_iss_derived_series` (§5.6.6). Новое дробление БД не переписывает; исключение — дробление, которое детект узнал уже после его границы (§5.12).
+
+**Примечание по производительности:** Для OHLCV-кеша при 5 годах дневных данных ~1250 записей на инструмент — вполне подъёмно для SQLite. При минутном таймфрейме за 5 лет — ~600 000 записей на инструмент. Поиск идёт по индексу уникальности `uq_ohlcv_lookup` (`sqlite_autoindex_ohlcv_cache_1`; `EXPLAIN QUERY PLAN` — `COVERING INDEX`, тест `test_bar_storage_migrations.py`) — O(log n). Отдельный `idx_ohlcv_lookup` по тем же колонкам с v4.0 удалён (ревизия `c4e81f3a9d27`): дубль занимал ≈ 19 МБ и обновлялся при каждой записи свечи. При переходе на PostgreSQL рекомендуется партиционирование по `ticker`.
+
+#### 3.5.1 Таблица `ohlcv_dealer` (v4.0, A-01)
+
+```
+ohlcv_dealer                                      -- дилерские 1m T-Invest (торги выходного дня Т-Банка)
+├── id: Integer, PK, autoincrement
+├── ticker: String(20), NOT NULL
+├── timeframe: String(10), NOT NULL               -- всегда '1m'
+├── timestamp: DateTime, NOT NULL                 -- наивное UTC
+├── open / high / low / close: Numeric(18, 8), NOT NULL
+├── volume: BigInteger, NOT NULL                  -- штуки
+├── source: String(20), NULL                      -- 'tinvest_dealer'
+└── UNIQUE: uq_ohlcv_dealer_lookup (ticker, timeframe, timestamp)
+```
+
+Колонки — как у `ohlcv_cache`, масштаб строк — тоже «как было», чтение `get_dealer_candles` — с учётом дроблений (§3.5); с v4.3 (Б-02) — по параметру `adjust` (`splits` по умолчанию, `none` — «как было»), как у основного ряда. Основной ряд, `/candles`, живая свеча и номер бара графика дилерских свечей не содержат.
+
+#### 3.5.2 Таблица `ohlcv_coverage` (v4.0, A-01)
+
+```
+ohlcv_coverage                                    -- что загружено из источника полностью
+├── id: Integer, PK, autoincrement
+├── ticker: String(20), NOT NULL                  -- канонический тикер
+├── timeframe: String(10), NOT NULL               -- хранимый ТФ: '1m' | 'D'
+├── source: String(20), NOT NULL                  -- 'tinvest' | 'tinvest_dealer' | 'moex_iss'
+├── range_from: DateTime, NOT NULL                -- наивное UTC, включительно
+├── range_to: DateTime, NOT NULL                  -- наивное UTC, исключительно: диапазон [range_from, range_to)
+├── loaded_at: DateTime, NOT NULL
+└── INDEX: idx_ohlcv_coverage_lookup (ticker, timeframe, source, range_from)
+```
+
+Смежные и пересекающиеся диапазоны одного `(ticker, timeframe, source)` сливает `coverage.add_coverage`. Бар, которого нет внутри покрытого диапазона, — «сделок не было». Для свечей, лежавших при миграции, строк нет (непокрыты, дозагружаются по запросу). Инвариант: свечи и их покрытие удаляются одной транзакцией (`coverage.delete_bars_with_coverage`; data-миграция делает то же SQL-ом, gotcha-90).
+
+#### 3.5.3 Таблица `ohlcv_volume_check` (v4.0, A-01)
+
+```
+ohlcv_volume_check                                -- сверка дневного объёма с дневкой ISS
+├── id: Integer, PK, autoincrement
+├── ticker: String(20), NOT NULL
+├── trade_date: Date, NOT NULL
+├── our_volume: BigInteger, NOT NULL              -- сумма биржевых 1m за день, штуки
+├── iss_volume: BigInteger, NOT NULL              -- объём календарного дня по ISS `history` TQBR (`get_daily_volumes`; дня там нет — дневка `candles.json`), штуки
+├── ratio: Numeric(18, 8), NULL                   -- our / iss; NULL при iss = 0
+├── verdict: String(16), NOT NULL                 -- 'ok' | 'mismatch' | 'lot_change'
+├── checked_at: DateTime, NOT NULL
+└── UNIQUE: uq_ohlcv_volume_check (ticker, trade_date)
+```
+
+Читателя, кроме самой сверки (`volume_check.reconcile_volumes`), нет; повторная сверка дня перезаписывает строку. Данные свечей сверка не меняет. Обе стороны — «как было» (минуты в штуках своего дня, объём ISS `candles.json` дробления не пересчитывает), поэтому дробление или смена лота в истории бумаги расхождения не дают; `lot_change` остаётся только для настоящей аномалии. Строки дней раньше границы дробления, которое детект узнал уже после этой границы, удаляет `forget_bars_before_new_splits` (§5.12). Эталон — итог дня ISS `history` TQBR (`get_daily_volumes`); дневка `candles.json` запрашивается только для дней, которых в `history` нет или там объём 0 (бумага не из TQBR; субботы и воскресенья с сессией — объём их сессии выходного дня, §5.5.3); нет и её, а строка `history` с объёмом 0 есть (приостановка: T 13–16.04.2026) — эталон 0: день сверяется, а не запрашивается заново каждым прогоном. Дни из архива попадают в ряд только при точном совпадении с тем же `history` (§3.5.5), поэтому их сверка всегда `ok`; `mismatch` и `lot_change` остаются для дней `GetCandles`.
+
+#### 3.5.4 Таблица `ohlcv_backfill_target` (v4.0, A-01)
+
+```
+ohlcv_backfill_target                             -- цели фоновой догрузки
+├── id: Integer, PK, autoincrement
+├── ticker: String(20), NOT NULL
+├── timeframe: String(10), NOT NULL               -- '1m' | 'D'
+├── depth_from: DateTime, NOT NULL                -- до какой даты ряд должен быть загружен
+├── created_at / updated_at: DateTime
+└── UNIQUE: uq_ohlcv_backfill_target (ticker, timeframe)
+```
+
+В `app/` таблица только читается (`backfill._collect_targets`); записала её миграция `b9d2f6a14c83` из прежней глубины кэша (до удаления строк): по бумаге — цель `1m` с глубиной `max(самый ранний внутридневной бар, шов 2018-06-13)` и цель `D` с самым ранним дневным баром. Новая бумага попадает в догрузку через активную сессию.
+
+#### 3.5.5 Таблица `ohlcv_lot_history` (v4.0, A-01, дефект 4 тестового стенда)
+
+```
+ohlcv_lot_history                                 -- лот бумаги с даты — для объёма минут архива history-data
+├── id: Integer, PK, autoincrement
+├── ticker: String(20), NOT NULL                  -- тикер загрузчика; читается по ticker_variants
+├── valid_from: Date, NOT NULL                    -- с этой даты действует lot_size (до следующей строки бумаги)
+├── lot_size: Integer, NOT NULL                   -- штук в лоте
+├── created_at: DateTime, NOT NULL
+└── UNIQUE: uq_ohlcv_lot_history (ticker, valid_from)
+```
+
+Архив `history-data` хранит объём в лотах своего дня (SBER: лот 10 по 30.07.2025, лот 1 с 31.07.2025) и не размечает источник — биржевые и дилерские минуты вместе. Какие дни архива идут в основной ряд и с каким лотом, решает `lot_history.ArchiveLots.admit(ticker, {день: все минуты архива за сутки UTC}, *, current_lot) -> {день: ArchiveDay | None}` (дефекты 5 и 6 тестового стенда, ADR 0011 в репозитории кода; `ArchiveDay(lot, window)`, `window=None` — минут нет).
+
+- **Эталон дня** — объём календарного дня по ISS `history` TQBR (`MOEXISSClient.get_daily_volumes`, §5.5.3): итог торгового дня ISS включает торги выходного и праздничного дня (понедельник = сб + вс + пн, вторник 24.02.2026 — и 21–23.02; дефект 7, gotcha-94), клиент вычитает их строками сессии выходного дня. Дневка `candles.json` бывает неверна: 10.04.2025 неполна у всех бумаг (SBER 49 360 530 при 62 862 840 — отсюда «×1,23–1,33»), 01.08.2025 у SBER — с лишним (25 320 049 при 18 473 506 — отсюда «0,73»); `history` на эталонных днях равен сумме минуток.
+- **Совпадение** (`match_day`): первое окно `EXCHANGE_WINDOWS` (UTC: с утренней сессией 03:50–20:50, без неё 06:50–20:50, без вечерней 06:50–15:50; МСК = UTC + 3), где Σ лотов минут окна × лот **точно** (`exact_lot`: без остатка) равна итогу дня, а лот входит в `ALLOWED_LOTS` (1, 10, 100, 1 000, 10 000, 100 000) ∪ {`current_lot`}. Эпоха расписания определяется по данным дня. Решение — по всем минутам суток, а не по куску окна загрузки (неполный первый день окна: LKOH 30.12.2024 с 23:00 UTC). Пишутся только минуты окна (`ArchiveDay.takes`), дилер вне окна в основной ряд не попадает.
+- **Биржа не торговала** (в `history` объём 0 или дня нет): минуты в архиве есть — `None` (дилер), нет — `ArchiveDay(current_lot, None)`: «сделок не было», день покрывается без запроса.
+- **Смена лота — только устойчивая** (`_drop_unconfirmed`): выброс — день, чей лот отличается от лотов предыдущего оставленного и следующего совпавшего дней, когда те равны, — снимается и соседом не служит; остальной день подтверждают лот соседнего оставленного дня, лот истории на этот день или — у дня без соседей — `current_lot`, если истории на день нет или день позже её последней строки (ежедневная догрузка первого дня после настоящей смены лота). Неподтверждённый — `None`.
+- **`history` TQBR пуст за весь период, а минуты есть** — знает ли ISS бумагу (`ArchiveLots._iss_knows`): акции и фонды по справочнику (`instrument_kind` ∈ `ISS_SHARES_KINDS`) — всегда (бумага не из TQBR, смена тикера, дни без торгов биржи); прочие — если `candles.json` D непуст за год до конца периода (`ISS_KNOWN_PROBE`, 366 сут; не по дням вызова: ежедневная догрузка одного дня без торгов биржи — LKOH 31.12.2024, только дилер — пуста и у знакомой ISS бумаги) или его запрос упал (WARNING `archive_lot_iss_probe_failed`). Знает — дни идут `GetCandles`; не знает (облигации, фьючерсы: у клиента ISS нет их рынка) — окно с утренней сессией, лот истории на день или `current_lot`, WARNING `archive_lot_iss_empty` (проверить нечем).
+- **ISS недоступен** (любое исключение `get_daily_volumes`, WARNING `archive_lot_iss_unavailable`) — `None` на все дни года.
+
+`None` — день берёт `GetCandles` (`BarLoader._load_archive` переносит его окно в fallback; один WARNING `archive_days_via_getcandles` со списками `no_exchange_trades`, `no_exact_match`, `lot_change_unconfirmed`); там источник свечи размечен, дилерские минуты уходят в `ohlcv_dealer`. Прежние допуски (`VOLUME_TOLERANCE` 1 % к дневке `candles.json`, `LOT_KEEP_TOLERANCE` 10 % к лоту соседа) сняты: они пропускали дни с дилерскими минутами (LKOH 30.12.2024 +0,39 %, суббота с сессией +6 %).
+
+Пишет таблицу только `ArchiveLots._remember`: по подтверждённым совпавшим дням — дни, с которых лот отличается от истории, — upsert по `(ticker, valid_from)` через `persist_with_retry_fresh` (INFO `archive_lot_history_updated`); сбой записи загрузку не останавливает (WARNING `archive_lot_history_write_failed`) — история лишь запасной лот. Читает только `ArchiveLots` (`_history`, по `ticker_variants`): лот на день — строка с наибольшим `valid_from <= день`. Цены от лота не зависят. Таблицу создаёт ревизия `a858647f24e6`; посева нет — история копится фоновой догрузкой.
+
+**Миграции хранилища баров** (одна линейная цепочка от `a7c1d9e2b4f8`, head — `a858647f24e6`): `b9d2f6a14c83` — таблица целей, посев целей, удаление из `ohlcv_cache` всех ТФ, кроме `1m` и `D`; `e5a7c2d90b16` — удаление строк T-Invest (перезагрузка по новым правилам) и последнего бара каждого оставшегося ряда ISS; `c4e81f3a9d27` — удаление `idx_ohlcv_lookup`; `f1b3d8e62a54` — `ohlcv_coverage`, `ohlcv_dealer`, `ohlcv_volume_check`; `a858647f24e6` (дефект 4) — `ohlcv_lot_history` и удаление всех рядов свечей прежнего масштаба: `DELETE` из `ohlcv_cache` (целиком), `ohlcv_dealer`, `ohlcv_coverage`, `ohlcv_volume_check`. У строк ISS, записанных до A-01, масштаб цены неизвестен (ISS `candles.json` пересчитывает цену по дроблениям, наступившим к запросу); строки T-Invest на базах, где код A-01 работал до этой ревизии (стенд, локальные), лежат в смешанном масштабе. На рабочей БД при выкатке с `v1.0.0` строк T-Invest к этой ревизии нет (их удалила `e5a7c2d90b16`, приложение между ревизиями не запускалось) — удаляются только 269 строк ISS D. Кэш производный: ряды дозагрузит фоновая догрузка, ряд ISS — запрос графика, уже «как было». Data-миграции — чистый SQL без импорта моделей, `downgrade` — no-op (удалённые свечи перезагружаются из источника; `downgrade` `a858647f24e6` удаляет `ohlcv_lot_history`, строки свечей не возвращает); схема обратима. Замеры и порядок обновления — `deployment_guide.md` §7.
 
 ### 3.6 Таблица `backtests`
 
@@ -572,6 +694,7 @@ backtests
 ├── benchmark_imoex_pct: Numeric(10, 4), NULLABLE
 ├── equity_curve_json: Text, NULLABLE             -- JSON массив точек equity
 ├── error_message: Text, NULLABLE
+├── lot_size: Integer, NULLABLE                   -- A-05 (v4.2): лот (штук в лоте), которым посчитан бэктест (`resolve_backtest_lot`, §5.3.1б); NULL — бэктест до `cdb15f21e5ca` («лоты штуками» при лоте справочника > 1)
 ├── started_at: DateTime, NOT NULL
 ├── completed_at: DateTime, NULLABLE
 ├── INDEX: idx_bt_sv (strategy_version_id)
@@ -589,15 +712,18 @@ backtest_trades
 ├── entry_price: Numeric(18, 8), NOT NULL
 ├── exit_date: DateTime, NULLABLE
 ├── exit_price: Numeric(18, 8), NULLABLE
-├── volume_lots: Integer, NOT NULL
+├── volume_lots: Integer, NOT NULL                -- A-05 (v4.2): лоты = |размер, шт.| // `backtests.lot_size`; у бэктестов до `cdb15f21e5ca` — штуки
 ├── volume_rub: Numeric(18, 2), NOT NULL
 ├── pnl: Numeric(18, 2), NULLABLE
 ├── pnl_pct: Numeric(10, 4), NULLABLE
 ├── commission: Numeric(18, 2), NULLABLE
 ├── duration_bars: Integer, NULLABLE
 ├── duration_seconds: Integer, NULLABLE
+├── price_note: String(40), NULLABLE              -- A-03 (v4.1): 'цена аукциона' — вход или выход D/W/M исполнен по open бара (минут торгов дня нет, §5.3); NULL — обычное исполнение
 └── INDEX: idx_btt_backtest (backtest_id)
 ```
+
+`price_note` отдаётся в ответе API сделок бэктеста (`TradeRecord.price_note`, `backtest/schemas.py`); показ в интерфейсе — вне A-03.
 
 ### 3.8 Таблица `trading_sessions`
 
@@ -652,10 +778,15 @@ live_trades
 ├── nkd_exit: Numeric(18, 2), NULLABLE            -- НКД при продаже, на ОДНУ облигацию, ₽ (S8R-FIX-006: писателя пока нет; налоговый расчёт умножает разницу на количество штук, как `process_coupon`)
 ├── opened_at: DateTime, NOT NULL
 ├── closed_at: DateTime, NULLABLE
+├── exit_retry_kind: String(10), NULLABLE         -- A-03 (v4.1): список «закрыть при первой возможности» — вид выхода (`ExitKind`: stop|take|signal|forced); NULL — не в списке
+├── exit_retry_since: DateTime, NULLABLE          -- с какого момента выход ждёт (UTC)
+├── exit_retry_notified_at: DateTime, NULLABLE    -- последнее уведомление `order.error` (не чаще раза в 15 мин)
 ├── INDEX: idx_lt_session (session_id)
 ├── INDEX: idx_lt_status (status)
 └── INDEX: idx_lt_opened (opened_at)
 ```
+
+Колонки `exit_retry_*` (ревизия `d92b7dd5c939`, `batch_alter_table`, nullable без значения по умолчанию) пишет и снимает только `trading/pending_exits.py` (`enqueue`, `clear`, `clear_fields`), §5.4.6; закрытие сделки любым путём снимает пометку. Тестовый стенд: `staging_copy.py prepare` обнуляет их у сделок не-paper сессий копии, `check` не пускает `up`, пока такие пометки есть (повтор отправил бы ордер на настоящий счёт).
 
 ### 3.10 Таблица `paper_portfolios`
 
@@ -664,7 +795,7 @@ paper_portfolios
 ├── id: Integer, PK, autoincrement
 ├── session_id: Integer, FK(trading_sessions.id), UNIQUE, NOT NULL
 ├── balance: Numeric(18, 2), NOT NULL
-├── blocked_amount: Numeric(18, 2), DEFAULT 0.0   -- Для эмуляции T+1
+├── blocked_amount: Numeric(18, 2), DEFAULT 0.0   -- Model A (BE-TRAD-06): капитал открытых позиций по цене входа; T+1 по деньгам не моделируется (ФТ §7.4, v4.2)
 ├── peak_equity: Numeric(18, 2), NOT NULL
 ├── updated_at: DateTime, NOT NULL
 ```
@@ -709,27 +840,52 @@ notifications
 ├── body: Text, NOT NULL
 ├── severity: String(10), NOT NULL                -- 'info','warning','critical'
 ├── is_read: Boolean, DEFAULT False
-├── channels_sent: String(100), NULLABLE          -- JSON: ['telegram','email']
+├── channels_sent: String(100), NULLABLE          -- CSV: 'in_app,telegram,email' (дописывается по мере доставки)
+├── channels_failed: String(100), NULLABLE        -- A-05 (v4.2): CSV внешних каналов, не доставленных после всех повторов (§5.7); NULL — неудач нет или уведомление до `cdb15f21e5ca`. В API — `undelivered_channels: list[str]`
 ├── related_entity_type: String(30), NULLABLE
 ├── related_entity_id: Integer, NULLABLE
 ├── created_at: DateTime, NOT NULL
 ├── INDEX: idx_notif_user_unread (user_id, is_read, created_at)
 ```
 
-### 3.13 Таблица `price_alerts`
+### 3.13 Таблицы `alerts` и `alert_triggers` (v4.1, A-03; до v4.1 — `price_alerts`)
+
+> **С ревизии `d92b7dd5c939` (A-03, ADR 0023) таблицы `price_alerts` нет.** Активные строки (`is_active = 1`) перенесены в `alerts` видом `level` (уровень `target_price`, `condition`, `figi`, `created_at` — как были; `armed = 1`, `price_at_creation` пуст), сработавшие и удалённые не переносятся. `downgrade` создаёт `price_alerts` заново (колонки и индексы ревизии `14c59a1057bf`) с уровнями активных алертов `level`; история срабатываний, цена создания и `armed` теряются (известный дефект: сработавшие алерты снова становятся активными). Прежняя схема (до v4.1; фактические колонки — `figi`, `condition`, `target_price`, см. §3.0): `id, user_id, ticker, figi, condition, target_price, is_active, triggered_at, created_at`, индексы `idx_price_alerts_figi_active`, `idx_price_alerts_user`.
 
 ```
-price_alerts
+alerts                                            -- общая модель алертов (`market_data/models.py::Alert`)
 ├── id: Integer, PK, autoincrement
-├── user_id: Integer, FK(users.id), NOT NULL
-├── ticker: String(20), NOT NULL
-├── price_level: Numeric(18, 8), NOT NULL
-├── direction: String(10), NOT NULL               -- 'above','below'
-├── is_active: Boolean, DEFAULT True
-├── triggered_at: DateTime, NULLABLE
-├── created_at: DateTime, NOT NULL
-└── INDEX: idx_alert_active (ticker, is_active)
+├── user_id: Integer, FK(users.id, ondelete=CASCADE), NOT NULL
+├── kind: String(20), NOT NULL, DEFAULT 'level'   -- 'level' сейчас; 'condition' (A-11), 'line' (D4), 'news' (Б-07) — без переноса данных
+├── ticker: String(20), NOT NULL                  -- канонический тикер
+├── figi: String(20), NULLABLE                    -- дозаполняет монитор
+├── level_price: Numeric(18, 8), NULLABLE         -- уровень, округлён к шагу цены (`round_to_price_step`)
+├── condition: String(10), NULLABLE               -- 'above' | 'below' — ставит сервер по цене при создании
+├── price_at_creation: Numeric(18, 8), NULLABLE   -- цена, по которой определено направление
+├── price_source: String(10), NULLABLE            -- 'tinvest' | 'iss'
+├── armed: Boolean, NOT NULL, DEFAULT 1           -- взведён (после срабатывания — 0 до повторного взведения)
+├── is_active: Boolean, NOT NULL, DEFAULT 1       -- не удалён
+├── created_at: DateTime, NOT NULL, DEFAULT CURRENT_TIMESTAMP
+├── last_triggered_at: DateTime, NULLABLE
+├── trigger_count: Integer, NOT NULL, DEFAULT 0
+├── timeframe: String(10), NULLABLE               -- поля D2 — задел A-11, пустые
+├── condition_tree: JSON, NULLABLE
+├── repeat_mode: String(20), NULLABLE
+├── bar_mode: String(20), NULLABLE
+├── state: JSON, NULLABLE
+├── INDEX: idx_alerts_user_active (user_id, is_active)
+└── INDEX: idx_alerts_figi_active (figi, is_active)
+
+alert_triggers                                    -- история срабатываний (`AlertTrigger`)
+├── id: Integer, PK, autoincrement
+├── alert_id: Integer, FK(alerts.id, ondelete=CASCADE), NOT NULL
+├── triggered_at: DateTime, NOT NULL
+├── price: Numeric(18, 8), NOT NULL               -- цена срабатывания (при гэпе — open минуты)
+├── gap: Boolean, NOT NULL, DEFAULT 0             -- уровень пройден гэпом
+└── INDEX: idx_alert_triggers_alert (alert_id)
 ```
+
+Срабатывание — условный `UPDATE alerts SET armed = 0, trigger_count = trigger_count + 1, last_triggered_at = … WHERE armed AND is_active`, строка `alert_triggers` и уведомление — одна транзакция (§5.6.7). Поля D2 — разрешённый задел без читателя до A-11.
 
 ### 3.14 Таблица `chart_drawings`
 
@@ -744,8 +900,10 @@ chart_drawings
 ├── style_json: Text, NULLABLE                    -- JSON с цветом, толщиной
 ├── created_at: DateTime, NOT NULL
 ├── updated_at: DateTime, NOT NULL
-└── INDEX: idx_drawing_lookup (user_id, ticker, timeframe)
+└── INDEX: idx_drawing_lookup (user_id, ticker, timeframe)   -- до v4.3; с v4.3 — idx_drawing_user_ticker (user_id, ticker)
 ```
+
+> **Рисунки по «пользователь + бумага» (v4.3, Б-02; ADR 0026).** Ревизия `0acf47e6607f` снимает `idx_drawing_lookup` и создаёт `idx_drawing_user_ticker (user_id, ticker)` (`batch_alter_table`, только операции с индексами; в лог — число рисунков и ключей «пользователь + бумага»). Строки не переписываются: `timeframe` уже колонка, регистр тикера сравнивается `ticker_eq` (`upper(ticker)`, записи до S8R-FIX-056 — `SIZ6`), поэтому, как и раньше, индекс работает только префиксом `user_id`. Серверного предела числа рисунков нет; 100 — предел фронтенда на пару «бумага + ТФ». `downgrade` возвращает прежний индекс.
 
 ### 3.15 Таблица `telegram_links`
 
@@ -830,12 +988,16 @@ corporate_actions
 ```
 pending_events
 ├── id: Integer, PK, autoincrement
-├── event_type: String(50), NOT NULL              -- 'order.placed', 'cb.triggered', ...
-├── payload_json: Text, NOT NULL
-├── created_at: DateTime, NOT NULL, DEFAULT utcnow
-├── processed_at: DateTime, NULLABLE
-└── INDEX: idx_pending_unprocessed (processed_at)  -- WHERE processed_at IS NULL
+├── event_type: String(50), NOT NULL              -- 'order.placed', 'trade.filled', 'trade.closed', 'cb.triggered', 'connection.lost', ..., 'notification.dispatch'
+├── payload: Text, NULLABLE                       -- JSON {"channel", "data", "user_id"} (`common/outbox.stage_event`)
+├── created_at: DateTime, NOT NULL, server_default now()  -- naive UTC
+└── processed_at: DateTime, NULLABLE              -- «забрана»: условный UPDATE … WHERE processed_at IS NULL (`claim_pending_event`)
 ```
+
+Приведено к модели `app/common/models.py::PendingEvent` и миграции `3d3e4e3036a6` (ТЗ v4.2): колонка — `payload`, не `payload_json` (см. §3.0); **индекса нет** — прежнее описание `idx_pending_unprocessed` не было реализовано ни одной ревизией. Строки после обработки не удаляются (ротации нет). Outbox — §2.4, §5.7.
+
+- **`notification.dispatch`** (S8R-FIX-051; с A-05 — у каждого уведомления с запланированным Telegram/почтой): `data` = `{"notification_id": N, "delivered": [каналы], "failed_attempts": K, "next_attempt_at": ISO UTC | null}`. `delivered` — каналы, отмеченные сразу после отправки; `failed_attempts` — число неудачных попыток; `next_attempt_at` — срок следующей. Строки без новых полей (до A-05) читаются как `failed_attempts = 0`, срок — `created_at`. Строка забирается, когда доставлены все запланированные каналы, после последней попытки (отметка `notifications.channels_failed`) или по возрасту > 1 ч.
+- **Чтение:** повтор при старте — `load_replayable` (окно возраста 1 с…1 ч, ≤ 200 строк, все типы); фоновый повтор — `load_unprocessed(db, event_type="notification.dispatch")` — все необработанные строки типа без окна, старые первыми, то есть полный просмотр таблицы раз в 10 с. **Известное ограничение:** таблица растёт без чистки и без индекса; на объёмах одного пользователя (на копии рабочей БД 2026-10-25 — 19 строк) проход занимает миллисекунды; индекс и чистка старых строк — вне A-05.
 
 ### 3.21 Таблица `ai_provider_configs`
 
@@ -881,9 +1043,11 @@ users 1──* broker_accounts
 users 1──* strategies
 users 1──1 telegram_links
 users 1──* notifications
-users 1──* price_alerts
+users 1──* alerts                 -- v4.1 (A-03), §3.13; до v4.1 — price_alerts
+alerts 1──* alert_triggers        -- v4.1 (A-03), §3.13
 users 1──* audit_log
 users 1──* chart_drawings
+users 1──1 chart_layouts          -- v4.3 (Б-02), §3.25; ON DELETE CASCADE
 users 1──* user_notification_settings
 users 1──* revoked_tokens
 users 1──* ai_provider_configs
@@ -903,10 +1067,144 @@ trading_sessions *──1 broker_accounts
 
 (standalone — без FK к user)
 ohlcv_cache
+ohlcv_coverage          -- v4.0 (A-01), §3.5.2
+ohlcv_dealer            -- v4.0 (A-01), §3.5.1
+ohlcv_volume_check      -- v4.0 (A-01), §3.5.3
+ohlcv_backfill_target   -- v4.0 (A-01), §3.5.4
+ohlcv_lot_history       -- v4.0 (A-01, дефект 4), §3.5.5
+trading_schedule_periods     -- v4.1 (A-03), §3.24
+trading_schedule_empty_days  -- v4.1 (A-03), §3.24
 bond_info_cache
 corporate_actions
 pending_events
+news_sources 1──* news_items        -- v4.4 (Б-01), §3.26; лента общая, без FK к user
+news_items 1──* news_labels         -- не больше одной на разметчика; ON DELETE CASCADE
+news_labels 1──* news_tickers       -- бумаги разметки; ON DELETE CASCADE
+news_items 1──* news_reactions      -- одна на пару «новость — тикер»; ON DELETE CASCADE
+news_dictionary_terms               -- v4.4 (Б-01), §3.26
 ```
+
+### 3.24 Таблицы расписания торгов `trading_schedule_periods`, `trading_schedule_empty_days` (v4.1, A-03)
+
+```
+trading_schedule_periods                          -- таблица периодов расписания (`scheduler/models.py::TradingSchedulePeriod`)
+├── id: Integer, PK, autoincrement
+├── trade_date: Date, NOT NULL                    -- дата МСК
+├── kind: String(20), NOT NULL                    -- `PeriodKind`: opening_auction | trading | closing_auction | evening | dealer
+├── start_at: DateTime, NOT NULL                  -- наивное UTC, включительно
+├── end_at: DateTime, NOT NULL                    -- наивное UTC, исключительно (конец T-Invest включителен до секунды — +1 с)
+├── source: String(10), NOT NULL                  -- 'tinvest' | 'iss'
+├── updated_at: DateTime, NOT NULL
+├── UNIQUE: uq_trading_schedule_period (trade_date, kind, start_at)
+└── INDEX: idx_trading_schedule_date (trade_date)
+
+trading_schedule_empty_days                       -- даты, где ISS ответил без ошибки, но без минут
+├── id: Integer, PK, autoincrement
+├── trade_date: Date, NOT NULL
+├── source: String(10), NOT NULL                  -- 'iss'
+├── checked_at: DateTime, NOT NULL
+└── UNIQUE: uq_trading_schedule_empty_day (trade_date)
+```
+
+Строка — один период дня; в дне от одного до пяти периодов (в выходной с торгами — два дилерских). Пишут только загрузчики `scheduler/trading_schedule.py` (`save_days(…, keep_tinvest=)`: строки T-Invest замещают строки ISS той же даты, ISS строки T-Invest не трогает); читает только `TradingSchedule.load` при старте и после каждой синхронизации (§5.9.1). `trading_schedule_empty_days` — около 700 выходных до 2025 года и будни без торгов (перерыв 25.02–23.03.2022): без неё каждый старт заново запрашивал бы их у ISS. Таблицы создаёт ревизия `d92b7dd5c939`; посева нет — заполняют фоновые задачи после старта. `downgrade` удаляет обе (кэш расписания перезаполнится).
+
+### 3.25 Таблица `chart_layouts` (v4.3, Б-02)
+
+Раскладка страницы графика пользователя — одним JSON-документом (ADR 0024; модель `app/chart_layouts/models.py::ChartLayout`).
+
+```
+chart_layouts
+├── id: Integer, PK, autoincrement
+├── user_id: Integer, FK(users.id) ON DELETE CASCADE, NOT NULL
+├── layout_json: Text, NOT NULL      -- ChartLayoutDoc (§4.13), model_dump_json после валидации
+├── created_at: DateTime, NOT NULL, server_default CURRENT_TIMESTAMP
+├── updated_at: DateTime, NULLABLE, server_default CURRENT_TIMESTAMP
+└── UNIQUE: uq_chart_layouts_user (user_id)
+```
+
+Одна строка на пользователя; запись — upsert `INSERT … ON CONFLICT(user_id) DO UPDATE` (`ChartLayoutService.save`, `persist_with_retry`, 3 попытки на «database is locked»): побеждает последний `PUT`, слияния нет. Строку, которую нынешняя схема не принимает (битый JSON, версия ≠ 1), `ChartLayoutService.get` отдаёт как «раскладки нет» с WARNING `chart_layout_invalid_stored`; первый `PUT` её заменит. Таблицу создаёт ревизия `0acf47e6607f` (идемпотентно, вместе со сменой индекса рисунков, §3.14); посева нет — строка появляется при первом изменении раскладки. `downgrade` удаляет таблицу вместе со всеми раскладками.
+
+### 3.26 Таблицы новостей `news_*` (v4.4, Б-01)
+
+Архив новостей, разметка, связи с бумагами, реакции цены и словарь (модели `app/news/models.py`; ADR 0101, 0102, 0104; требования — ФТ §20). Даты — `DateTime` без зоны, значение naive UTC (соглашение проекта); в JSON — с «Z», показ — МСК. Таблицы не привязаны к пользователю: лента общая для всех вошедших.
+
+```
+news_sources                                  -- источник: адрес ленты и состояние опросов
+├── id: Integer, PK, autoincrement
+├── code: String(32), NOT NULL                -- interfax | prime | tass_econ | kommersant_biz | smartlab | moex_iss | cbr
+├── name: String(100), NOT NULL               -- подпись в фильтре ленты
+├── kind: String(20), NOT NULL                -- 'rss' | 'iss_sitenews' — каким разбором читать ответ
+├── url: Text, NOT NULL                       -- адрес ленты; в коде адресов нет
+├── enabled: Boolean, NOT NULL, server_default '1'
+├── last_polled_at: DateTime, NULLABLE
+├── last_success_at: DateTime, NULLABLE
+├── last_error: Text, NULLABLE                -- текст ПОСЛЕДНЕГО сбоя (≤ 1000 символов); успех его не стирает
+├── last_error_at: DateTime, NULLABLE
+├── consecutive_failures: Integer, NOT NULL, server_default '0'   -- 0 — источник отвечает
+└── UNIQUE: uq_news_sources_code (code)
+
+news_items                                    -- новость: только заголовок, ссылка и два времени
+├── id: Integer, PK, autoincrement
+├── source_id: Integer, FK(news_sources.id), NOT NULL
+├── external_id: String(512), NOT NULL        -- guid записи RSS (нет guid — ссылка); ISS — id сообщения
+├── title: Text, NOT NULL                     -- HTML-сущности раскрыты
+├── url: Text, NOT NULL                       -- только http(s); ISS — https://www.moex.com/n<id>
+├── published_at: DateTime, NOT NULL          -- из ленты: RFC 822 → UTC; ISS — МСК → UTC
+├── received_at: DateTime, NOT NULL           -- время прохода сборщика
+├── UNIQUE: uq_news_items_source_external (source_id, external_id)
+└── INDEX: idx_news_items_published (published_at)
+
+news_labels                                   -- разметка: не больше одной на разметчика
+├── id: Integer, PK, autoincrement
+├── news_id: Integer, FK(news_items.id) ON DELETE CASCADE, NOT NULL
+├── labeler: String(20), NOT NULL             -- 'dictionary' | 'ai'
+├── model: String(100), NULLABLE              -- ИИ (Б-07); в Б-01 — NULL
+├── prompt_version: String(50), NULLABLE      -- ИИ; NULL
+├── scope: String(20), NULLABLE               -- company | sector | market; NULL
+├── news_type: String(20), NOT NULL           -- report | dividends | deal | sanctions | regulator | management | exchange | other; словарь — other
+├── sentiment: String(20), NULLABLE           -- positive | negative | neutral | mixed; NULL
+├── importance: SmallInteger, NULLABLE        -- 1–3; NULL
+├── labeled_at: DateTime, NOT NULL, server_default CURRENT_TIMESTAMP
+└── UNIQUE: uq_news_labels_news_labeler (news_id, labeler)
+
+news_tickers                                  -- связь «новость — бумага» в рамках разметки
+├── id: Integer, PK, autoincrement
+├── news_id: Integer, FK(news_items.id) ON DELETE CASCADE, NOT NULL
+├── label_id: Integer, FK(news_labels.id) ON DELETE CASCADE, NOT NULL
+├── ticker: String(20), NOT NULL
+├── UNIQUE: uq_news_tickers_label_ticker (label_id, ticker)
+└── INDEX: idx_news_tickers_ticker_news (ticker, news_id)
+
+news_reactions                                -- реакция пары «новость — бумага»
+├── id: Integer, PK, autoincrement
+├── news_id: Integer, FK(news_items.id) ON DELETE CASCADE, NOT NULL
+├── ticker: String(20), NOT NULL
+├── due_at: DateTime, NOT NULL                -- published_at + 75 мин (час «после» + 15 мин)
+├── status: String(20), NOT NULL              -- 'pending' | 'done' | 'failed'
+├── before_pct: Numeric(10,4), NULLABLE       -- «до», %; NULL — нет торгов или посчитать нечего
+├── after_pct: Numeric(10,4), NULLABLE        -- «после», %
+├── before_no_trades: Boolean, NOT NULL, server_default '0'
+├── after_no_trades: Boolean, NOT NULL, server_default '0'
+├── attempts: Integer, NOT NULL, server_default '0'   -- неудачные обращения к ISS
+├── last_error: Text, NULLABLE
+├── computed_at: DateTime, NULLABLE
+├── UNIQUE: uq_news_reactions_news_ticker (news_id, ticker)
+└── INDEX: idx_news_reactions_status_due (status, due_at)
+
+news_dictionary_terms                         -- псевдонимы и исключения словаря
+├── id: Integer, PK, autoincrement
+├── kind: String(20), NOT NULL                -- 'alias' | 'exclusion'
+├── term: String(200), NOT NULL               -- фраза
+├── ticker: String(20), NULLABLE              -- alias — бумага; exclusion — бумага или NULL (гасит любую)
+├── note: Text, NULLABLE
+└── UNIQUE: uq_news_dictionary_terms_kind_term_ticker (kind, term, ticker)
+```
+
+Пишут: сборщик — `news_items` (`INSERT … ON CONFLICT DO NOTHING`) и строку своего источника (§5.14.1); разметка словарём — `news_labels` и `news_tickers` (§5.14.2); `ReactionWorker` — `news_reactions` (§5.14.3). Сборщик ничего не удаляет: новость, ушедшая из ленты, остаётся. Разметка без строк `news_tickers` — «размечено, бумаг нет»; «ещё не размечено» — нет строки с `labeler = 'dictionary'`. Бумаги новости — объединение бумаг её разметок; реакция держится за пару (`news_id`, `ticker`) и не знает, чья разметка назвала бумагу (ADR 0102). Поля ИИ (`model`, `prompt_version`, `scope`, `sentiment`, `importance`) заполнит Б-07 — единственное исключение из правила «всё новое вызывается в рабочем коде».
+
+Таблицы создаёт ревизия `b01e7a5c3d92` (поверх `0acf47e6607f`; при ветвлении блока родителем была `a7c1d9e2b4f8`, при мержах с `develop` ревизия перевешивалась). Посев: семь строк `news_sources` — порядок строк = порядок фильтра ленты; адреса: `https://www.interfax.ru/rss`, `https://1prime.ru/export/rss2/index.xml`, `https://tass.ru/rss/v2.xml?sections=MjU%3D` (раздел «Экономика и бизнес»), `https://www.kommersant.ru/rss/section-business.xml`, `https://smart-lab.ru/news/rss/`, `https://iss.moex.com/iss/sitenews.json?iss.meta=off`, `https://www.cbr.ru/rss/eventrss`; 217 строк `news_dictionary_terms` — 187 `alias` и 30 `exclusion` (`_ALIASES` / `_EXCLUSIONS` ревизии, в том числе `("glorax", "GLRX")`, добавленный по тестовому стенду). `downgrade` удаляет все шесть таблиц вместе с архивом. Модель и миграция совпадают буквально (`alembic check`); `upgrade` → `downgrade 0acf47e6607f` — `tests/test_news/test_collector.py::test_migration_creates_and_drops_news_tables`, вся цепочка туда и обратно — `tests/unit/test_audit_s8r_alembic.py::test_full_round_trip_upgrade_downgrade_upgrade`, одна голова — `tests/unit/test_migration.py::test_b01_revision_is_single_head`.
+
+Ограничения: `uq_news_dictionary_terms_kind_term_ticker` не ловит дубль общего исключения (`ticker` NULL — в SQLite NULL различны), перед вставкой проверять `SELECT`; правка ревизии `b01e7a5c3d92` не дойдёт до БД, где она уже применена, — новый источник или термин — новой ревизией или записью в БД. Очистки архива нет (срока хранения в блоке нет); объём — ≈ 508 Б на новость вместе с разметкой, связями, реакциями и индексами, ≈ 0,48 МБ в сутки при ≈ 950 новостях (тестовый стенд 05–06.11; `deployment_guide.md` §7).
 
 ---
 
@@ -918,7 +1216,7 @@ pending_events
 
 ### 4.0 Реестр эндпоинтов (S8R-AUDIT-088)
 
-**Источник истины по путям, методам и доступу — это реестр** (выгружен 2026-10-02 из приложения, ветка `s8r/fix-low`: 139 HTTP-маршрутов + 3 WebSocket; с S8R-FIX-069 — 140 HTTP) и OpenAPI самого приложения (`/openapi.json` — только при `DEBUG=true`, S8R-AUDIT-059). Подразделы 4.1–4.12 ниже описывают формы запросов/ответов и правила; где их пути расходятся с реестром, верен реестр — соответствие:
+**Источник истины по путям, методам и доступу — это реестр** (выгружен 2026-10-02 из приложения, ветка `s8r/fix-low`: 139 HTTP-маршрутов + 3 WebSocket; с S8R-FIX-069 — 140 HTTP; с A-01 (ТЗ v4.0) добавлен `GET /market-data/candles/dealer`; с A-03 (ТЗ v4.1) — `GET /market-data/price-alerts/quote`; с Б-02 (ТЗ v4.3) — `GET` и `PUT /chart-layout`, маршруты рисунков `/charts/{ticker}/drawings` вместо `/charts/{ticker}/{tf}/drawings`; с Б-01 (ТЗ v4.4) — `GET /news`, `/news/sources`, `/news/tickers`) и OpenAPI самого приложения (`/openapi.json` — только при `DEBUG=true`, S8R-AUDIT-059). Подразделы 4.1–4.14 ниже описывают формы запросов/ответов и правила; где их пути расходятся с реестром, верен реестр — соответствие:
 
 | В подразделах ниже (устарело) | Фактически |
 |---|---|
@@ -980,11 +1278,13 @@ pending_events
 | GET | `/api/v1/broker/accounts/balances` | пользователь | `broker.router` | Получить актуальные балансы всех подключённых брокерских счетов. |
 | GET | `/api/v1/broker/accounts/{account_id}/operations` | пользователь | `broker.router` | Получить реальные операции брокерского счёта через T-Invest (C9 S5R). |
 | GET | `/api/v1/broker/accounts/{account_id}/positions` | пользователь | `broker.router` | Получить реальные позиции брокерского счёта через T-Invest (C8 S5R). |
+| GET | `/api/v1/chart-layout` | пользователь | `chart_layouts.router` | Б-02 (ТЗ v4.3): раскладка графиков пользователя — `{layout: ChartLayoutDoc \| null, updated_at}`; раскладки нет (или в БД неверный документ) — `{"layout": null, "updated_at": null}` (§4.13). |
+| PUT | `/api/v1/chart-layout` | пользователь | `chart_layouts.router` | Б-02 (ТЗ v4.3): сохранить раскладку целиком (upsert, побеждает последний); 422 — неверный документ или больше 64 КиБ (§4.13). |
 | DELETE | `/api/v1/charts/drawings/{drawing_id}` | пользователь | `chart_drawings.router` | delete_drawing |
 | PATCH | `/api/v1/charts/drawings/{drawing_id}` | пользователь | `chart_drawings.router` | update_drawing |
-| DELETE | `/api/v1/charts/{ticker}/{tf}/drawings` | пользователь | `chart_drawings.router` | clear_drawings |
-| GET | `/api/v1/charts/{ticker}/{tf}/drawings` | пользователь | `chart_drawings.router` | list_drawings |
-| POST | `/api/v1/charts/{ticker}/{tf}/drawings` | пользователь | `chart_drawings.router` | create_drawing |
+| DELETE | `/api/v1/charts/{ticker}/drawings` | пользователь | `chart_drawings.router` | clear_drawings. С Б-02 (ТЗ v4.3; до неё — `/charts/{ticker}/{tf}/drawings`): query `timeframe` обязателен, удаляются рисунки бумаги только этого ТФ. |
+| GET | `/api/v1/charts/{ticker}/drawings` | пользователь | `chart_drawings.router` | list_drawings. С Б-02 (ТЗ v4.3; до неё — `/charts/{ticker}/{tf}/drawings`): все ТФ бумаги одним запросом, фильтр по ТФ — на фронтенде. |
+| POST | `/api/v1/charts/{ticker}/drawings` | пользователь | `chart_drawings.router` | create_drawing. С Б-02 (ТЗ v4.3; до неё — `/charts/{ticker}/{tf}/drawings`): ТФ — обязательное поле тела `timeframe`. |
 | GET | `/api/v1/circuit-breaker/config` | пользователь | `circuit_breaker.router` | Текущая конфигурация CB пользователя. |
 | PUT | `/api/v1/circuit-breaker/config` | пользователь | `circuit_breaker.router` | Обновить глобальную конфигурацию CB. |
 | PUT | `/api/v1/circuit-breaker/config/session/{session_id}` | пользователь | `circuit_breaker.router` | Override конфигурации CB для конкретной сессии. |
@@ -1000,17 +1300,22 @@ pending_events
 | GET | `/api/v1/market-data/bonds/{ticker}/info` | пользователь | `market_data.router` | Информация об облигации. |
 | GET | `/api/v1/market-data/bonds/{ticker}/nkd` | пользователь | `market_data.router` | Текущий НКД облигации. |
 | GET | `/api/v1/market-data/calendar` | без входа | `market_data.router` | Get trading calendar info for today. |
-| GET | `/api/v1/market-data/candles` | пользователь | `market_data.router` | Get OHLCV candles for a ticker with caching. |
-| POST | `/api/v1/market-data/candles/subscribe` | пользователь | `market_data.router` | Подписаться на стриминг свечей в реальном времени через T-Invest. |
+| GET | `/api/v1/market-data/candles` | пользователь | `market_data.router` | Get OHLCV candles for a ticker with caching. С A-01: только биржевые свечи; ТФ `1m`…`M`, включая `30m`; производные ТФ собирает агрегатор (§5.6.6). Query `adjust=splits\|none` (A-01, дефект 4; необязательный): `splits` (по умолчанию) — бары до наступивших дроблений в текущем масштабе, `none` — «как было» (§3.5); ~~задел переключателя графика (Б-02), фронтенд параметр пока не передаёт~~ — с v4.3 (Б-02) фронтенд передаёт `adjust` панели («как было» — `none`). |
+| GET | `/api/v1/market-data/candles/dealer` | пользователь | `market_data.router` | A-01: дилерские 1m T-Invest (внебиржевые часы) из `ohlcv_dealer`. Query как у `/candles`, без `mode`; только внутридневные ТФ (D/W/M — 422), без T-Invest — 409 `tinvest_required`. ~~Потребителя на фронте нет (задел переключателя Б-02).~~ С v4.3 (Б-02): query `adjust=splits\|none` (по умолчанию `splits`, неизвестное значение — 422) — масштаб, как у `/candles`; потребитель — переключатель «Внебиржевые часы» панели графика. |
+| POST | `/api/v1/market-data/candles/subscribe` | пользователь | `market_data.router` | Подписаться на стриминг свечей в реальном времени через T-Invest. С A-03 (ТЗ v4.1): query `source=exchange\|dealer` (по умолчанию `exchange` → канал `market:{ticker}:{tf}`); `source=dealer` → `{"channel": "dealer:{ticker}:{tf}"}`, ТФ только 1m–4h (D/W/M — 422 «Дилерский поток — только внутридневные ТФ»); держит ту же подписку T-Invest на 1m, что основной канал, второй подписки нет; в режиме `MARKET_DATA_STREAM_MODE=two_subscriptions` — `{"channel": null, "source": "none", "message": "дилерский поток выключен режимом MARKET_DATA_STREAM_MODE"}`. Контракт общий с Б-02 (§2.3). С v4.3 `source=dealer` шлёт переключатель «Внебиржевые часы» панели; `POST` — один на ключ «источник : тикер : ТФ» при открытии страницы, повтор — только после переподключения WS. |
 | GET | `/api/v1/market-data/instruments` | пользователь | `market_data.router` | Search instruments via MOEX ISS. |
 | GET | `/api/v1/market-data/instruments/{ticker}` | пользователь | `market_data.router` | Get instrument details by ticker. |
 | GET | `/api/v1/market-data/instruments/{ticker}/logo` | пользователь | `market_data.router` | Получить URL логотипа инструмента (T-Invest CDN). |
-| GET | `/api/v1/market-data/market-status` | без входа | `market_data.router` | Get current MOEX market status (public endpoint). |
-| GET | `/api/v1/market-data/price-alerts` | пользователь | `market_data.price_alert_router` | Список активных оповещений пользователя. |
-| POST | `/api/v1/market-data/price-alerts` | пользователь | `market_data.price_alert_router` | Создать ценовое оповещение. |
-| DELETE | `/api/v1/market-data/price-alerts/{alert_id}` | пользователь | `market_data.price_alert_router` | Удалить своё оповещение; чужое и несуществующее — один 404 (S8R-AUDIT-016). |
+| GET | `/api/v1/market-data/market-status` | без входа | `market_data.router` | Get current MOEX market status (public endpoint). С A-03 — по фазе таблицы периодов (§5.9.1): `status` ∈ `auction` (аукцион открытия), `online`, `weekend_session`, `closing_auction`, `evening`, `dealer`, `offline`, `weekend`; `time_until_close` — до конца текущего биржевого периода. |
+| GET | `/api/v1/market-data/price-alerts` | пользователь | `market_data.price_alert_router` | Список активных оповещений пользователя. С A-03 — алерты вида `level` из `alerts` (`is_active`, новые первыми), прежний формат ответа (`target_price` = `level_price`, `triggered_at` = последнее срабатывание) плюс `price_at_creation`, `price_source`, `armed`, `trigger_count` (§5.6.7). |
+| POST | `/api/v1/market-data/price-alerts` | пользователь | `market_data.price_alert_router` | Создать ценовое оповещение. С A-03 тело `{ticker, target_price}` без `condition`: сервер берёт текущую цену (`GetLastPrices`, иначе ISS — `warning: "задержка 15 мин"` в ответе), округляет уровень к шагу цены и ставит `condition`; цены нет — 409 «нет текущей цены — попробуйте позже», уровень равен цене — 422 «уровень равен текущей цене — сдвиньте уровень». |
+| GET | `/api/v1/market-data/price-alerts/quote` | пользователь | `market_data.price_alert_router` | A-03: `?ticker=` → `{price, price_source, warning, price_step, price_decimals}` — текущая цена, её источник и шаг цены для окна алерта; цены нет — `price: null`; `price_decimals` — знаки шага, без шага — знаки текущей цены, 2..8 (`D04`). |
+| DELETE | `/api/v1/market-data/price-alerts/{alert_id}` | пользователь | `market_data.price_alert_router` | Удалить своё оповещение; чужое и несуществующее — один 404 (S8R-AUDIT-016). С A-03 удаление мягкое — `alerts.is_active = False`, история срабатываний остаётся; уже удалённый — тот же 404. |
 | GET | `/api/v1/market-data/sparkline` | пользователь | `market_data.router` | S8 W2 BACK2 (C-S8-2): sparkline для виджета MarketSparkline. |
 | GET | `/api/v1/market-data/usd-rate` | пользователь | `market_data.router` | Курс USD/RUB по фиксингу ЦБ РФ (`S9-MULTICURRENCY-CBR-RATE`, Q2=b). |
+| GET | `/api/v1/news` | пользователь | `news.router` | Б-01 (ТЗ v4.4): лента новостей — `NewsPage {items, next_cursor}` по убыванию `published_at`; query `ticker`, `source`, `type`, `cursor`, `limit` 1..200 (50); неизвестный `type` и битый курсор — 422, неизвестный `source` и бумага без новостей — пустая лента (§4.14). |
+| GET | `/api/v1/news/sources` | пользователь | `news.router` | Б-01 (ТЗ v4.4): источники для фильтра — `[{code, name}]` в порядке строк миграции. |
+| GET | `/api/v1/news/tickers` | пользователь | `news.router` | Б-01 (ТЗ v4.4): бумаги, у которых есть новости, по алфавиту. |
 | DELETE | `/api/v1/notifications/` | пользователь | `notification.router` | Удалить все уведомления пользователя. |
 | GET | `/api/v1/notifications/` | пользователь | `notification.router` | Список уведомлений пользователя, отсортированных по created_at DESC. |
 | PUT | `/api/v1/notifications/read-all` | пользователь | `notification.router` | Пометить все уведомления как прочитанные. |
@@ -1178,6 +1483,32 @@ POST   /api/v1/strategies/{id}/parse-template
        Error 422: { detail: "Шаблон не распознан", errors: [...] }
 ```
 
+**Отчёт разбора и запрет сохранения (A-05, ТЗ v4.2; ФТ §3.2).** Фактические пути — реестр §4.0, `app/strategy/router.py`, схемы — `app/strategy/schemas.py` ↔ `frontend/src/api/strategyApi.ts`:
+
+```
+POST   /api/v1/strategy/parse-template
+       Body: { template_text }
+       Response: 200 { blocks_json, warnings: [str], report: ParseReport }
+       -- warnings — тексты записей report (прежнее поле, для совместимости)
+
+POST   /api/v1/strategy/{id}/versions
+       Body: { text_description?, blocks_json, generated_code, parameters_json?, comment? }
+       Response: 201 VersionResponse { …, parse_report: ParseReport | null }
+       Error 422: { detail: "Описание стратегии содержит проблемы — версия не сохранена",
+                    error_code: "description_has_problems", report: ParseReport }
+       -- text_description в формате ИИ-чата (`is_reference_format`) разбирается на сервере ДО проверки
+       -- идемпотентности; «проблема» → 422, версия не создаётся. Иначе отчёт пишется в версию;
+       -- текст не в формате ИИ-чата → parse_report = null («отчёт не составлялся»).
+
+ParseReport = { status: "ok" | "notes" | "problems",
+                issues: [{ level: "problem" | "note", line: int | null, fragment, message, hint }] }
+```
+
+- `VersionResponse.parse_report` — из JSON-строки модели; нечитаемый JSON → `null`, а не 500. `VersionListItem` (список версий) не меняется.
+- Копии версии отчёт не пересчитывают, а переносят: `_version_from` (`restore`, `snapshot`, «Дублировать») и `POST /versions/from-params` (`create_version(…, inherit_parse_report_from=source)`).
+- Идемпотентность автоснимка (5 мин, `StrategyService._is_same_payload`, ФТ §19.1) сравнивает `blocks_json + generated_code + text_description` — исправленный после 422 текст при тех же блоках создаёт новую версию.
+- Первая версия из `POST /strategy` (свободное описание карточки) не разбирается; новую стратегию фронт сохраняет `createWithFirstVersion` → `POST /strategy/{id}/versions`, отказ 422 откатывает созданную стратегию (ФТ §3.5).
+
 ### 4.3 Backtest API
 
 ```
@@ -1220,6 +1551,14 @@ POST   /api/v1/backtests/optimize
 GET    /api/v1/backtests/optimize/{id}
        Response: 200 { status, results: [{params, metrics}], overfitting_warning? }
 ```
+
+**Лот бэктеста (A-05, ТЗ v4.2; ФТ §4.1, §4.5).** Фактические пути — реестр §4.0 (`/api/v1/backtest…`), схемы — `app/backtest/schemas.py`, `router.py` ↔ `frontend/src/api/backtestApi.ts`:
+- **Запуск** (`POST /backtest`, `/backtest/run-async`, `/backtest/{id}/rerun`, `/backtest/grid`): лот — `resolve_backtest_lot(db, ticker, user_id)` один раз на запуск (rerun — заново, Grid — один на все комбинации), пишется в `backtests.lot_size` и передаётся в движок (§5.3.1б).
+- **`GET /backtest/{id}`**: `lot_size: int | null` (лот запуска; `null` — бэктест до A-05) и `legacy_share_lots: bool` (`is_legacy_share_lots`: `lot_size is null` и `instruments.lot_size > 1`). К `warning` дописывается `lot_unverified_warning` — «Лот N не сверен с T-Invest: …» или текст с обоими лотами, если лот справочника разошёлся с лотом бэктеста. Справочник читается из БД (`directory_instrument`), без сети.
+- **`GET /backtest/`** (и `?strategy_id=`): те же `lot_size`, `legacy_share_lots`; справочник — одним запросом по набору тикеров (`directory_lots`).
+- **`GET /backtest/{id}/export?format=csv|pdf`**: у `legacy_share_lots` колонка `volume_lots` называется «Акций» вместо «Лотов» (`generate_csv`/`generate_pdf(…, legacy_share_lots=)`).
+- **`GET /backtest/strategy-params/{id}`** (Grid-автокомплит) не отдаёт служебные параметры `SERVICE_STRATEGY_PARAMS` (`lot_size`, `commission_pct`).
+- **Паритетная сверка** и предупреждение «0 сделок» (`_position_size_warning`) берут лот и комиссию из строки `Backtest`; лот `NULL` — 1, как считали до A-05.
 
 ### 4.4 Trading API
 
@@ -1365,6 +1704,8 @@ PATCH  /api/v1/notifications/settings
        Response: 200
 ```
 
+**A-05 (ТЗ v4.2; ФТ §10.1, §10.2):** `NotificationResponse.undelivered_channels: list[str]` — каналы (`telegram`, `email`), не доставленные после всех повторов; производное от CSV `notifications.channels_failed` (по умолчанию `[]`). Поле есть в ответе `GET /notifications/` и в WS-кадре `notification.new` (при создании оно пустое — отметка видна при следующей загрузке списка, нового WS-кадра нет); на фронте — `Notification.undelivered_channels?` (`src/api/types.ts`).
+
 ### 4.9 Settings / Profile API
 
 ```
@@ -1493,6 +1834,8 @@ JWT — 4401 без reason (клиенту имеет смысл обновит�
 }
 ```
 
+**Дилерский канал (A-03, ТЗ v4.1):** `{"action": "subscribe", "channel": "dealer:SBER:5m"}` → `subscribed`; ТФ только 1m–4h, иначе отказ `invalid_channel`. Канал публичный, как `market:`; подписка WS берёт держатель потока (`stream_manager.acquire(…, source="dealer")`), отписка и закрытие WS его снимают. События — как у основного канала: `{channel, event: "candle.update", data: {timestamp, open, high, low, close, volume, stream_gen, bar_complete, bar_pending}}` (§2.3, §5.4.5).
+
 **Сервер -> Клиент (свечи):**
 ```json
 {
@@ -1539,6 +1882,86 @@ JWT — 4401 без reason (клиенту имеет смысл обновит�
 ```
 
 **Heartbeat:** Сервер отправляет `{"type": "ping"}` каждые 30 секунд. Клиент отвечает `{"type": "pong"}`. При отсутствии pong в течение 90 секунд — соединение закрывается.
+
+### 4.13 Chart Layout и Chart Drawings API (v4.3, Б-02)
+
+**Раскладка графиков** — модуль `app/chart_layouts/` (по образцу `user_favorites`), префикс `/api/v1/chart-layout`, `Depends(get_current_user)`; ключ — пользователь из токена, чужую раскладку не прочитать и не перезаписать (ADR 0024). Имена полей на проводе — snake_case, как во фронтенде (`api/chartLayoutApi.ts`), без перекладки.
+
+```
+GET  /api/v1/chart-layout
+     Response: 200 { layout: ChartLayoutDoc | null, updated_at: datetime | null }   -- нет раскладки → обе null
+PUT  /api/v1/chart-layout
+     Body: ChartLayoutDoc
+     Response: 200 { layout, updated_at }   -- 422 неверный документ / > 64 КиБ; 401 без входа
+
+ChartLayoutDoc {
+  version: 1                                   -- Literal[1]; другая версия — 422
+  kind: "1" | "2h" | "2v" | "4" = "1"          -- 1 / 2 рядом / 2 друг под другом / 2×2
+  active_panel_id: str                         -- обязан быть id одной из panels
+  links: { symbol: bool = false, crosshair: bool = true }
+  panels: PanelSettingsDoc[1..4]               -- id уникальны; видимые — первые N по kind, скрытые хранятся
+}
+PanelSettingsDoc {
+  id: str(1..8)                                -- "p1".."p4"
+  ticker: Ticker | null = null                 -- app.common.ticker.Ticker; null — пустая панель
+  timeframe: Timeframe = "D"
+  view: { style: "candles"|"hollow"|"bars"|"line"|"area" = "candles", scale: "normal"|"log"|"percent" = "normal" }
+  dealer: bool = false                         -- «Внебиржевые часы»
+  adjust: "splits" | "none" = "splits"         -- «Как было» = none
+  indicators: list[dict] (≤ 50) = []           -- место B6 (A-09), не заполняется
+  compare: list[dict] (≤ 10) = []              -- место G5 (Б-06), не заполняется
+  replay: dict | null = null                   -- место E11 (Б-08), не заполняется
+}
+```
+
+Предел документа — `MAX_LAYOUT_JSON_BYTES = 64 * 1024` (JSON в UTF-8, `ChartLayoutDoc._size`): места B6/G5/E11 принимают любые объекты. Документ хранится как `model_dump_json()` после валидации (§3.25). Новому содержимому мест B6/G5/E11 с иной структурой понадобится версия 2 документа — сервер этой версии принимает только 1. Лимитер — категория `general`.
+
+**Рисунки по бумаге** — `app/chart_drawings/router.py` (ADR 0026; прежние маршруты с ТФ в пути сняты без переходного периода: старый фронтенд с новым backend и наоборот не работает — выкатывать вместе):
+
+```
+GET    /api/v1/charts/{ticker}/drawings                  -> ChartDrawingResponse[]   -- все ТФ бумаги; ticker_eq; ORDER BY display_order ASC NULLS FIRST, id ASC
+POST   /api/v1/charts/{ticker}/drawings                  -> 201 ChartDrawingResponse  -- body ChartDrawingCreate { timeframe: Timeframe, type, data, style? }; ticker = known_canonical
+DELETE /api/v1/charts/{ticker}/drawings?timeframe=<tf>   -> 204                       -- timeframe обязателен; чистит только этот ТФ
+PATCH  /api/v1/charts/drawings/{drawing_id}              -> без изменений
+DELETE /api/v1/charts/drawings/{drawing_id}              -> без изменений
+```
+
+`timeframe` в теле и query — значения `Timeframe` (иначе 422); статические пути объявлены выше динамических (gotcha-20).
+
+**Известные ограничения (ADR 0024, 0028).** Две вкладки или два устройства перезаписывают раскладку друг друга целиком. Защита «не перезаписывать, пока загрузка не удалась» (D01) — только во фронтенде: у документа нет версии, сервер не отличит `PUT` такого клиента от обычного. Тело `PUT` сверх предела всё равно читается целиком (до `client_max_body_size` nginx), отвергает его валидация.
+
+### 4.14 News API (v4.4, Б-01)
+
+**Лента новостей** — `app/news/router.py` (`queries.py`, `schemas.py`), префикс `/api/v1/news`, `Depends(get_current_user)` на всём роутере: лента общая, пользователь нужен только как «вошёл ли»; без входа — 401. Лимитер — категория `general` (путь не в `CATEGORY_PATHS`). Требования — ФТ §20.5.
+
+```
+GET /api/v1/news?ticker=&source=&type=&cursor=&limit=50
+    ticker: Ticker | null          -- Annotated[Ticker | None, Query()] (gotcha-81); неверный формат — 422; регистр не важен
+    source: str(≤ 32) | null       -- news_sources.code; неизвестный — пустая лента
+    type:   str(≤ 20) | null       -- код из NEWS_TYPES (report … other); неизвестный — 422
+    cursor: str(≤ 200) | null      -- next_cursor прошлой страницы; битый — 422
+    limit:  int 1..200 = 50
+    Response: 200 NewsPage { items: NewsItemOut[], next_cursor: str | null }
+GET /api/v1/news/sources   -> [{ code, name }]    -- все источники, ORDER BY id (порядок строк миграции)
+GET /api/v1/news/tickers   -> string[]            -- DISTINCT news_tickers.ticker по алфавиту
+
+NewsItemOut {
+  id: int
+  source: { code, name }
+  title: str
+  url: str
+  published_at: datetime         -- ISO с «Z» (iso_utc)
+  received_at: datetime          -- ISO с «Z»
+  tickers: str[]                 -- объединение бумаг всех разметок, по алфавиту
+  labels: NewsLabelOut[]         -- { labeler, news_type, scope, sentiment, importance, model, prompt_version, tickers }
+  reactions: NewsReactionOut[]   -- { ticker, status, due_at (ISO «Z»), before_pct, after_pct, before_no_trades, after_no_trades }
+}
+```
+
+- **Порядок и страницы.** `ORDER BY published_at DESC, id DESC`; страница — по курсору, а не по смещению (пока пользователь листает, сверху приходят новые новости — смещение дало бы дубли). Курсор — base64url строки `"<published_at ISO>|<id>"` последней новости страницы; следующая страница — `published_at < t OR (published_at = t AND id < id)`. Запрос берёт `limit + 1` строку: лишняя — признак `next_cursor`.
+- **Фильтры** сочетаются: `ticker` — `EXISTS` по `news_tickers` (тикер запроса приводится к верхнему регистру), `type` — `EXISTS` по `news_labels.news_type` (подходит любая разметка новости), `source` — по `news_sources.code`.
+- Разметки, бумаги разметок и реакции страницы — тремя запросами на страницу (`_load_details`).
+- Проценты реакции — `Decimal` (`Numeric(10,4)`), в JSON — строкой (`"-0.2118"`, gotcha-01); фронтенд держит их строкой до показа. Пустой час — `*_no_trades: true` и процент `null`.
 
 ---
 
@@ -1656,6 +2079,18 @@ AI-панели, поэтому путь «текст → блоки → пом�
 (`setCodeOutdated(true)`) един для обоих источников блоков. До этого компонент,
 endpoint и парсер существовали, но не были связаны ни с одним элементом UI.
 
+**5.2.2а Отчёт разбора описания (блок A-05, B12; ТЗ v4.2).** Требования — ФТ §3.2, §8.2, Приложение A. Пути — от `backend/app/`.
+- **Типы** (`strategy/block_parser.py`): `ParseIssue(level: "problem" | "note", line: int | None, fragment: str, message: str, hint: str)` — `line` с 1 по тексту ровно в том виде, в каком он пришёл в запрос, `None` — запись о тексте в целом; `fragment` обрезается до `FRAGMENT_MAX_LEN = 200`. `ParseReport(issues)` — `status` (`ok` / `notes` / `problems`), `has_problems`, `to_dict()`, `from_dict()`. `ParseResult(blocks_json, report)`, `warnings` — вычисляемое свойство (тексты записей). `TemplateParser().parse(text) -> ParseResult` — сигнатура прежняя.
+- **Признак формата ИИ-чата** — `is_reference_format(text)`: строка-заголовок из `SECTION_HEADERS` (`SECTION_HEADER_LINE_PATTERN`, двоеточие допустимо) **и** ссылка `\[I\d+\]` (`INDICATOR_REF_TOKEN_PATTERN`). Одна функция для разбора и для сохранения версии; прежний признак «подстрока `[I`» принимал за формат свободный текст вида «[Intraday]».
+- **Формат ИИ-чата** — `_parse_reference`: секции с номерами строк, каждая строка сверяется с правилом **целиком** (`fullmatch`; правила — раздел «3а» `template_format_rules.py`: `INDICATOR_LINE_PATTERN`, атомы `ATOM_CROSSOVER/COMPARE/IN_ZONE_PATTERN`, `RISK_*`, `SIZING_*`, `FILTER_TIME_LINE_PATTERN`, `GRID_MARKER/DIFF_LINE_PATTERN`, `EMPTY_VALUE_MARKERS`). Условие — токены и рекурсивный спуск: ИЛИ < И < НЕ < (скобки | атом). В `blocks_json` логика — `{"type": "logic", "operator": "AND" | "OR" | "NOT", "conditions": [id, …]}` (у `NOT` один id), дети раньше родителя, у сигнала `"condition"` = id корня; `(A) И (B) ИЛИ (C)` → `OR[AND[A, B], C]`. Прежней формы `{"type": "condition", "operator": "not", "operand": null}` нет. Параметры индикатора хранятся как написаны (`INDICATOR_PARAMS`: MACD `fast/slow/signal` или `*_period`, Stochastic `%K/%D` или `k_period/d_period`, BB `period/std_dev`; позиционные — по порядку); `UNSUPPORTED_PARAM_FALLBACK[("MACD", "line")]` — заметка «используется линия MACD». Список для текста — `AVAILABLE_INDICATORS_TEXT`. Строка с «проблемой» в блоки не попадает целиком; по одному `entry_signal`, `exit_signal`, `time_filter` — вторая строка входа, выхода или фильтра даёт «проблему» (IR оставляет только последний сигнал). Записи сортируются по номеру строки.
+- **Старые форматы** (нумерованные секции, заголовки без ссылок) — прежний разбор `_parse_legacy`; отчёт — заметка `_LEGACY_FORMAT_NOTE` и прежние предупреждения заметками без номера строки. Пустой текст — заметка «Пустой текст шаблона».
+- **Правила уровней** («проблема» / «заметка», умолчания — нормы формата без заметки) — ФТ §3.2. Подсказка «как обойти» — `HINT_REMOVE_OR_EDITOR` («уберите строку или соберите эту часть блоками на вкладке «Редактор»»): режима «код» в редакторе нет, бриф его называл.
+- **Сохранение** — `strategy/service.py`: `description_parse_report(text) -> str | None` (не формат ИИ-чата → `None`; `has_problems` → `DescriptionHasProblemsError(report)`, иначе `json.dumps(report.to_dict())`); `create_version(…, *, inherit_parse_report_from=None)` зовёт её **до** проверки идемпотентности; `_version_from` копирует `parse_report`. `common/exceptions.py`: `DescriptionHasProblemsError(ValidationError)`, `error_code = "description_has_problems"`, обработчик — 422 `{detail, error_code, report}` (§4.2).
+- **Синхронизация шаблонов:** `tests/unit/test_strategy/test_template_format_sync.py` сверяет с `EMPTY_TEMPLATE_7` и «Пустой шаблон» панели (`SharedDescriptionPanel` берёт `EMPTY_TEMPLATE` из `TemplateModeModal.tsx`); пример ИИ-чата (`STRATEGY_TEMPLATE_FORMAT`, `app/ai/prompts.py`) обязан разбираться с пустым отчётом (`test_parse_report.py`). Эталоны «Заполнить по схеме» — `frontend/src/utils/__tests__/fixtures/generatedTemplatesBlocks.json` ↔ `tests/unit/test_strategy/test_generated_template_parse.py`. Фронтовые потери починены: ключи MACD и Stochastic в `flatBlocksToWorkspace.ts`, Volume в `blocksToTemplate.ts` — `[I1] Volume()`.
+- **Тесты** — `tests/unit/test_strategy/test_parse_report.py` (набор потерь, четыре «непереводимых» описания), `tests/test_routers/test_strategy_router.py` (422, повтор сохранения с исправленным текстом); E2E — `frontend/e2e/a05-parse-report.spec.ts` (настоящий backend, отчёт после перезагрузки).
+- **Вне блока:** передача отчёта в ИИ-чат (`app/ai/*`) — свой блок B12.
+- **Ограничения:** длина описания не ограничена, строка с длинной серией пробелов разбирается квадратично (~5–6 с на 50 КБ, стопорит процесс — `template_format_rules.py`, `block_parser.py`); Blockly-стратегия с двумя блоками входа не сохраняется, пока лишнюю строку входа не убрать из описания, а запись отчёта называет первую строку, хотя исполняется последняя; после «Применить» в «Режиме B» отчёт в панели — по тексту окна, а текст панели прежний (`TemplateModeModal.tsx`, `StrategyEditPage.handleApplyTemplate`).
+
 **5.2.3 Генератор кода:**
 
 Генерация кода — `ir_codegen.ir_to_backtrader_code` (§5.2.4) из IR валидированных блоков; прежний `code_generator.py` удалён (S8R-AUDIT-019). Исторически генератор принимал JSON блочной схемы и генерировал Python-класс для Backtrader:
@@ -1743,6 +2178,24 @@ class GeneratedStrategy(bt.Strategy):
 11. Сохранить результат в БД.
 12. Отправить событие `backtest.completed` в event bus.
 
+**5.3.1а Правила аукционов (A-03, ТЗ v4.1; ФТ §4.2; ADR 0017, 0018).** Правила живут в брокере Backtrader, а не в коде стратегии (`app/strategy/*` не менялся):
+- `backtest/auction_broker.py`: `AuctionAwareBroker(bt.brokers.BackBroker)` ставится в `BacktestEngine._setup_cerebro`. На баре аукциона открытия ордера не исполняются — остаются в очереди и исполняются на следующем баре по его open (сигнал на 23:00 → open 07:00; стоп, пробитый ночным гэпом, → open 07:00; в выходной — 10:00). На баре аукциона закрытия ордер, открывающий или увеличивающий позицию, снимается (сигнал теряется, на 19:00 не переносится); закрывающий исполняется.
+- Метки баров (`AuctionMarks`, `auction_marks`) строит основной процесс (`BacktestEngine._auction_marks`) по таблице периодов (`TradingSchedule.is_opening_auction_bar` / `is_closing_auction_bar`, §5.9.1) — она загружена там, а не в spawn-процессе исполнения стратегии. Бар аукциона открытия — бар внутридневного ТФ целиком до начала торгов своего дня, пересекающий аукцион (1h 06:00, 4h 03:00, в выходной 1h 09:00 МСК); бар аукциона закрытия — начало бара в аукционе закрытия (5m 18:55). D/W/M баров аукционов нет.
+- D/W/M: цена исполнения бара — open первой **сохранённой** минуты дня не раньше начала торгов (`_StoredMinuteOpens`: только `MarketDataService._read_stored(exclude_iss=True)` и покрытие `ohlcv_coverage` дня в окне торгов); за минутами в T-Invest и ISS не ходит (D01: `get_candles(1m, mode="backtest")` докачивал бы годы минут через общие лимиты). Минут или покрытия нет, сбой чтения — open бара и `backtest_trades.price_note = "цена аукциона"` (`AUCTION_PRICE_NOTE`). Следствие: цена сделки зависит от того, что уже лежит в БД (до и после фоновой догрузки — разные цены).
+- Теневой прогон интерпретатора `parity.interpreter_trades(…, timeframe=)` живёт по тем же правилам; расхождение двух мест ломает проверку паритета.
+- Фильтр O=H=L=C в `get_candles` удалён (§5.6.6): бары аукциона открытия есть в данных бэктеста.
+- `backtest/metrics.py`: `TRADING_MINUTES_PER_DAY = 805` — число (раньше выводилось из `DEFAULT_TRADING_START/END` и `SESSION_BREAK_*`, которых больше нет); годовой Sharpe по фактическому числу баров — A-06.
+- **Ограничения:** `GridSearchEngine` (`backtest/grid.py`, свой `bt.Cerebro()` без `AuctionAwareBroker`) правил аукционов не применяет; окно времени стратегии в бэктесте сравнивается с UTC, а задаётся в МСК (сдвиг 3 ч) — передано в A-06.
+
+**5.3.1б Размер позиции в лотах (блок A-05, C4; ТЗ v4.2).** Требования — ФТ §4.1, §4.3, §4.5. Пути — от `backend/app/`.
+- **Одна формула** — `strategy/sizing.py`: `PERCENT_LOT_EXPR = "int(cash * pct / 100 / (price * lot * (1 + commission_pct / 100)))"` — число **лотов** «%»-позиции; `percent_lot_size(cash, pct, price, lot_size=1, commission_pct=0.0) -> int` считает то же (тест на эквивалентность; вызов без лота и комиссии — прежний счёт, на него опирается межмодульный тест live, совпадение с `trading.engine.calculate_position_lots` проверено тестом, `trading/*` не менялся); `shares_for_lots(lots, lot_size)`; `position_cost(lots, price, lot_size, commission_pct)` — деньги на вход с комиссией (проверка «хватит ли на N лотов»); `SERVICE_STRATEGY_PARAMS = {"lot_size", "commission_pct"}`.
+- **Кодоген** (`strategy/ir_codegen.py`): в `params` сгенерированной стратегии всегда `('lot_size', 1)`, `('commission_pct', 0.0)`; размер ордера — **акции**: без блока размера `size=self.params.lot_size`, «N лотов» — `position_size_lots * lot_size`, «%» — `PERCENT_LOT_EXPR` (подстановка имён по целым словам: `cash` → `self.broker.get_cash()`, `pct` → `self.params.position_size_pct`, `price` → `self.data.close[0]`, `lot` → `self.params.lot_size`, `commission_pct` → `self.params.commission_pct`) × `lot_size`. Капитал «%» — свободные деньги на баре.
+- **Движок** (`backtest/engine.py`): `BacktestEngine.run(…, lot_size=1)`; `service_strategy_kwargs(strategy_class, params, *, lot_size, commission_pct)` кладёт служебные параметры поверх `override_params`/комбинации Grid (перебором не подменяются) — только стратегии, которая их объявила (backtrader бросает `TypeError` на неизвестный kwarg). `TradeRecorder` получает тот же лот: `volume_lots = |size| // lot_size`, штуки — `volume_shares` (P&L %, цена выхода), `volume_rub` — как раньше. Grid (`backtest/grid.py`, `_prepare_grid_workload(…, lot_size)`) передаёт лот в payload воркера.
+- **Тень и роутер:** `parity.interpreter_trades(…, lot_size=1)` и `_affordable` (в том числе «N лотов»: N × лот × цена с комиссией ≤ cash; short стоимостью не отклоняется — брокер backtrader с `shortcash=True`); после мержа с A-03 тень совмещает правила аукционов с проверкой денег (подача — по close сигнального бара до аукционов, исполнение — по open бара исполнения). `router._position_size_warning(…, lot_size=1, commission_pct=0.0)` — «0 сделок» с лотом и ценой лота (`lot_text`), для «N лотов» и входа без блока размера — только long.
+- **Лот запуска** — `backtest/lot.py`: `resolve_backtest_lot(db, ticker, user_id)` — `MarketDataService.ensure_lot_size_strict(ticker, user_id=…)` (свежий справочник или боевой T-Invest пользователя — ответ пишется в `instruments`), при `LotSizeUnavailableError` — `ensure_lot_size(…)` (ISS / песочница / устаревший кэш / 1, в справочник не пишется); `max(lot, 1)`. `market_data/*` не менялся. `lot_unverified_warning(backtest_lot, instrument)` — при показе: лот справочника ≠ лоту бэктеста → текст с обоими лотами; иначе `lot_size_synced_at` пуст или старше `LOT_SIZE_TTL` (7 дней) → «Лот N не сверен с T-Invest…». `is_legacy_share_lots(backtest_lot, directory_lot)` — одно правило пометки; флаг не хранится, а вычисляется при показе (флаг миграции по справочнику пропустил бы MTSS: до сверки лот 1).
+- **Тесты** — `tests/unit/test_strategy/test_sizing.py`; `tests/unit/test_backtest/test_engine_lots.py`, `test_grid_lots.py`, `test_parity_lots.py`, `test_router_lots.py`, `test_backtest_lot.py` (MTSS 1 → 10 на заглушке T-Invest), `test_export_lots.py`.
+- **Ограничения:** предупреждение «лот не сверен» через 7 дней появляется и у бэктеста на сверенном лоте; при недоступном T-Invest запуск ждёт лот до ~20 с (`backtest/lot.py`); тест лота MTSS подменяет приватный `MarketDataService._fetch_lot_size_from_tinvest` — перепроверить после изменений `market_data/*`.
+
 **5.3.2 Прогресс бэктеста:**
 
 Custom analyzer `ProgressAnalyzer` вызывает callback каждые N баров, передавая текущую дату и процент завершения. Backend пушит это через WebSocket.
@@ -1781,7 +2234,7 @@ class OHLCVValidator:
   `S8R-AUDIT-031`: цена исполнения входа — `average_position_price` из `GetOrderState`, иначе `executed_order_price / (лоты × лот)`, иначе цена ответа `PostOrder`; ноль — не цена (маппер T-Invest отдаёт `Decimal 0` при пустом `MoneyValue`). Нет цены — сделка остаётся `pending`; дольше `UNKNOWN_OUTCOME_CONFIRM_AGE_SEC` — `filled` без цены: `position_mismatch_at` + нота, пауза сессии, критичное `position.mismatch`, SL/TP не ставятся, закрытие из терминала доступно, повторный ордер не отправляется. Реконсиляция: сделка без подтверждённого входа → `cancelled` без P&L и вне `trades_closed`; записанная комиссия брокера попадает в `realized_pnl`. Деньги (P&L, комиссия, paper-портфель, статистика, CB, корпоративные действия) округляются одной функцией `app/common/money.quantize_money` (копейки, `ROUND_HALF_UP`).
   `S8R-FIX-048`: закрытие и сверка `filled` без цены в sandbox/real (признак `is_priceless_broker_entry`): в единой точке учёта закрытия (`_apply_close_and_settle`, через неё идут и закрытие, и `finalize_exit_order`) — после исполнения выхода один `GetOrderState` ордера входа адаптером вызывающего (бюджет `ENTRY_PRICE_LOOKUP_TIMEOUT_SEC` = 5 с, отменяемый), правило S8R-AUDIT-031. Цена найдена — обычный P&L, сторона комиссии входа — факт или оценка от оборота (время стороны — исполнение входа). Не найдена — `closed`, `pnl`/`pnl_pct` NULL («P&L не определён»: closed + pnl NULL + entry NULL, API `pnl_undetermined`); `DailyStat`: `trades_closed +1`, `realized −commission`; CB учитывает её консервативной оценкой (S8R-FIX-063 ч.2, `app/circuit_breaker/unpriced.py`); без оценки — `cb.unpriced_trade` (critical, outbox транзакции закрытия, `stage_unpriced_trade_alert`; пути `_settle_close_locked`, сверка после переоткрытия, закрытие вне терминала S8R-FIX-052); статистика сессии — вне win rate и средней сделки, комиссия — в net и в кривой капитала; `trade.closed` — `pnl`/`net_pnl` null, Telegram «P&L не определён (брокер не сообщил цену входа)». Отмена во время дозапроса: запись закрытия и уведомление о частичном выходе — под `run_shielded_from_cancel` (grace `ORDER_CANCEL_GRACE_SEC`), исходная `CancelledError` пробрасывается всегда. Paper и `entry = 0` — `cancelled` (FIX-5).
   `S8R-FIX-063/065`: Цена исполнения ордера — `order_fill_price`: `average_position_price` → `executed_order_price/(лоты×лот)` → средневзвешенная `stages[].price`; ноль — не цена. Последний источник — `response.price`: цена или сумма/(лоты×лот), берётся кандидат в пределах ±20 % от оценки (рынок, иначе цена входа/сигнала, gotcha-33). Запись закрытия sandbox/real — один commit под `run_shielded_from_cancel` (`ORDER_CANCEL_GRACE_SEC`); свой адаптер — после записи. Выход без цены брокера — «P&L не определён» (`exit_price` NULL; `exit_signal_price` — только при рыночной оценке). Нереализованный P&L и объём позиции — по исполненным лотам (`position_unrealized_pnl`/`position_quantity`, S8R-FIX-062).
-- `RiskMonitor` — мониторинг SL/TP по открытым позициям и их закрытие при срабатывании. В `paper` закрывает сам; в `sandbox`/`real` только принимает решение, а исполнение делегирует `OrderManager.close_position` — единственному пути отправки встречного ордера брокеру (`_close_via_broker`, 2026-08-05). Здесь же `derive_lot_size` — авторитетный множитель штук/лот, восстановленный из `volume_rub`.
+- `RiskMonitor` — мониторинг SL/TP по открытым позициям и их закрытие при срабатывании. В `paper` закрывает сам; в `sandbox`/`real` только принимает решение, а исполнение делегирует `OrderManager.close_position` — единственному пути отправки встречного ордера брокеру (`_close_via_broker`, 2026-08-05). Здесь же `derive_lot_size` — авторитетный множитель штук/лот, восстановленный из `volume_rub`. С A-03 (ТЗ v4.1): на закрытом баре — `check_sl_tp` (страховка) и `paper_bar_levels` (paper: на баре аукциона открытия не проверяется, на первом обычном баре дня при open за уровнем — выход по open), внутри бара — `check_sl_tp_intrabar` (только sandbox/real) и флаг процесса `_INTRABAR_EXIT_REQUESTED` (§5.4.6).
 - `PaperTradingEngine` — эмуляция исполнения ордеров для paper trading; вся денежная мутация paper-портфеля идёт через `PaperPortfolioAccountant` (`apply_open` / `apply_close`).
   `S8R-AUDIT-076`: денежная мутация paper-портфеля (вход, закрытие, SL/TP, дивиденды/купоны/cash-in-lieu) — в секции `paper_portfolio_section` = `keyed_lock("paper_portfolio", session_id)` (после `close_trade`), взятой **до первой записи транзакции** (иначе asyncio-лок и SQLite-писатель дают дедлок, gotcha-78); баланс внутри перечитывается (`populate_existing`). Атомарный SQL не применяется: Numeric в SQLite хранится как REAL.
 
@@ -1837,8 +2290,8 @@ EventBus.publish(f"trades:{session.id}", {"type": "order.placed", "latency_ms": 
 
 **5.4.5 StreamManager (Market Data gRPC):**
 
-- `app/market_data/stream_manager.py` поддерживает **одно** persistent gRPC `MarketDataStream` к T-Invest.
-- Мультиплексирует подписки по ключу `(ticker, timeframe)`. Map `_TIMEFRAME_TO_INTERVAL` транслирует таймфреймы системы в T-Invest enum.
+- `app/market_data/stream_manager.py` поддерживает **одно** persistent gRPC `MarketDataStream` к T-Invest для обновлений свечей (с A-01 рядом живёт второе соединение — закрытые минуты, ниже и §5.6.6).
+- Мультиплексирует подписки по ключу `(ticker, timeframe)`. **С A-01 (ТЗ v4.0) родная подписка T-Invest — только у `1m`; ключи остальных ТФ (`5m`, `15m`, `30m`, `1h`, `4h`, `D`, `W`, `M`) подписаны на `1m` и строят живую свечу общим `AggregatingCandle` (тот же агрегатор, что у истории, §5.6.6); карты ТФ → интервал T-Invest больше нет.** Ключи D/W/M открываются так же, как внутридневные (`needs_subscription` их не исключает): голова дня — минуты дня по REST, для W/M к ней добавляются закрытые D периода. В живую свечу идут только биржевые свечи; режим подписки — настройка `MARKET_DATA_STREAM_MODE` (`two_subscriptions` ~~по умолчанию~~ — `CANDLE_SOURCE_EXCHANGE`; `single_include_weekend` — одна подписка с `CANDLE_SOURCE_INCLUDE_WEEKEND` и раскладкой по `Candle.candle_source_type`, ~~дилерские свечи считаются и не маршрутизируются~~). **С A-03 (ТЗ v4.1, ADR 0021) по умолчанию — `single_include_weekend`** (настройка читается при создании мультиплексора): `exchange` — живая свеча `market:`, агрегаты, `bar.closed`, очередь алертов; `dealer` — свой `_KeyState` ключа `dealer:` (свой `AggregatingCandle`, поколения, дозагрузка головы дилерскими минутами), обновления — `candle.update` в `dealer:{ticker}:{tf}` (ТФ `DEALER_TIMEFRAMES` 1m–4h), закрытые минуты — в `ohlcv_dealer` (`ClosedBarTracker` → `BarLoader.store_stream_dealer_minutes`, без покрытия); `unknown` — warning и счётчик `unknown_source`, никуда. Ключи потока — `(ticker, timeframe, source)`; `subscribe`/`open_stream`/`ensure_stream`/`acquire`/`release` принимают `source="exchange"|"dealer"`; дилерский ключ едет на той же записи стрима и той же подписке 1m мультиплексора, что основной ключ того же ТФ. `two_subscriptions` — только откат: подписка `CANDLE_SOURCE_EXCHANGE`, дилерский канал пуст (warning). Закрытые минуты идут вторым соединением (`waiting_close=True`, свой экземпляр мультиплексора — §5.6.6); на токен приходится два соединения.
 - **Один токен на процесс** (`S8R-FIX-011`, явное правило). Токен в ключ не
   входит: подписчики одного `(ticker, timeframe)` едут на токене того, кто
   открыл стрим первым. Для этого продукта это не ограничение, а факт —
@@ -1856,8 +2309,64 @@ EventBus.publish(f"trades:{session.id}", {"type": "order.placed", "latency_ms": 
 
 - Отдельная реализация `PaperBrokerAdapter`, совместимая с интерфейсом `BaseBrokerAdapter`.
 - Исполнение ордеров по текущей рыночной цене + slippage (настроенный).
-- Эмуляция T+1: блокировка средств на 1 день.
+- Расчёты T+1 по деньгам не моделируются (ТЗ v4.2, ФТ §7.4, дефект 14): деньги считает `PaperPortfolioAccountant` (Model A, BE-TRAD-06) — `balance` = свободные деньги, `blocked_amount` = капитал открытых позиций по цене входа, выручка продажи сразу возвращается в `balance`. Ветка блокировки T+1 в `PaperBrokerAdapter.place_order` (`trading/paper_engine.py`, пометка `DEAD PATH`) paper-режимом не вызывается; удаляется в блоке A-06 вместе с `DEFAULT_SLIPPAGE_PCT` (B4).
 - Баланс и позиции хранятся в `paper_portfolios` и `live_trades`.
+
+**5.4.6 Часы торгов, выходы по виду, стоп внутри бара, закрытие бара сессией, стопы у дилера (блок A-03, ТЗ v4.1).**
+
+Как устроено — `docs/architecture.md` (разделы «Правила часов», «Список „закрыть при первой возможности“», «Сессия: закрытие бара, отложенный вход, стоп внутри бара», «Стопы у дилера»), почему — `docs/adr/0013…0016`, `0019`, `0020`, `0022`. Пути — от `backend/app/`. Требования — ФТ §1.6, §6.1.1, §6.3.
+
+```
+ market:{ticker}:1m ─▶ _IntrabarRiskWatcher ─▶ RiskMonitor.check_sl_tp_intrabar ─▶ OrderManager.close_position(exit_kind=STOP|TAKE)
+ dealer:{ticker}:1m ─┘ (только при DEALER_STOPS_ENABLED; только стоп)            └▶ exit_verdict → DEFER / DEALER_CHECK → pending_exits.enqueue
+ bar.closed / таймер bar_close_at+5 с / следующий бар ─▶ _SessionListener ─▶ стратегия ─▶ CB ─▶ process_signal
+                                                                               └ входы закрыты → _DeferredEntry → первое обновление ≥ execute_at
+ _periodic_recovery_loop (60 с) ─▶ pending_exits.retry_pending_exits ─▶ close_position(exit_kind=…)
+```
+
+**Правила часов — `common/trading_hours.py`** (ADR 0013). Фаза — только из таблицы периодов (`get_trading_schedule()`, §5.9.1); констант часов биржи в модуле нет. «Сейчас» правил — `trading_hours._now_msk` (единственная точка подмены в тестах).
+- **Вход:** `entry_verdict(now=None) -> str | EntryGate | None` — `None` (открыто: торги и вечер будней), текст причины или `WEEKEND_FLAG_REQUIRED` (торги выходного дня — решает `weekend_flag` бумаги, неизвестен — закрыто). Тексты: `CLOSING_AUCTION_REASON` «аукцион закрытия — только выходы», `OPENING_AUCTION_REASON` «аукцион открытия — входы с начала торгов», `DEALER_HOURS_REASON` «часы дилера — входы не выставляются», `OUTSIDE_HOURS_REASON` «вне торговых часов MOEX», `NON_TRADING_DAY_REASON`, `NOT_WEEKEND_INSTRUMENT_REASON`. `entry_deferrable(now)` — аукцион открытия, часы дилера, «закрыто» (не аукцион закрытия). Обёртки прежних имён (их подменяют тесты): `market_closed_reason(now, *, weekend_flag)`, `is_market_open`, `is_session_open` (идёт ли биржевой период — фильтр connection-событий мультиплексора), `market_phase(now)`.
+- **Выход:** `exit_verdict(kind: ExitKind, now=None, *, dealer_stops_enabled=None, weekend_flag=None) -> ExitVerdict(decision, reason)`; `ExitKind` — `MANUAL` | `STOP` | `TAKE` | `SIGNAL` | `FORCED`; `ExitDecision` — `ALLOW` | `DEFER` (ждать фазы, где вид разрешён) | `DEALER_CHECK` | `DENY` (отказ до отправки):
+
+| Фаза | MANUAL | FORCED | STOP | TAKE | SIGNAL |
+|---|---|---|---|---|---|
+| торги, аукцион закрытия, вечер (в выходной — только бумага с `weekend_flag`) | ALLOW | ALLOW | ALLOW | ALLOW | ALLOW |
+| аукцион открытия | ALLOW | DEFER | DEFER | DEFER | DEFER |
+| часы дилера; торги выходного дня у бумаги без `weekend_flag` или с неизвестным (D03, ADR 0020) | ALLOW | ALLOW | `DEALER_CHECK` при `DEALER_STOPS_ENABLED`, иначе DEFER | DEFER | DEFER |
+| закрыто (ночь, праздник, промежуток) | DENY («вне торговых часов MOEX: не торгуют ни биржа, ни дилер»; будничный праздник — «неторговый день MOEX (праздник)») | DEFER | DEFER | DEFER | DEFER |
+
+  `exit_needs_weekend_flag(kind, now)` — нужен ли признак бумаги (только STOP/TAKE/SIGNAL в торги выходного дня): вызывающий спрашивает его (`pending_exits.exit_weekend_flag`; кэш процесса 12 ч, сбой — 60 с, при сбое — как без признака) только тогда. Ручное закрытие: `close_blocked_reason(now)` / `is_within_trading_hours(now)` — обёртки над `exit_verdict(MANUAL)`. `DEFAULT_TRADING_START/END` = 07:00 / 23:50 — только умолчание окна CB (§5.8); `SESSION_BREAK_START/END` удалены.
+- **Вид выхода задаёт вызывающий:** ручное закрытие позиции и «Стоп» сессии (`TradingSessionManager`) — `MANUAL`; `RiskMonitor` — `STOP`/`TAKE`; выход стратегии (`process_signal`) — `SIGNAL`; аварийное закрытие CB и «Закрыть все» на экране (`TradingService.close_all_positions`) и в Telegram (`TelegramWebhookHandler._execute_closeall` → `OrderManager.close_all_positions`, теперь и сделки `pending`) — `FORCED` (D02, ADR 0019; `close_all_positions(…, exit_kind=ExitKind.FORCED)` по умолчанию). Невыполненные сделки «Закрыть все» — `CloseOutcome` «Выход отложен: …», в Telegram — «Закроется при первой возможности».
+- **`OrderManager.close_position(trade_id, reason, *, confirm_closed_outside=False, exit_kind=ExitKind.MANUAL)`:** автоматический выход (не MANUAL) спрашивает `exit_verdict` в начале `_close_position_locked` (`_auto_exit_verdict`) — **до любого обращения к брокеру**; `DEFER` — `ExitDeferredError`, `DEALER_CHECK` — `dealer_exit_check`, не прошла — `DealerExitBlockedError` (оба — наследники `ValidationError`); у paper дилера нет — `DEALER_CHECK` читается как `DEFER`. Ручное закрытие проверяется в хвосте закрытия прежними именами — чинить оба места.
+
+**Список «закрыть при первой возможности» — `trading/pending_exits.py`** (ADR 0014). Пометка — колонки `live_trades.exit_retry_kind/since/notified_at` (§3.9).
+- `enqueue(db, trade_id, kind, reason)` — выход, который не прошёл (фаза, проверка дилера, отказ брокера); уведомление — существующее событие `order.error` в `trades:{session_id}` (нового `event_type` нет), при постановке и не чаще `NOTIFY_INTERVAL` = 15 мин на сделку. Ручное закрытие в список не идёт. `clear` / `clear_fields` — при успехе или закрытии сделки любым путём.
+- `retry_pending_exits(session_factory, *, now=None)` — раз в минуту из `SessionRuntime._periodic_recovery_loop` (`PENDING_EXIT_RETRY_INTERVAL_SEC` = 60): сделки с пометкой; уже не открыта — снимается; `exit_verdict(kind)` ALLOW или DEALER_CHECK → тот же `close_position(…, exit_kind=kind)` с причиной `RETRY_CLOSE_REASONS[kind]` (`stop_loss`, `take_profit`, `exit_signal`, `cb_forced`); DEFER — ждёт; `OrderInFlightError` — ждёт (ордер разрешит recovery закрывающих ордеров). Каждая сделка — своей `AsyncSession`. Второго закрывающего ордера нет: повтор под локом сделки и с guard'ом «ордер в полёте» (`exit_broker_order_id`, `exit_order_placed_at`); повторов на самой отправке ордера нет (gotcha-56).
+- CB `_force_close_open_positions` → `close_position(exit_kind=FORCED)`, отказ (кроме `OrderInFlightError`) → `enqueue(…, ExitKind.FORCED, …)`.
+- Список переживает перезапуск; `restore_all` ничего особого не делает. На закрытом баре сделка в списке считается как `close_failed` — стратегия на этом баре не вызывается.
+
+**Стоп и тейк внутри бара — `trading/runtime.py::_IntrabarRiskWatcher`** (ADR 0015; только sandbox/real). Один на сессию, поднимается в `SessionRuntime.start`; 1m-ключ потока держит держатель `session:{id}` (тот же поток T-Invest), сторож потока (`_recover_stale_streams`, `_recover_watcher_streams`) пере-подписывает его, остановка сессии снимает.
+- Читает `candle.update` из `market:{ticker}:1m` и события `trades:{session_id}`. Лонг — `low ≤ стоп` или `high ≥ тейк`, шорт — зеркально. Минута входа сделки и первая минута, в которой наблюдатель её увидел (в том числе первая после перезапуска), — по текущей цене (`close` обновления), дальше — по `high`/`low` минуты: high/low формирующегося бара ТФ сессии не используются (вход в 10:05 на баре 1h дал бы ложное срабатывание по low 10:00–10:05). Сделка, которой ещё нет в снимке (поздний fill, `opened_at` — время заявки), при касании другой сделки проверяется как увиденная в этой минуте — по текущей цене (`bbb632d`).
+- Горячий путь: уровни открытых сделок — снимок в памяти (перечитка не чаще `INTRABAR_LEVELS_MAX_AGE_SEC` = 5 с и по событию сделки); БД и брокер — только при касании; повторные касания той же сделки гасит флаг процесса `_INTRABAR_EXIT_REQUESTED`. Попытка выхода — отдельной задачей: `SessionRuntime._check_sl_tp_intrabar` → `RiskMonitor.check_sl_tp_intrabar` → `close_position(exit_kind=STOP|TAKE)`; отказ и DEFER → список.
+- Закрытый бар — страховка (`_run_risk_monitor`, `check_sl_tp`); сигналы стратегии — только на закрытом баре. Paper внутри бара не проверяется (договор исполнения paper — A-06).
+
+**Стопы у дилера — `trading/dealer_exit.py`** (ADR 0022). Признак `settings.DEALER_STOPS_ENABLED` (по умолчанию `false`; включает заказчик — `docs/env_vars.md`). Включён — наблюдатель дополнительно слушает `dealer:{ticker}:1m` (тот же 1m-ключ потока); дилерская минута трогает только стоп и только там, где бумагу торгует дилер; тейк по дилерской цене не срабатывает. Перед заявкой `dealer_exit_check(adapter, figi, instrument_uid)` токеном счёта сессии: `TInvestAdapter.get_trading_status` — статус `SECURITY_TRADING_STATUS_DEALER_NORMAL_TRADING`, флаги `api_trade_available_flag`, `market_order_available_flag`; затем `get_dealer_order_book` — разовая подписка потока `SubscribeOrderBook` с `ORDERBOOK_TYPE_DEALER` (унарный `GetOrderBook` в SDK `0.2.0-beta117` типа стакана не принимает), ожидание до `DEALER_BOOK_TIMEOUT_SEC` = 5 с; спред > `DEALER_SPREAD_LIMIT_BPS` = 20 б.п., нет стакана, статус или флаги не те — заявки нет, `DealerExitBlockedError`, сделка в списке, уведомление с ценой и спредом. Кэша и повторов самой проверки нет; статус и стакан — только перед заявкой, не чаще раза в минуту на сделку.
+
+**Закрытие бара сессией и отложенный вход — `_SessionListener`** (ADR 0016; заменяет D3 A-01 и правило «закрыт приходом следующего бара» ADR 0005/0006, в том числе для D/W/M).
+- Бар закрывается по первому из: `bar.closed` (`listen_bar_events`, канал `bars:{ticker}:{tf}`) с тем же `timestamp` и `revised == False` — OHLCV из события, `complete=False` — путь неполного бара; страховочный таймер `bar_close_at + BAR_CLOSE_SAFETY_DELAY` (5 с; синтетическое сообщение `session.bar_close_timer` в ту же очередь) — шина теряет события при переполнении очереди (256), подписка закрытых минут может упасть; приход бара с большим `timestamp`. Один бар не закрывается дважды (`_closed_bar_ts`), `revised` игнорируется. Последний бар дня и D — 23:50:02.
+- `_DeferredEntry(signal, bar_ts, execute_at, reason)` — один на сессию, в памяти. `_entry_deferral`: `entry_deferrable(now)` → `execute_at = next_trading_start(now, weekend_flag=)` (дни торгов выходного дня — только при `weekend_flag is True`; горизонт 10 дней); paper — сигнал бара аукциона открытия → `trading_start` его дня. При полном лимите позиций (`count_open_trades ≥ max_concurrent_positions`) сигнал отбрасывается сразу, как днём (`max_positions_reached`, `bb8799e`), — иначе стоп на открытии освободил бы место устаревшему сигналу. Исполняется на первом обновлении потока с `ts >= execute_at`: снова CB → `process_signal`, paper — по цене этого обновления. Новый закрытый бар, «Стоп», пауза и возобновление отменяют; потеря при перезапуске безопасна. Сигнал в аукцион закрытия не откладывается (CB блокирует, сигнал теряется).
+- Порядок на закрытом баре прежний: страховочная SL/TP; не прошла или сделка в списке — стратегия не вызывается; исполненный внутри бара выход сигнал не подавляет.
+
+**Тесты.** `tests/unit/test_common/test_trading_hours_phases.py`; `tests/test_trading/` — `test_exit_kinds.py`, `test_intrabar_exits.py`, `test_pending_exits.py`, `test_session_bar_close.py`, `test_dealer_stops.py`, `test_close_all_forced.py` (общие фазы — `exit_phases.py`); «сейчас» — autouse `_trading_hours_now` в `tests/test_trading/conftest.py` (среда 21.10.2026 12:00 МСК), свою фазу тест ставит подменой `trading_hours._now_msk`; подставные клиенты SDK дилера — `tests/unit/test_broker/dealer_fixtures.py`. Ордера блок не выставляет — исполнение проверено подставным брокером; на тестовом стенде 02–04.11 — стоп и тейк внутри бара на sandbox #3.
+
+**Известные ограничения и долги v4.1.**
+- Не проверено вживую: выход из списка «закрыть при первой возможности», ручное закрытие в часы дилера при выключенном признаке, путь `DEALER_CHECK` (признак выключен; поведение дилера на рыночную заявку терминала неизвестно).
+- Выход, ждущий разрешённой фазы, уведомляет один раз, а не раз в 15 мин (`pending_exits.py`); уведомление проверки дилера при любом сбое пишет «нет ответа за 5 с» (`dealer_exit.py`); дилерский стакан может ждать квоту дольше 5 с под локом сделки (`adapter.py`); нет тестов на повтор из списка при ордере «в полёте» и на гонку выхода внутри бара со страховкой закрытого бара.
+- Сбой БД при аварийном закрытии CB останавливает остальные закрытия срабатывания (`circuit_breaker/engine.py`, нужен rollback).
+- Выход, который брокер отклоняет постоянно, уходит раз в минуту, пока позицию не закроют вручную. Касание без выхода повторяется не раньше перечитки снимка (5 с) или события сделки.
+- Paper и sandbox расходятся: paper сверяет уровни на закрытом баре (A-06).
+- История сессии при старте может содержать формирующийся бар, признак полноты в рантайме сессий не проверяется (замечено, не исправлено).
+- Правила зависят от «сейчас»: тест закрытия без подмены `_now_msk` зависит от часа прогона (так `test_closeall_confirm_callback` падал ночью и в праздник 04.11 — закреплён `0952d9c`).
 
 ### 5.5 Broker Adapter
 
@@ -1940,7 +2449,8 @@ class BaseBrokerAdapter(ABC):
 - **Счёт песочницы — одной записи (S8R-FIX-115).** `account_id` песочницы глобален для токена, а токен подключают и разные пользователи; токен из шифртекста не сравнить (свой IV у записи). Поэтому: (а) переоткрытие (`_account_ids_taken_by_siblings`) считает занятыми `account_id` **всех** sandbox-записей, кроме своей (было — только записей того же пользователя); нет свободного живого — `UNAVAILABLE` с `SANDBOX_ALL_ACCOUNTS_TAKEN_MESSAGE`; (б) регистрация sandbox-токена (`BrokerService.create_account` → `_free_sandbox_accounts`) не заводит запись на счёт, закреплённый за записью другого пользователя (422 «…уже подключены другим пользователем терминала…»), и на закрытый у брокера счёт (422 «…закрыты брокером…»); свой `account_id` занятым не считается, даже если на него есть и унаследованная запись другого (иначе владелец не сменит ключ, S8R-AUDIT-062), своя запись на закрытый счёт ключ меняет по-прежнему. Отбор и вставка — одной секцией под `sandbox_recovery`, взятым **внутри** `create_account` (порядок `create_account` → `sandbox_recovery`, `app/common/locks.py`; обратного пути нет, под `sandbox_recovery` — только БД своей сессией запроса, без сети и других локов); тот же лок держит переоткрытие — регистрация и переоткрытие не закрепляют один живой счёт за двумя записями. Уникального индекса на `account_id` sandbox-записей в БД нет (пары разных пользователей, заведённые до запрета, законны) — защита только в процессе (один uvicorn-worker). Боевые счета у двух пользователей — как прежде (`UNIQUE (user_id, broker_type, account_id)`).
 - Сверка после смены sandbox-счёта (`S8R-REV-LQ`, `app/trading/sandbox_reopen.py`): одна функция «переоткрыть + сверить» и одно правило запуска (REOPENED или счёт уже переоткрыт соседом) для движка, кнопки «Пересоздать sandbox-счёт» и восстановления при запросе баланса. Фантом — только сделка `filled`, вход которой исполнен до момента переоткрытия (`reopened_at`, граница — целая секунда), без выхода в полёте, FIGI нет в портфеле нового счёта; портфель — один раз за проход под локами `close_trade` (по возрастанию) → `sandbox_reconcile_account`, условия перепроверяются под локом сделки; при неточном моменте (сосед без записи) портфель «только деньги» считается непрочитанным. Сверка — фоновая задача (одна на счёт, своя сессия), пропущенные сделки — отложенный повтор (~210 с), портфель не прочитан во всех попытках — пометка расхождения, пауза, critical; занятые локи — повтор. `pending` старого счёта разрешает recovery ордера (NOT_FOUND → `failed` после окна подтверждения).
 - Маппер `TInvestMapper` — конвертирует Protobuf-объекты в доменные модели.
-- Мультиплексор стрима (`S8R-AUDIT-064`): ошибка маппинга одной свечи — свеча пропускается (ERROR на первую ошибку нового типа, далее агрегированный WARNING), без переподключения; ценовые алерты проверяются отдельной задачей из ограниченной очереди (figi, время свечи) → [min, max], при остановке очередь дочитывается ≤ 1 с. Монитор алертов (`S8R-FIX-051`) регистрируется в реестре мультиплексоров из lifespan (`set_default_price_alert_monitor`, читается в момент проверки); сам держит подписку 1m на FIGI с активными алертами через счёт владельца (`select_market_data_account`, только активные пользователи и счета); пересчёт — старт, создание/удаление/срабатывание алерта, создание/замена ключа/деактивация/удаление счёта (до `release_token`); FIGI — при создании алерта, NULL дозаполняется. Срабатывание — условный UPDATE + in-app уведомление + outbox `notification.dispatch` в одной транзакции; доставка отмечается по каналам, повтор при старте — фоном, только недоставленные. In-memory набор FIGI с алертами — остальные свечи не проверяются; лок пересчёта — в `locks.py`.
+- Мультиплексор стрима (`S8R-AUDIT-064`): ошибка маппинга одной свечи — свеча пропускается (ERROR на первую ошибку нового типа, далее агрегированный WARNING), без переподключения; ценовые алерты проверяются отдельной задачей из ограниченной очереди (figi, время свечи) → [min, max], при остановке очередь дочитывается ≤ 1 с. Монитор алертов (`S8R-FIX-051`) регистрируется в реестре мультиплексоров из lifespan (`set_default_price_alert_monitor`, читается в момент проверки); сам держит подписку 1m на FIGI с активными алертами через счёт владельца (`select_market_data_account`, только активные пользователи и счета); пересчёт — старт, создание/удаление/срабатывание алерта, создание/замена ключа/деактивация/удаление счёта (до `release_token`); FIGI — при создании алерта, NULL дозаполняется. Срабатывание — условный UPDATE + in-app уведомление + outbox `notification.dispatch` в одной транзакции; доставка отмечается по каналам, повтор при старте — фоном, только недоставленные. In-memory набор FIGI с алертами — остальные свечи не проверяются; лок пересчёта — в `locks.py`. **С A-03 (ТЗ v4.1):** в очередь алертов идут только биржевые свечи — `AlertMinute` (OHLC минуты, проверка по high/low, §5.6.7); раскладка свечи по `candle_source_type` в режиме `single_include_weekend` (§5.4.5): `exchange` — прежним путём и в очередь алертов, `dealer` — в дилерский ключ, `unknown` — warning и счётчик, никуда.
+- **Чтения T-Invest A-03 (ТЗ v4.1)** — `TInvestAdapter`, только чтения (повторы — `_read_with_retry`, на отправке ордера повторов нет): `get_trading_schedules(exchange, from_, to)` — `TradingSchedules` (имя площадки сравнивается `casefold`, `bb8799e`), §5.9.1; `get_last_price(figi)` — `GetLastPrices` (цена создания алерта); шаг цены — из `GetInstrumentBy` тем же проходом, что лот (`_InstrumentRef.min_price_increment` → `instruments.min_price_increment`), и `get_price_step(figi)` — для окна алерта, если в справочнике шага нет; `get_trading_status` — `GetTradingStatus` (статус и флаги API для проверки дилера); `get_dealer_order_book(…, timeout=DEALER_BOOK_TIMEOUT_SEC)` — разовая подписка потока `SubscribeOrderBook` с `ORDERBOOK_TYPE_DEALER` (унарный `GetOrderBook` в SDK `0.2.0-beta117` тип стакана не принимает). Статус и стакан — только перед дилерской заявкой (§5.4.6). Известный долг: стакан может ждать квоту дольше 5 с под локом сделки.
 - **Sandbox vs Production (per-account):** Поле `BrokerAccount.is_sandbox` определяет, к какому эндпоинту подключается адаптер (`sandbox-invest-public-api.tbank.ru` или `invest-public-api.tbank.ru`). Тип токена определяется автоматически при подключении через пробный вызов `get_accounts()` / `get_sandbox_accounts()`. Sandbox-аккаунты доступны только при `DEBUG=true`.
 
 **5.5.3 MOEX ISS fallback:**
@@ -1949,7 +2459,7 @@ class BaseBrokerAdapter(ABC):
 - Используется только для исторических данных (OHLCV), торгового календаря и информации об инструментах.
 - Не поддерживает торговые операции.
 - Endpoint: `https://iss.moex.com/iss/`
-- Ошибки и повторы (`S8R-AUDIT-064`, `MOEXISSClient._request`): 5xx, сбой связи, 408/429 и ответ 200 не-JSON (заглушка техработ) — до 3 попыток внутри клиента (Retry-After: 0 — сразу, > 10 с — без ожидания, бюджет пауз 20 с на выборку), затем `TransientBrokerError` («связи нет» ≠ «данных нет»); 4xx — `BrokerError`; вызывающие сами не повторяют. Пагинация `get_paginated` — по `<блок>.cursor` (есть у `/history`), иначе до короткой страницы; предел 1000 страниц — `BrokerError` «выборка усечена». Купоны облигаций — один метод `get_coupons(ticker)`.
+- Ошибки и повторы (`S8R-AUDIT-064`, `MOEXISSClient._request`): 5xx, сбой связи, 408/429 и ответ 200 не-JSON (заглушка техработ) — до 3 попыток внутри клиента (Retry-After: 0 — сразу, > 10 с — без ожидания, бюджет пауз 20 с на выборку), затем `TransientBrokerError` («связи нет» ≠ «данных нет»); 4xx — `BrokerError`; вызывающие сами не повторяют. Пагинация `get_paginated` — по `<блок>.cursor` (есть у `/history`), иначе до короткой страницы; предел 1000 страниц — `BrokerError` «выборка усечена». Купоны облигаций — один метод `get_coupons(ticker)`. Объём календарного дня в основном режиме — `get_daily_volumes(ticker, from_dt, to_dt) -> {дата МСК: штуки}` (A-01, дефекты 5–7): итог `history/engines/stock/markets/shares/boards/TQBR/securities/{ticker}` (колонки `TRADEDATE,VOLUME`) и сессия выходного дня `history/…/shares/sessions/5/boards/TQBR/securities/{ticker}` (`TRADEDATE,VOLUME,TRADE_SESSION_DATE`, с запасом назад `WEEKEND_LOOKBACK` — 16 сут), страницы по 100. Итог торгового дня ISS включает торги выходного и праздничного дня, отнесённые к нему (`TRADE_SESSION_DATE`): `calendar_day_volumes` вычитает их из итога и отдаёт объёмом своих календарных дней; к своему дню сессия прибавляется (у дня может быть и свой итог), строка с той же датой торгового дня (SBER 16.06.2025, объём 0) итог не меняет; отрицательный остаток — дня нет. Эталон дня для `ArchiveLots.admit` и сверки объёма (§3.5.3, §3.5.5). Дня нет или `VOLUME` 0 — бумага в TQBR в этот день не торговалась (праздник без сессии, приостановка).
 - Последствия сбоя ISS: график без T-Invest — данные из кэша при наличии (ошибка фонового обновления — пометкой), 503 «MOEX ISS недоступен» только при пустом кэше; облигация — устаревший кэш, сбой купонов кэш не затирает; детект корпоративных действий прерывается после первого сбоя.
 
 **5.5.4 Фабрика:**
@@ -1992,19 +2502,19 @@ class BrokerFactory:
 
 **Канонический тикер (`S8R-FIX-056`, `app/market_data/ticker_resolver.py`).** `canonical_ticker(db, value, user_id)` — кэш процесса (24 ч) → справочник `instruments` без учёта регистра (индекс `ix_instruments_ticker_upper`, доверие — при известном виде инструмента) → T-Invest → ISS SECID → фолбэк upper (не кэшируется, негативный кэш 60 с по ключу (тикер, есть ли T-Invest), свежие отметки обоих видов — ответ без чтения счёта, S8R-REV-FBE); single-flight по (тикер, есть ли T-Invest) в отдельной задаче под shield. Вызывается в точках входа API (свечи, sparkline, subscribe, инструмент, лого, облигации, бэктест и его rerun — период проверяется до канонизации, сессии до локов, алерты, избранное; detect — без сети). Тип `Ticker` — только формат. Сравнения тикеров в БД и коде — без учёта регистра (`ticker_eq`/`ticker_in`/`same_ticker`), `ohlcv_cache` — `IN (канон, upper)` с дедупликацией по бару (приоритет канона); канал стрима сессии — по канону. ISS: свечи фьючерсов — `engines/futures/markets/forts`; лот фьючерса из ISS не берётся (только T-Invest). Создание рисунка графика — `known_canonical` (кэш/справочник, без сети; не известен — тикер пути как есть, S8R-REV-FBE).
 
-**Чистка ISS-строк кэша свечей (S8R-FIX-064).** При доступном T-Invest ISS-строки пары перед загрузкой проверяются `SELECT EXISTS` (без write-лока); если они есть — удаляются в отдельной короткой сессии на движке `self.db.bind` с commit (`_purge_iss_cache`). Сессия вызывающего (бэктест, торговля) пишущую транзакцию SQLite не получает и write-лок на время сетевой догрузки свечей не держит — раньше DELETE даже на 0 строк держал лок до commit результата, и остальные писатели падали «database is locked» после busy_timeout 30 с (S8R-FIX-045 — следствие).
+**Чистка ISS-строк кэша свечей (S8R-FIX-064).** При доступном T-Invest ISS-строки пары перед загрузкой проверяются `SELECT EXISTS` (без write-лока); если они есть — удаляются в отдельной короткой сессии на движке `self.db.bind` с commit (`_purge_iss_cache`). Сессия вызывающего (бэктест, торговля) пишущую транзакцию SQLite не получает и write-лок на время сетевой догрузки свечей не держит — раньше DELETE даже на 0 строк держал лок до commit результата, и остальные писатели падали «database is locked» после busy_timeout 30 с (S8R-FIX-045 — следствие). С A-01 (ТЗ v4.0) чистка удаляет и покрытие `moex_iss` тех же рядов в той же транзакции (`delete_bars_with_coverage`), проверка `EXISTS` смотрит и свечи, и покрытие; чистятся только хранимые ТФ (`1m`, `D`).
 
-**Время и источники (S8R-AUDIT-063).** Время MOEX ISS — московское, приводится к UTC в парсере (`parse_iss_datetime`, `app/common/timezones.MSK` = фиксированный UTC+3 — одна зона на проект). При подключённом T-Invest строки ISS в `ohlcv_cache` не читаются (`_get_cached`, `last_cached_bar` — CB, unrealized, позиции, цена выхода). Лот для sandbox/real — только T-Invest (строгий и ленивый путь одинаково, кэш лота песочницы по `(счёт, тикер)`), P&L — множитель сделки `LiveTrade.lot_size`; ISS-лот — только paper/viewer, в `instruments` не пишется. Миграция `6f3a063d1c2e` вычищает сдвинутые ISS-свечи.
+**Время и источники (S8R-AUDIT-063).** Время MOEX ISS — московское, приводится к UTC в парсере (`parse_iss_datetime`, `app/common/timezones.MSK` = фиксированный UTC+3 — одна зона на проект). При подключённом T-Invest строки ISS в `ohlcv_cache` не читаются (чтение хранимого ряда `_read_stored` и `last_cached_bar` — CB, unrealized, позиции, цена выхода; до A-01 — `_get_cached`, §5.6.6). Лот для sandbox/real — только T-Invest (строгий и ленивый путь одинаково, кэш лота песочницы по `(счёт, тикер)`), P&L — множитель сделки `LiveTrade.lot_size`; ISS-лот — только paper/viewer, в `instruments` не пишется. Миграция `6f3a063d1c2e` вычищает сдвинутые ISS-свечи.
 
 **FIGI инструмента (S8R-AUDIT-045).** Единый источник FIGI — `MarketDataService.ensure_figi` (токен счёта сессии, промах кэшируется 15 мин по `(счёт, тикер)`). Ордер, история и стрим передают адаптеру `figi=` явно; адаптер ищет FIGI сам (перебор TQBR → TQCB → TQTF) только если FIGI не передан. Движок определяет FIGI **до** отправки ордера (сделка → запасной резолв с кэшем 15 мин по `(счёт, тикер)`) и пишет его в `live_trades.figi` — ключ сверки; не определён — ордер не уходит. `paper_<TICKER>` брокеру не передаётся (`broker_figi`). Выбор инструмента из ответа `find_instrument` (`select_tradable_instrument`) — один для FIGI, лотности и ордеров: точное совпадение тикера; среди торгуемых через API (`api_trade_available_flag`, иначе среди всех) — режим по приоритету TQBR → TQTF → TQCB → TQOB → TQIR → TQPI → TQIF; прочие класс-коды — только при отсутствии основных; при равенстве — наименьший `(class_code, figi)`. Порядок ответа брокера на выбор не влияет.
 
 **Функции:**
-1. `get_candles(ticker, timeframe, from_dt, to_dt)` — проверяет кеш в `ohlcv_cache`, дозагружает отсутствующее через брокер, сохраняет в кеш, возвращает DataFrame.
+1. `get_candles(ticker, timeframe, from_dt, to_dt, user_id=None, mode="viewer"|"backtest"|"trading", rate_limit_wait=None, adjust="splits"|"none")` — выравнивает диапазон по барам ТФ, по `ohlcv_coverage` находит непокрытое («запрошенное минус покрытие»), дозагружает его через `BarLoader` (T-Invest) или ISS, читает хранимый ряд (по умолчанию с учётом дроблений, §3.5) и собирает ТФ агрегатором; возвращает `(list[CandleData], source)`, `source` ∈ `tinvest` | `moex_iss` | `cache` (до A-01 — проверка кеша и `DataFrame`; подробности — §5.6.6).
 2. `subscribe_realtime(ticker, timeframe, callback)` — создаёт подписку через `BrokerAdapter.subscribe_candles()`.
 3. `validate_data(df, ticker, timeframe)` — вызов `OHLCVValidator`.
-4. `check_cache_coverage(ticker, timeframe, from_dt, to_dt)` — определяет, какие участки нужно загрузить.
+4. Какие участки нужно загрузить, определяет `coverage.missing_ranges(db, ticker, timeframe, source, start, end)` (с A-01; прежние `check_cache_coverage`, `_find_gaps`, `_tail_tolerance`, `_get_cached` удалены).
 
-**Обрыв стрима и дозагрузка (S8R-AUDIT-012).** `stream_manager` открывает «раунд обрыва» `[последняя живая свеча до обрыва, первая после)` при (пере)создании стрима или смене `adapter.connection_epoch` (публичное свойство поверх `multiplexer.connection_epoch`). Живые свечи публикуются сразу с `bar_pending=True`; после `BACKFILL_DEBOUNCE_SEC` (1,5 с) фоновая задача одним REST-запросом минуток на тикер (общим для 1m/5m/15m/1h/4h, через адаптер стрима, `_unary`) дозагружает хвост бара, пережившего обрыв, и голову текущего периода; сливаются только минуты старше первой живой; агрегатор хранит 2 закрытых периода. Затронутые бары переопубликуются с тем же timestamp, исправленными OHLC, `bar_pending=False` и `bar_complete` (False — если в обрыве были сделки после конца периода или REST не удался). Поля `stream_gen`, `bar_complete`, `bar_pending` в `candle.update`. Listener (`runtime.py`) торгует бар только после подтверждения полноты; неполный — RiskMonitor по его high/low и по свежему бару, сигнал не исполняется; SL/TP на свежем баре подавляет сигнал на его закрытии. Задачи дозагрузки отменяются при снятии стрима и в `unsubscribe_all`. **Периоды, целиком накрытые обрывом (S8R-FIX-022, 2026-10-13):** переопубликовывались только бары из `pending_bars` и `gap_period`, а период, не попавший ни туда, ни туда, на график не приходил вовсе до перезагрузки страницы (агрегатор держит два последних). Теперь такие периоды собираются из дозагруженных минут и публикуются с `bar_complete=True`; предел `GAP_REPUBLISH_MAX_BARS = 60` на раунд, дальше — одна строка в лог, а график перечитает период обычным REST-запросом (длинный обрыв не заливает сокет). Торговлю это не включает: закрывающая свеча приходит из нового поколения стрима, и `_closed_bar_verdict` такие бары пропускает (`gen_changed` → SKIP).
+**Обрыв стрима и дозагрузка (S8R-AUDIT-012).** `stream_manager` открывает «раунд обрыва» `[последняя живая свеча до обрыва, первая после)` при (пере)создании стрима или смене `adapter.connection_epoch` (публичное свойство поверх `multiplexer.connection_epoch`). Живые свечи публикуются сразу с `bar_pending=True`; после `BACKFILL_DEBOUNCE_SEC` (1,5 с) фоновая задача одним REST-запросом минуток на тикер (общим для ключей тикера всех ТФ — с A-01 включая `30m` и голову дня D/W/M, §5.6.6; через адаптер стрима, `_unary`) дозагружает хвост бара, пережившего обрыв, и голову текущего периода; сливаются только минуты старше первой живой; агрегатор хранит 2 закрытых периода. Затронутые бары переопубликуются с тем же timestamp, исправленными OHLC, `bar_pending=False` и `bar_complete` (False — если в обрыве были сделки после конца периода или REST не удался). Поля `stream_gen`, `bar_complete`, `bar_pending` в `candle.update`. Listener (`runtime.py`) торгует бар только после подтверждения полноты; неполный — RiskMonitor по его high/low и по свежему бару, сигнал не исполняется; SL/TP на свежем баре подавляет сигнал на его закрытии. Задачи дозагрузки отменяются при снятии стрима и в `unsubscribe_all`. **Периоды, целиком накрытые обрывом (S8R-FIX-022, 2026-10-13):** переопубликовывались только бары из `pending_bars` и `gap_period`, а период, не попавший ни туда, ни туда, на график не приходил вовсе до перезагрузки страницы (агрегатор держит два последних). Теперь такие периоды собираются из дозагруженных минут и публикуются с `bar_complete=True`; предел `GAP_REPUBLISH_MAX_BARS = 60` на раунд, дальше — одна строка в лог, а график перечитает период обычным REST-запросом (длинный обрыв не заливает сокет). Торговлю это не включает: закрывающая свеча приходит из нового поколения стрима, и `_closed_bar_verdict` такие бары пропускает (`gen_changed` → SKIP).
 
 **Выбор ключа для рыночных/справочных данных (S8R-AUDIT-003).** `select_market_data_account(db, user_id, preferred_account_id, sandbox, account_id)` — единственная точка: только счета пользователя, `encrypted_api_key` и `encryption_iv` NOT NULL, порядок prod → счёт сессии → id; без `user_id`/`account_id` — `None` (дальше ISS/None, «любой токен» не используется). `decrypt_market_data_token` — расшифровка. Лот: prod → ISS → устаревший authoritative-кэш → sandbox; sandbox-лот — authoritative только для `mode=sandbox`, в общий кэш не пишется; strict real/paper песочницу не спрашивает. FIGI для сверки — `select_market_data_account(account_id=счёт сессии)`. Владелец сессии — `strategy_version_owner_id`. Ограничение многопользовательского режима: общий стрим `(ticker, tf)` открывается токеном первого открывшего (сессии или графика).
 
@@ -2062,9 +2572,107 @@ class BondService:
         ...
 ```
 
+**5.6.6 Хранилище баров и поток закрытых баров (блок A-01, ТЗ v4.0).**
+
+Как устроено — `docs/architecture.md`, почему — `docs/adr/0001…0009`, термины — `CONTEXT.md` (репозиторий кода, ветка `feat/008-a01-bar-storage`). Пути — от `backend/app/`. Требования — ФТ §11.4.
+
+```
+ T-Invest GetCandles ──┐                          ┌─ ohlcv_cache     1m, D   source = tinvest | moex_iss
+ T-Invest history-data ─┼─▶ BarLoader ────────────┤─ ohlcv_dealer    1m дилерские (source = tinvest_dealer)
+   (только фон, 1m)     │   bar_loader.py         └─ ohlcv_coverage  что уже загружено, по трём источникам
+ MOEX ISS (viewer) ─────┴─▶ service._save_to_cache ─▶ те же таблицы (source = moex_iss)
+   missing_ranges(покрытие): «запрошенное минус покрытие» — единственное, что идёт к источнику
+ хранимый ряд («как было») ─▶ splits.adjust_for_splits ─▶ aggregation.aggregate ─▶ AggregateCache (LRU) ─▶ GET /candles · бэктест · сессии · график
+ (1m → 5m 15m 30m 1h 4h;  D → W M;  adjust="none" — без пересчёта)
+ T-Invest стрим ─▶ TInvestStreamMultiplexer ─▶ stream_manager ─▶ candle.update   канал market:{ticker}:{tf}
+ T-Invest закрытые минуты ─▶ ClosedBarTracker (closed_bars.py) ─▶ bar.closed     канал bars:{ticker}:{tf}
+ вход пользователя ─▶ auth/router.py ─▶ backfill.run_backfill ─▶ BarLoader(archive_lots=ArchiveLots, use_archive=True) ─▶ reconcile_volumes
+ corporate_actions (split) ─▶ splits.load_splits: to_as_was перед записью · adjust_for_splits при чтении
+```
+
+| Модуль | Владеет | Чего не делает |
+|---|---|---|
+| `market_data/aggregation.py` | набор ТФ (`TIMEFRAMES`, в том числе `30m`), `stored_timeframe`, `period_start`/`next_period_start`, `aggregate`, `AggregatingCandle` | БД, сеть, часы (`now` передаёт вызывающий) |
+| `market_data/bar_close.py` | правило «бар закрыт»: `bar_close_at`, `is_bar_closed`, `forming_bar_start`, `trading_end_utc`; `BAR_CLOSE_GRACE` = 2 с | БД, сеть; расписание — ~~константы (`DEFAULT_TRADING_END`, `MOEXCalendarService.WEEKEND_CLOSE`)~~ с A-03 — таблица периодов `get_trading_schedule()` (§5.9.1) |
+| `market_data/coverage.py` | диапазоны `[from, to)` и `ohlcv_coverage`: `missing_ranges`, `add_coverage`, `delete_bars_with_coverage` | не знает источников свечей |
+| `market_data/bar_loader.py` | `BarLoader.load` — единственный писатель свечей T-Invest и их покрытия; `TINVEST_MINUTE_SEAM` = 2018-06-13; с A-03 — `store_stream_dealer_minutes` (закрытые дилерские минуты потока в `ohlcv_dealer`, без покрытия) | не выбирает счёт и не резолвит FIGI: получает `BrokerContext` |
+| `broker/tinvest/history_archive.py` | `fetch_history_year` — годовой архив минут (`history-data`) | не пишет в БД |
+| `market_data/service.py` | `MarketDataService`: `get_candles`, `get_dealer_candles`, `broker_context`, `AggregateCache`, чтение цены из кэша; с A-03 — шаг цены (`ensure_lot_size` пишет `instruments.min_price_increment`, читатель — `instrument_price_step`) | свечи T-Invest не грузит в обход `BarLoader` |
+| `market_data/backfill.py`, `volume_check.py` | фоновая догрузка при входе; сверка объёма дня с ISS | |
+| `market_data/splits.py` | дробления из `corporate_actions` (`load_splits`, граница `split_opened_before`); `to_as_was` (перед записью), `adjust_for_splits` / `adjust_price` (при чтении), `active_splits` (ключ LRU), `forget_bars_before_new_splits` | свечи не пишет; удаляет только строки до границы позднего дробления (`delete_bars_with_coverage`) |
+| `market_data/lot_history.py` | `ArchiveLots.admit` — какие дни архива идут в основной ряд (точное совпадение с итогом дня ISS `history` TQBR), окно биржевых минут и лот на дату; `EXCHANGE_WINDOWS`, `ALLOWED_LOTS`; `ohlcv_lot_history` | свечи не грузит и не пишет |
+| `market_data/stream_manager.py` | ключи потока `(ticker, tf)` (с A-03 — `(ticker, tf, source)`), живая свеча, `candle.update` в `market:` и (A-03) `dealer:`; подключает трекер | в БД не пишет |
+| `market_data/closed_bars.py` | `ClosedBarTracker`: таймеры закрытия, сборка бара, `bar.closed`; с A-03 сдаёт дилерские закрытые минуты на запись | |
+| `broker/tinvest/multiplexer.py`, `mapper.py`, `adapter.py` | подписка, перевод свечи в `CandleData` (с `source`, `is_complete`), `get_historical_candles` | |
+
+**Хранилище.** `ohlcv_cache` — только `1m` и `D`, строки «как было» (цена и штуки своего дня, §3.5); `ohlcv_coverage`, `ohlcv_dealer`, `ohlcv_volume_check`, `ohlcv_backfill_target`, `ohlcv_lot_history` — §3.5.1–3.5.5. Тикер в кэше и покрытии — канонический (`known_canonical`), при чтении учитываются варианты (`ticker_variants`). Время в БД — наивное UTC; метка D: T-Invest 00:00 UTC, ISS 21:00 UTC предыдущих суток; метки W/M — понедельник / 1-е число, 00:00 по дате МСК. Бар, которого нет внутри покрытого диапазона, — «сделок не было».
+
+**Агрегатор.** Выравнивание корзин — кратные интервала от эпохи UTC (`30m` — :00/:30, `1h` — час UTC, `4h` — 00/04/08/12/16/20 UTC, как режет T-Invest); D — полночь даты метки; W, M — по дате МСК (D-бар ISS стоит на 21:00 UTC предыдущих суток, T-Invest — на 00:00 UTC). O — первый бар, H — max, L — min, C — последний, V — сумма; группа без баров даёт отсутствие бара; последняя корзина, в которую ещё приходят минуты, помечается формирующейся (`is_complete=False`). `TIMEFRAME_DURATIONS["M"]` — 30 суток (оценка длительности); границы месяца — только `next_period_start`. Пакетная `aggregate` (история) и `AggregatingCandle` (поток) на одном отрезке минут дают одинаковые бары (тест).
+
+**Чтение свечей — `MarketDataService.get_candles`.** `(ticker, timeframe, from_dt, to_dt, user_id=None, mode, rate_limit_wait=None, adjust="splits") -> (list[CandleData], source)`; диапазон ≤ `MAX_REQUEST_SPAN` (10 лет) и выравнивается по барам ТФ; `mode != "viewer"` без T-Invest — `TInvestRequiredError`.
+- Масштаб (дефект 4 тестового стенда): строки в БД — «как было»; `adjust="splits"` (по умолчанию; так читают графики, бэктест, сессии, поток) — бары до наступивших дроблений в текущем масштабе, `adjust="none"` — «как было» (задел Б-02, маршрут `/candles?adjust=`). Пересчёт хранимых рядов — только в `_read_stored` (`adjust_for_splits`; дробления — `load_splits` или уже прочитанные `_series`), цены из кэша — только в `_latest_bar` (`adjust_price`). Ряд ISS перед записью — `to_as_was(…, scale_volume=False)` (`_iss_stored_series`); производный ТФ ISS (`_iss_derived_series`, без кэша) — сначала «как было», затем `adjust`.
+- С T-Invest (`_tinvest_series`): ISS-строки хранимого ТФ чистятся (`_purge_iss_cache` — вместе с покрытием `moex_iss`, одной транзакцией) → `missing_ranges(…, "tinvest", …)` в `[start, min(end, now))` (для 1m — не раньше шва) → `broker_context` + `BarLoader.load` → `_series` читает хранимый ряд и собирает агрегат. Сбой контекста (счёт, FIGI, лот) трактуется как недоступный источник: отдаётся кэш, ничего не пишется.
+- Без T-Invest (только viewer): хранимые 1m/D — `_iss_stored_series` (покрытие `moex_iss`); производные ТФ — `_iss_derived_series` прямо из ISS без кэша; `30m` — из 10m ISS. Покрытие ISS кончается на последней полученной свече (`ISS_DATA_DELAY_MARGIN` = 1 ч): иначе задержанные минуты запомнились бы как «сделок не было» (ADR 0009). Для границы по ряду ISS — `forming_bar_start(…, msk_midnight_labels=True)`.
+- Агрегат закрытого диапазона производного ТФ — в `AggregateCache`: 32 записи, не более 500 000 баров, ключ `(ticker, timeframe, from, to, exclude_iss, наступившие дробления)` (`active_splits`; `None` — чтение «как было»): новое дробление или наступившая граница дают новый ключ, БД не переписывается; запись свечей и чистка вытесняют пересекающиеся записи (`invalidate`), `generation` не даёт положить агрегат, прочитанный до записи.
+- Формирующийся бар (`is_complete=False`) идёт в ответ в viewer и trading, в БД и в LRU не попадает; бэктест его не получает. К результату — ~~фильтр аукционных свечей 1h/4h и~~ `_validate_candles` (фильтр O=H=L=C для 1h/4h удалён в A-03 во всех режимах — он убирал бары аукциона открытия 1h 06:00, 4h 03:00, в выходной 1h 09:00; решение заказчика 2026-10-26, ADR 0017).
+- Цена из кэша для CB, P&L, карточек, Telegram, стратегий — `last_cached_bar` / `closed_bar_close_before` (подписи и смысл прежние, вызывающий код не менялся): close последней строки хранимого ряда (1m для внутридневных ТФ, D для D/W/M) раньше начала формирующегося бара ТФ сессии (`forming_bar_start`; у D из ISS — граница по полуночи МСК); у `closed_bar_close_before` ещё нижняя граница `max_age`. Масштаб (`_latest_bar` → `adjust_price`, параметр `scale_at`): `last_cached_bar` — close строки раньше границы наступившего дробления в текущем масштабе, как у графика; `closed_bar_close_before` (оценка CB закрытых неоценённых сделок) — в масштабе момента `moment`: сделка, закрытая до дробления, считалась в старых штуках, а `process_split` пересчитывает только открытые позиции. Время в ответе `last_cached_bar` — начало закрытого бара ТФ (по нему CB судит о свежести). Читатель смотрит и хранимый ряд, и строки самого ТФ сессии (`_price_timeframes`) — ради тестов, засевающих 1h.
+- `get_dealer_candles` — только с T-Invest и только внутридневные ТФ (`ValueError` → 422 для D/W/M); покрытие `tinvest_dealer`, тот же `BarLoader`; маршрут `GET /api/v1/market-data/candles/dealer`. С v4.3 (Б-02) — `get_dealer_candles(self, ticker, timeframe, from_dt, to_dt, user_id, adjust: SplitAdjust = "splits")` → `_read_stored(ticker, "1m", start, end, exclude_iss=False, model=OHLCVDealer, adjust=adjust)`: в режиме «как было» дилерский ряд в том же масштабе, что основной (кэша агрегатов у дилерского ряда по-прежнему нет). Известный дефект (ADR 0011, заказчик 2026-10-26 — не чинить): T за 15–16.04.2026 при `adjust=none` — ×10.
+
+**Загрузка — `BarLoader(session_factory, *, archive_lots=None).load(ticker, timeframe, ranges, ctx, *, now, rate_limit_wait=None, use_archive=False) -> LoadResult`.**
+- `timeframe` — только `1m` или `D`. 1m — окна по суткам UTC, не раньше шва 2018-06-13; D — окна `TIMEFRAME_CHUNK_DAYS["D"]`.
+- Окно `GetCandles` (адаптер шлёт `CANDLE_SOURCE_INCLUDE_WEEKEND`): закрытая `exchange` → `ohlcv_cache`; закрытая `dealer` (только 1m) → `ohlcv_dealer`; `unknown` не пишется; незакрытая не пишется и возвращается в `LoadResult.forming`.
+- Невалидная свеча (`_is_valid_candle`) не пишется, окно с ней не покрывается, считается в `LoadResult.invalid` (лог `candle_invalid_skipped`, ADR 0008). Покрытие окна `[a, b)` — до `min(b, forming_bar_start, начало первой незакрытой свечи)`; при свече `unknown` покрытие окна не пишется ни для какого ряда.
+- Свечи окна и покрытие — одна транзакция в короткой сессии (`persist_with_retry_fresh`); после записи — `aggregate_cache.invalidate`. Сбой окна — в `LoadResult.failed`, дальше следующее; `RateLimitExhaustedError` — записанное остаётся, `rate_limited=True`, остальное не запрашивается.
+- Масштаб: дробления бумаги перечитываются на каждое окно `GetCandles` (`_splits` → `load_splits`); свечи окна перед записью — `to_as_was` по дроблениям, наступившим к моменту ответа окна (`fetched_at` — фактическое время, не время старта загрузки; цена × rt/rf, объём × rf/rt), §3.5. Дробление, записанное или наступившее во время долгой фоновой догрузки, учитывается со следующего окна.
+- Объём `GetCandles`: `volume = лоты × lot_size` (текущий лот — источник считает в нём); `TInvestMapper.candle_to_candle_data(candle, *, lot_size, source_override=None)` — `lot_size` обязателен. Для истории лот строгий (`ensure_lot_size_strict`; `LotSizeUnavailableError` — загрузки нет), для потока — нестрогий `ensure_lot_size` (живая свеча — показ).
+- `use_archive=True` (только `backfill`; для 1m нужен `archive_lots`, иначе `ValueError`): прошедшие будние торговые дни 1m — из `history-data` по году; выходные, праздники, сегодня и годы с отвергнутым архивом — `GetCandles`. По каждому году — `ArchiveLots.admit` по всем минутам суток каждого дня (§3.5.5); дни с решением `None` уходят в `GetCandles`, у принятых пишутся только минуты окна биржевых часов (`ArchiveDay.takes`), объём = лоты × лот на дату; день «сделок не было» (`window=None`) покрывается без строк. Запросы графика, бэктеста и сессий архив не трогают. `fetch_history_year(token, figi, year)`: 404 — `None`; 429 — ожидание сброса и до 3 повторов; общий предел 30 запросов в минуту на процесс; битый архив — `HistoryArchiveError`; минута архива с ценой ≤ 0 не пишется, день не покрывается.
+
+**Фон при входе.** `auth/router.py` после логина запускает `backfill.run_backfill(user_id, AsyncSessionLocal)` (`create_task`, ошибка логин не блокирует; один прогон на процесс, повторный вход во время прогона ничего не запускает). Цели: `ohlcv_backfill_target` ∪ бумаги активных сессий пользователя (глубина — `INITIAL_PERIOD_DAYS` ТФ сессии, `30m` — 14 суток; хранимый ТФ — `stored_timeframe`); по ключу берётся самая ранняя глубина; сначала D, затем 1m, до начала сегодняшних суток UTC. Один `MOEXISSClient` на прогон — для `ArchiveLots` и для сверки; закрывается в `finally`. Затем `volume_check.reconcile_volumes`: закрытые полностью покрытые несверенные дни, объём 1m за день против итога дня ISS `history` TQBR, для дней без него — дневки `candles.json` (обе стороны «как было», §3.5.3); `classify_ratio` — допуск 1 %, кратность лота 10/100/0,1/0,01 → `lot_change` (теперь — только настоящая аномалия); расхождение пишется в `ohlcv_volume_check` и в лог `volume_check_mismatch`, данные не правятся. Токен — вошедшего пользователя.
+
+**Поток и закрытые бары.**
+- `stream_manager`: см. §5.4.5. `subscribe`/`open_stream`/`ensure_stream` принимают `user_id` (владелец стрима — для истории и трекера). Дозагрузка головы бара после обрыва (`_fetch_gap_minutes`, S8R-AUDIT-012) — один REST-запрос минут мимо `BarLoader`, только закрытые биржевые, в БД не пишутся; он общий для всех ТФ ключей тикера, включая `30m` и D/W/M.
+- Закрытые минуты — отдельное соединение (`waiting_close=True`, свой экземпляр мультиплексора: `get_or_create_multiplexer(token, app_name, *, waiting_close=False)`); одна подписка на бумагу, пока у неё есть открытые ключи (`acquire`/`release` зовёт `stream_manager` вне `_key_locks`). Упавшая или отклонённая подписка переоткрывается с паузой 5 с → 5 мин, пауза сбрасывается первой минутой новой подписки. Квота подписок T-Invest (100 в минуту) расходуется второй подпиской 1m на бумагу.
+- Бар ТФ закрывается таймером на `bar_close_at` (конец периода или торгов последнего торгового дня периода + `BAR_CLOSE_GRACE`), а не приходом следующей минуты; ночью и в неторговые дни таймеров нет. Конец торгов — 23:50 МСК (`DEFAULT_TRADING_END`) и 19:00 МСК в день торгов выходного дня; торговый ли день — календарь MOEX (до A-03 расписание по периодам в коде не заведено, два места знают часы константами: `bar_close.py` и `common/trading_hours.py`). **С A-03 (ТЗ v4.1):** открытие и конец торгов дня — из таблицы периодов (`TradingSchedule.day(d)`: `exchange_open` — начало первого биржевого периода, `trading_end` — конец последнего биржевого, не дилерского; сейчас 23:50 в будни и 19:00:01 в день торгов выходного дня — конец T-Invest включителен до секунды); день торгов выходного дня (`DaySchedule.weekend`) — только при `weekend_trading`; день без биржевых периодов — торгов нет; даты без строки — `fallback_day`. Констант часов в `bar_close.py` больше нет.
+- `bar.closed` → `event_bus.publish("bars:{ticker}:{tf}", "bar.closed", payload)`; payload: `ticker`, `timeframe`, `timestamp` (ISO начала бара, UTC), `open`, `high`, `low`, `close` (float), `volume` (int, штуки), `complete`, `revised`. ~~Подписчиков нет (задел для алертов A-11, не `⚠️ NOT CONNECTED`)~~ С A-03 подписчики — торговые сессии (`_SessionListener.listen_bar_events`, §5.4.6), алерты A-11 присоединятся позже; это событие шины, не уведомление: в `EVENT_MAP` и `EVENT_TYPE_LABELS` его нет; WS-подписка клиента на `bars:*` отклоняется. Дилерские минуты в бары и `bar.closed` не попадают — трекер сдаёт их `BarLoader.store_stream_dealer_minutes` (A-03). Сверка D с родной дневкой с A-03 получает настоящий порог — `instruments.min_price_increment` (раньше колонку никто не заполнял, порог был 0).
+- Неполный период (подписка открыта внутри периода, реконнект, обрыв) — бар из истории (`get_candles(…, "1m", период, mode="backtest")`) ∪ минуты потока; история неполна (`IncompleteHistoryError`) или недоступна — `complete=False`. Опоздавшая минута — пересчёт и повтор с `revised=True` (держатся два последних бара ТФ). D: сверка с родной дневкой в 00:30 UTC следующих суток, расхождение больше `min_price_increment` — повтор D с родными значениями; W/M не переопубликуются. W/M собираются из родных закрытых D периода плюс дни, которых в истории ещё нет.
+- Признак торгов выходного дня трекер берёт только из кэша процесса (`weekend_trading_flag` без счёта портит этот кэш и отключил бы бумаге вход в CB — ADR 0007); нет кэша — W/M закрываются как у бумаги без торгов выходного дня, минуты выходных приходят пересчётом (`revised`).
+- Сессии (`SessionRuntime`) не менялись: решение по бару — по приходу следующего (ADR 0005, 0006) — **с A-03 заменено:** бар закрывается по `bar.closed` / страховочному таймеру / следующему бару, вход вне торгов откладывается (ADR 0016, §5.4.6); D/W/M получают поток, `needs_subscription` их больше не исключает, watchdog их не пропускает. `SupportedTimeframe` (`trading/schemas.py`) включает `30m`, годовой коэффициент Sharpe для `30m` — `_INTRADAY_TF_MINUTES` (30 минут, прежняя формула; по фактическому числу баров — A-06).
+
+**Инварианты.** В БД пишутся только закрытые биржевые 1m и D (`_save_to_cache` другого ТФ не примет). Строки — «как было»; пересчёт по дроблениям — только при чтении (`_read_stored`, `_latest_bar`), запись в масштабе «с учётом дроблений» — ошибка (при чтении пересчиталась бы второй раз). Свечи T-Invest пишет только `BarLoader`; удаляет свечи только `delete_bars_with_coverage` (иначе дыра запомнится как «сделок не было»), data-миграция делает то же SQL-ом по `ohlcv_coverage` (gotcha-90). Правило «бар закрыт» одно — `bar_close.py`. Токен T-Invest не попадает в `repr` и логи (`BrokerContext.adapter/token`, `StreamSource.api_key/api_secret` — `repr=False`; в архиве — только заголовок `Authorization`; логи фона без `exc_info`). Состояние процесса (LRU, трекер, флаг прогона, лимитер архива) — с reset-функцией в `tests/conftest.py` (`_reset_bar_storage_state`); процесс один (один uvicorn-worker). Сеть трекера (подписка, история) — вне `_key_locks`. Повторы брокера — только на чтениях; ордеров блок не касается.
+
+**Тесты.** `tests/test_market_data/` — по модулю (`test_aggregation.py`, `test_bar_close.py`, `test_coverage.py`, `test_bar_loader.py`, `test_closed_bars.py`, `test_backfill.py`, `test_volume_check.py`, `test_candle_service.py`, `test_stream_aggregation.py`, `test_bar_storage_migrations.py`, `test_split_storage.py` — масштаб «как было», лот на дату, пересчёт при чтении на примерах T и SBER со стенда; `test_reference_days.py` — эталонные дни стенда: T у дробления, смена лота SBER, утренний дилер 2024, неполные дни LKOH и GAZP, 10.04.2025, праздничные сессии, суббота; дефект 7 — выходные и праздник в итоге следующего рабочего дня ISS (GAZP 10–12.10.2026, SBER 05–07.09 и 21–24.02.2026), архив SBER 2023 без минуты 09:59, лента T-Invest против ISS 21.10.2026; `tests/unit/test_moex_iss/test_client_daily_volumes.py` — `calendar_day_volumes`); фикстуры эталонных дней — `fixtures/reference_days/` (GAZP, LKOH, MTSS, SBER, T; запись — `backend/scripts/record_bar_reference_days.py`: только с явным `DATABASE_URL` копии БД, иначе код 3; `--ticker` дописывает `meta.json`; тесты — `tests/unit/test_scripts/test_record_bar_reference_days.py`); клиент `get_daily_volumes` — `tests/unit/test_moex_iss/test_client_daily_volumes.py`; фикстура `fixtures/tinvest_native_bars.csv` — 1m и родные 5m–4h из копии рабочей БД. Сверка агрегата с T-Invest вживую (включая родные `30m`) — `backend/scripts/check_aggregation_vs_tinvest.py` на тестовом стенде. Сеть в тестах закрыта (`_block_outbound_http`, `_block_live_grpc`): HTTP и gRPC — фейки.
+
+**Известные ограничения и долги v4.0.**
+- Вживую не проверено (T-Invest не был доступен при приёмке): загрузка биржевых и дилерских свечей, правило «неизвестный источник не пишется» (заполняет ли T-Invest источник у будних биржевых свечей — если нет, окна будут запрашиваться повторно), объём GAZP против ISS (дневка ISS запрашивается без `boards/TQBR` в расчёте, что для акций она отдаёт основной режим; если на стенде это не так — запрос надо привязать к борде), архивы, фоновая догрузка, закрытые минуты, `bar.closed`, живые D/W/M, сессии D/W/M (стопы, тейки, watchdog и восстановление после обрыва на этих ТФ в бою раньше не работали), сверка агрегата с родными свечами.
+- День архива идёт в ряд только при точном совпадении с итогом дня ISS `history` TQBR; дни без совпадения, без подтверждённого лота, бумаги не из TQBR (фонды — архив для них не используется) и год при недоступном ISS грузятся `GetCandles` — больше запросов фоновой догрузки, данные верные. Пересчёт знает только дробления из `corporate_actions` (детект — каждые 6 часов, и без сессий): пока дробление не записано, строки `GetCandles` за дни до его границы, загруженные уже после неё, ложатся в БД в новом масштабе; детект, узнав дробление после границы, до записи удаляет строки бумаги до границы (`forget_bars_before_new_splits`, §5.12), они дозагружаются.
+- Предполагается, что источники (`GetCandles`, ISS `candles.json`) пересчитывают историю ровно с 00:00 МСК `ex_date` (`split_opened_before`).
+- Между уборкой рядов и записью дробления (§5.12) идущая в этот момент загрузка может записать окно в масштабе источника (дробление ещё не в `corporate_actions`).
+- Бары W/M, взятые прямо из ISS (viewer без T-Invest, `_iss_derived_series`), внутри которых лежит граница дробления: объём части после дробления завышен в rt/rf раз: бар с началом до границы пересчитывается целиком, а разрезать готовый агрегат ISS по границе нельзя.
+- Сверка объёма дней из архива тавтологична: в ряд они попадают только при точном совпадении с тем же `history`. Она ловит расхождения дней `GetCandles`.
+- Для Б-02: T-Invest пересчитывает дилерские свечи по своей границе дробления — у T 15.04.2026, на два дня раньше `ex_date` 17.04. Чтение по умолчанию верно; «как было» (`adjust=none`) дилерского ряда T за 15–16.04 — ×10.
+- Мимо архива (`GetCandles`, данные верные, лишние запросы): дни 2023 года — в архиве 2023 нет минуты открывающего аукциона 09:59 МСК (SBER 17.10.2023 — 106 700 шт), ≈ 250 запросов один раз на бумагу; единичные будни, где лента T-Invest (и архив, и `GetCandles`) расходится с ISS в 1–28 минутах (14.11.2025, 17.06 и 21.10.2026 — у всех бумаг), их сверка — `ok`. Выходные и праздничные сессии из архива не берутся (`GetCandles`), хотя в часы сессии архив равен ISS (дилер — вне их).
+- Окно от границы дробления до `process_pending` (раз в 6 ч): цена из кэша уже в новом масштабе, а позиция — ещё нет. Это ограничение было и раньше — для живой цены.
+- Минуток T-Invest раньше шва нет; внутридневной истории до 2018-06-13 нет до блока A-02.
+- Окно со стабильно невалидной свечой не покрывается и перезапрашивается каждым обращением (для D окно — год).
+- Без T-Invest бар истории считается закрытым по расписанию, даже если минуты или дневные до конца бара не загрузились.
+- Гонка закрытия и переоткрытия потока может стереть состояние живого ключа; префикс W/M живого потока запрашивается раз в день (сбой на первой свече дня оставляет бар W/M неполным до конца дня); соединение закрытых минут тоже публикует «связь потеряна/восстановлена» и может съесть интервал подавления настоящей.
+- `AggregateCache` — до 500 000 баров на процесс (≈ 300 МБ), порог к снижению — `AGGREGATE_CACHE_MAX_BARS`.
+
+**Дополнения A-03 (ТЗ v4.1) к хранилищу и потоку.** Дилерские свечи потока (ADR 0021): закрытые минуты — в `ohlcv_dealer` по всем бумагам с открытым потоком (держатель — график, сессия, монитор алертов), покрытие поток не пишет (ряд, пополняемый потоком, полным не считается — окно истории будет запрошено); в режиме по умолчанию свеча без `candle_source_type` не маршрутизируется вовсе — если T-Invest где-то не заполняет источник у биржевых свечей, они пропадут из потока с warning (в фикстурах блока — только дилерские свечи выходных 24–25.10; на тестовом стенде 02–04.11 биржевые свечи нового потока приходили). Известные долги: REST-подписка на `dealer:` без WebSocket заводит состояние ключа без держателя (`stream_manager.py`); канал `dealer:` вживую не проверен (подписчика нет до Б-02). Тесты — `tests/test_market_data/test_dealer_stream.py`, `test_dealer_minutes_store.py`, `test_auction_bars_kept.py`.
+
+**5.6.7 Уровневые алерты (блок A-03, ТЗ v4.1; ADR 0023).** Требования — ФТ §5.8. Пути — от `backend/app/`.
+- **Модель** — `market_data/models.py`: `Alert` (`alerts`, вид `level`; `armed` — взведён, `is_active` — не удалён; поля D2 — задел A-11) и `AlertTrigger` (`alert_triggers`), §3.13. `PriceAlert` удалён.
+- **Маршруты** — `market_data/price_alert_router.py`, префикс `/api/v1/market-data`: `POST|GET /price-alerts`, `DELETE /price-alerts/{id}` (мягкое удаление), `GET /price-alerts/quote` (§4.0). Создание (`AlertLevelCreate`: `ticker`, `target_price`; `condition` старого клиента отбрасывается): `canonical_ticker` → `resolve_alert_figi` → `current_quote` — `TInvestAdapter.get_last_price` (`GetLastPrices`) токеном счёта пользователя, иначе ISS с `warning` «задержка 15 мин» (`ISS_DELAY_WARNING`); цены нет — 409 `NO_PRICE_DETAIL`; `round_to_price_step(target_price, price_step)`; уровень = цене — 422 `LEVEL_EQUALS_PRICE_DETAIL`; `condition = "above" if level > price else "below"`, `price_at_creation`, `price_source`; затем `PriceAlertMonitor.refresh`.
+- **Шаг цены** (справочник `instruments`, иначе `TInvestAdapter.get_price_step`) — `common/price_step.py`: `round_to_price_step` (к ближайшему шагу; одна функция с B3 и C1), `price_step_decimals`, `quote_price_decimals(step, price)` — знаки шага, без шага — знаки цены, от 2 до 8 (`D04`). Шаг — `instruments.min_price_increment` из `GetInstrumentBy` (`_InstrumentRef.min_price_increment`) тем же проходом, что лот, в `MarketDataService.ensure_lot_size`: при первом обращении к бумаге и раз в сутки (`PRICE_STEP_TTL`, по `lot_size_synced_at`), попытка по тикеру не чаще раза в час (`PRICE_STEP_RETRY`); читатель — `instrument_price_step(db, ticker)`; неположительный шаг — как отсутствующий.
+- **Проверка** — `market_data/price_alert_monitor.py::PriceAlertMonitor` (S8R-FIX-051: сам держит подписку 1m на FIGI с активными алертами токеном счёта владельца). Мультиплексор кладёт в очередь `AlertMinute` (OHLC минуты) **только биржевых** свечей потока обновлений (дилерские — нет; соединение закрытых минут алерты не проверяет). `check_alerts_for_figi(figi, minute)`: `level_touched` — рост `high ≥ уровень`, падение `low ≤ уровень`; минута создания — только по текущей цене (`close`); open уже за уровнем — срабатывание по open с пометкой гэпа. Срабатывание — условный `UPDATE alerts … WHERE armed AND is_active` (повтор исключён), строка `AlertTrigger`, уведомление `stage_notification` — одна транзакция; сбой — откат, алерт взведён. Повторное взведение (`_rearm`) — на смене минуты, когда close закрытой минуты вернулся на сторону создания (`armed = True`). Подписка снимается, когда активных (не удалённых) алертов по FIGI у токена не осталось — сработавший, но не удалённый держит подписку.
+- **Уведомление** — `system.alert` → `event_type` `alert`, заголовок «Алерт», тело `"{ticker}: цена поднялась|опустилась до {цена} (уровень {уровень})"` или `"{ticker}: уровень {уровень} пройден гэпом, цена {цена}"` (`format_price`), `related_entity_type = "alert"` (кнопка Telegram и переход — по `Alert.ticker`), §5.7.
+- **Фронтенд** — §6.4.
+- **Тесты** — `tests/test_market_data/test_price_alerts.py`; фронт — `PriceAlertModal.test.tsx`, `priceAlertStore.test.ts`; E2E — окно алерта.
+- **Ограничения:** уровень меньше половины шага округляется до 0 (`price_alert_router.py`); рядом с уровнем — серия срабатываний (повторное взведение); без брокера направление — по цене ISS с задержкой; откат миграции снова делает сработавшие алерты активными и теряет историю; переход к графику из уведомления «Алерт» — вне блока.
+
 ### 5.7 Notification Service — ✅ реализовано S6
 
-**Доставка (S8R-AUDIT-083).** Каналы изолированы (`asyncio.gather(return_exceptions=True)`): сбой Telegram не мешает Email и наоборот, in-app пишется независимо. Повторы только транзиентных ошибок: Telegram — 3 попытки, backoff 1/2 с, `RetryAfter` ≤ 30 с, `BadRequest`/`Forbidden`/`InvalidToken` — без повтора (gotcha-82), таймауты `HTTPXRequest` 5/10/10/5 с; SMTP (aiosmtplib) — 3 попытки на сеть/4xx, 5xx без повтора, `SMTP_TIMEOUT_SEC=15`. EventBus при переполнении очереди подписчика — `logger.error` + счётчик и метрика `event_bus.dropped`. Гарантированная доставка через `pending_events` (§2.4) **не реализована** — таблица есть, потребителя нет (S8R-FIX-040).
+**Доставка (S8R-AUDIT-083).** Каналы изолированы (`asyncio.gather(return_exceptions=True)`): сбой Telegram не мешает Email и наоборот, in-app пишется независимо. Повторы только транзиентных ошибок: Telegram — 3 попытки, backoff 1/2 с, `RetryAfter` ≤ 30 с, `BadRequest`/`Forbidden`/`InvalidToken` — без повтора (gotcha-82), таймауты `HTTPXRequest` 5/10/10/5 с; SMTP (aiosmtplib) — 3 попытки на сеть/4xx, 5xx без повтора, `SMTP_TIMEOUT_SEC=15`. EventBus при переполнении очереди подписчика — `logger.error` + счётчик и метрика `event_bus.dropped`. Гарантированная доставка через `pending_events` (§2.4, §3.20) **реализована**: факты — S8R-AUDIT-086 и S8R-FIX-065, внешние каналы — строка `notification.dispatch` (S8R-FIX-051 для ценового алерта; с A-05 — для каждого уведомления) и фоновый повтор по расписанию (ниже, «Повтор внешней доставки»). Прежняя пометка «не реализована, таблица есть, потребителя нет» (S8R-FIX-040) устарела с S8R-AUDIT-086 и снята в ТЗ v4.2.
 
 **Ответственный: BACK2 (core) + OPS (deploy)**
 
@@ -2073,8 +2681,20 @@ class BondService:
 - Инстанциируется в `main.py` lifespan как `app.state.notification_service`.
 - `listen_session_events()` вызывается при старте каждой торговой сессии через `engine.py`.
 - EVENT_MAP: 6 типов событий (session_started/stopped, order_placed, trade_filled/closed, cb_triggered).
+- **A-03 (ТЗ v4.1):** `EVENT_MAP["system.alert"] = ("alert", …, "Алерт")` — уровневый алерт (`PriceAlertMonitor` → `stage_notification`); `SETTINGS_INHERIT_FROM["alert"] = "price_alert"` — новый тип берёт каналы, настроенные для прежнего «Ценового оповещения»; `system.price_alert` остаётся для подписей истории, новых событий не получает. `EVENT_TYPE_LABELS.alert = 'Алерт'` (`NotificationSettingsPage.tsx`), синхронность — `test_event_sync_publishers.py`. Связанная сущность `alert` → тикер для кнопки Telegram — `Alert.ticker` по id (прежние `price_alert` — по `instrument`). Выход в списке «закрыть при первой возможности» уведомляет существующим `order.error` (§5.4.6).
 - Lazy-init нотификаторов: `TelegramNotifier` и `EmailNotifier` создаются только при наличии соответствующих env-переменных.
 - Маршрутизация на основе `user_notification_settings`.
+
+**Повтор внешней доставки (блок A-05, D5; ТЗ v4.2).** Требования — ФТ §10.1, §10.2, §17.7, §17.8. Пути — от `backend/app/`.
+- **Строка на каждое уведомление.** `_create_notification_impl` (прямой `create_notification`, факты outbox, фан-аут `connection.*`) и `stage_notification` (ценовой алерт) пишут строку `notification.dispatch` (`_stage_dispatch_row`, payload — §3.20) в той же транзакции, что INSERT `Notification`, если `_plan_external_channels` вернул хотя бы один канал; после commit — фоновая доставка `_schedule_external_dispatch(…, outbox_id=…)` → `_deliver_outbox`. Правка только в `notification/*`; `trading/*` и издатели событий не менялись.
+- **План каналов** — `_plan_external_channels(db, user_id, event_type, settings)` (только чтение БД): Telegram — включён в настройках, `TelegramNotifier` настроен на сервере и есть активная `TelegramLink`; почта — включена, `EmailNotifier` настроен, событие в `EMAIL_ALLOWED_EVENTS` и у пользователя есть `email`. Канал без получателя не планируется — не повторяется и не помечается (нотификатор отдаёт только `bool`, постоянную причину от сбоя по нему не отличить).
+- **Доставка** — `_deliver_outbox`: каналы из `data.delivered` пропускаются; каждый оставшийся канал — через единую точку `dispatch_external` (по одному каналу за вызов, `_only_channel`), успех — `_record_delivered` (строка и `channels_sent` одной транзакцией). Все доставлены → строка забрана. Неудача — `_record_failed_attempt`: `failed_attempts + 1`, `next_attempt_at` = конец попытки + `DELIVERY_RETRY_DELAYS_SEC[попытка − 1]` (`(10, 60, 300, 1800)`); после `DELIVERY_MAX_ATTEMPTS = 5` — каналы в `Notification.channels_failed` (CSV, `_mark_channels_failed`) и строка забрана, одной транзакцией. DEV_MODE (`external_delivery_suppressed`) — строка забирается без отправки и без отметки.
+- **Сторож «строка в работе»** — `self._dispatch_in_flight: set[int]`: его проверяют живая доставка, повтор при старте и фоновый повтор, строку в работе второй проход не берёт. Процесс один (один uvicorn-воркер), в порядок локов `common/locks.py` множество не входит.
+- **Фоновый повтор** — `retry_due_deliveries(*, now=None, limit=OUTBOX_REPLAY_LIMIT) -> int` (сколько строк взято): `load_unprocessed(db, event_type="notification.dispatch")`; строка старше `OUTBOX_REPLAY_MAX_AGE_SEC` (1 ч) → `_expire_dispatch` (claim, затем строка перечитывается в той же транзакции; недоставленные каналы плана → `channels_failed`, отправки нет; уже забранная другим путём — без отметки); срок подошёл (`next_attempt_at`, без поля — `created_at`) → `_replay_dispatch(…, now, due_by)` по текущим настройкам пользователя; срок в будущем или строка в работе — пропуск. Повтор при старте (`replay_pending_events` → `_replay_dispatch` без срока) шлёт сразу и считается попыткой. Задача планировщика — §5.9.
+- **API и фронт:** `NotificationResponse.undelivered_channels` (§4.8); `components/notifications/UndeliveredChannels.tsx` (§6.8). Новых `event_type` нет, `EVENT_MAP` не менялся.
+- **Тесты** — `tests/test_notification/test_a05_delivery_retry.py` (Telegram недоступен 10 минут → доставка повтором один раз; почта доставлена, Telegram нет → повтор только Telegram; пять неудач → отметка; строка старше окна), заглушки `_send_telegram`/`_send_email`, подставное `now`; `tests/test_notification/conftest.py` — файловая БД + `NullPool` (gotcha-95), `test_delivery_isolation.py` — окно между UPDATE и COMMIT отметки; E2E — `frontend/e2e/a05-notification-undelivered.spec.ts` (моки).
+- **Вне блока:** вебхук Telegram (входящие команды) — отложен.
+- **Ограничения:** сбой записи «доставлено» после успешной отправки → повтор канала через 10 с (редкий дубль: `gather` без `return_exceptions`); `pending_events` без индекса и чистки — фоновый повтор раз в 10 с читает необработанные строки типа целиком (§3.20); отметка видна при следующей загрузке списка (WS-кадра нет); вживую повтор не проверен — на тестовом стенде Telegram и почта выключены, проверка после выкатки (`deployment_guide.md` §7).
 
 **TelegramNotifier** (`app/notification/telegram.py`):
 - Библиотека: `python-telegram-bot` v20+ в webhook-режиме.
@@ -2116,7 +2736,7 @@ class BondService:
 
 ### 5.8 Circuit Breaker
 
-**Конфигурация (S8R-AUDIT-067).** `PUT /circuit-breaker/config` (и `/config/session/{id}`) **заменяет конфиг целиком** — клиент отправляет весь объект. Диапазоны входа (`app/common/risk_limits.py`): проценты 0 < x ≤ 100 (4 знака), суммы 0 < x ≤ 999 999 999 999,99 (2 знака, дробный хвост округляется `quantize_money`), сделок в день 1…10 000, cooldown 0…86 400 с (тот же предел у запуска сессии), целые — strict; окно часов непустое с учётом умолчаний 10:00–23:50; иначе 422. GET отдаёт `invalid_fields` — сохранённые ранее значения вне диапазонов. Движок читает конфиг и пользователя **одним снимком** (`CBConfigSnapshot`) на `check_before_order`; опасные сохранённые значения (≤ 0 там, где 0 блокирует всё; перевёрнутое окно часов) не применяются: в глобальном — «не задано», в override сессии — из глобального по полю (часы и пара fixed/pct — парой); прочие значения сверх пределов применяются как есть. Часы торговли учитывают override сессии. Несколько глобальных строк (session_id IS NULL) — берётся минимальный id + WARNING `cb_config_duplicate_rows`. `GET /circuit-breaker/status`: `daily_loss_limit` — в рублях (`daily_loss_threshold`), процент — `daily_loss_limit_pct`; при нулевом капитале и процентном лимите — `null`.
+**Конфигурация (S8R-AUDIT-067).** `PUT /circuit-breaker/config` (и `/config/session/{id}`) **заменяет конфиг целиком** — клиент отправляет весь объект. Диапазоны входа (`app/common/risk_limits.py`): проценты 0 < x ≤ 100 (4 знака), суммы 0 < x ≤ 999 999 999 999,99 (2 знака, дробный хвост округляется `quantize_money`), сделок в день 1…10 000, cooldown 0…86 400 с (тот же предел у запуска сессии), целые — strict; окно часов непустое с учётом умолчаний ~~10:00–23:50~~ 07:00–23:50 (с A-03); иначе 422. GET отдаёт `invalid_fields` — сохранённые ранее значения вне диапазонов. Движок читает конфиг и пользователя **одним снимком** (`CBConfigSnapshot`) на `check_before_order`; опасные сохранённые значения (≤ 0 там, где 0 блокирует всё; перевёрнутое окно часов) не применяются: в глобальном — «не задано», в override сессии — из глобального по полю (часы и пара fixed/pct — парой); прочие значения сверх пределов применяются как есть. Часы торговли учитывают override сессии. Несколько глобальных строк (session_id IS NULL) — берётся минимальный id + WARNING `cb_config_duplicate_rows`. `GET /circuit-breaker/status`: `daily_loss_limit` — в рублях (`daily_loss_threshold`), процент — `daily_loss_limit_pct`; при нулевом капитале и процентном лимите — `null`.
 
 **Ответственный: SEC (логика) + BACK1 (интеграция)**
 
@@ -2146,9 +2766,15 @@ class CircuitBreakerService:
         ...
 ```
 
+**Часы торгов и аварийное закрытие (A-03, ТЗ v4.1; ФТ §12.4; ADR 0013).**
+- `_check_trading_hours`: для sandbox/real — сначала `trading_hours.market_closed_reason(now, weekend_flag=…)` по фазе таблицы периодов (торги и вечер будней — открыто; аукционы, часы дилера, ночь, праздник — закрыто; торги выходного дня — только с `weekend_flag`); для paper — только аукционы открытия и закрытия (`market_phase(now) in _AUCTION_PHASES` → «Рынок закрыт: …»), прочие часы paper не ограничивают. Затем окно часов пользователя (конфиг CB, override сессии); умолчание — `DEFAULT_TRADING_START/END` = **07:00–23:50** (было 10:00–23:50; зеркало — `src/utils/riskLimits.ts`). Окно шире окна биржи сохраняется как есть (с прежним предупреждением), вход вне торгов для sandbox/real всё равно блокирует правило входа. Блокировки временные (`temporary=True`): сигнал пропускается, сессия остаётся `active`; сессия при этом откладывает вход до начала торгов (§5.4.6).
+- `_get_trading_day_start` — `TradingSchedule.trading_day_start(now)`: начало первого биржевого периода сегодняшнего дня МСК (аукцион открытия 06:50), если он уже начался, иначе — того же периода ближайшего предыдущего дня с торгами (≤ 10 дней), иначе полночь МСК. Раньше — жёстко 10:00 MSK (пункт про 10:00 ниже устарел).
+- Аварийное закрытие (`_force_close_open_positions`) — `close_position(exit_kind=ExitKind.FORCED)`: в часы дилера проходит как ручное, в аукцион открытия и ночью — `ExitDeferredError`; любой отказ, кроме `OrderInFlightError` (ордер доведёт recovery), → `pending_exits.enqueue(…, ExitKind.FORCED, …)` (§5.4.6). Плоские id сделок снимаются до закрытий (откат сессии делает ORM-объекты expired, gotcha-37). Известный дефект: сбой БД при закрытии одной сделки останавливает остальные закрытия срабатывания (нужен rollback).
+- G01 — свежесть цены D для нереализованного P&L: дневка свежая, если с её дня (дата МСК метки) до сегодня прошло не больше `PRICE_FRESHNESS_BARS` = 3 торговых будней по таблице (`trading_days_between`), а не календарных суток: раньше в понедельник и после праздника P&L сессии D в CB не учитывался.
+
 **Расчёт дневных убытков:**
 - S8R-FIX-063 ч.2: Расчёт дневных убытков»: «+ Σ min(оценка, 0) сделок „P&L не определён“ (`unpriced_cb_losses`). Цены: вход — факт → `entry_signal_price` → close последнего закрытого бара ≤ `opened_at` − ТФ; выход — факт → `exit_signal_price` → бар ≤ `closed_at` − ТФ. Давность бара: ≤ 24 ч для внутридневных ТФ, ≤ 7 суток для D и выше; ISS не берётся. Сдвиг `CB_UNPRICED_ADVERSE_PCT` = 1 % против позиции, количество — `position_quantity`. Комиссия не вычитается — как у валового `pnl`. Собственный лимит сессии — доля из классового расчёта (`pnl_by_session`). Пометка причины — „включая оценку N сделок без подтверждённой цены“». «Max drawdown» (sandbox/real): «equity включает оценённый убыток таких сделок всех дней
-- Агрегация `SUM(pnl)` по `live_trades` за текущий торговый день. Начало торгового дня определяется по рынку инструмента: фондовый/долговой — 10:00 MSK, валютный — 10:00 MSK (несмотря на продлённую сессию до 23:50). Сброс дневных счётчиков — в 10:00 MSK следующего торгового дня по календарю MOEX.
+- Агрегация `SUM(pnl)` по `live_trades` за текущий торговый день. Начало торгового дня определяется по рынку инструмента: фондовый/долговой — 10:00 MSK, валютный — 10:00 MSK (несмотря на продлённую сессию до 23:50). Сброс дневных счётчиков — в 10:00 MSK следующего торгового дня по календарю MOEX. *С A-03 — начало первого биржевого периода дня по таблице периодов (`trading_day_start`, см. выше), одно для всех бумаг.*
 - Плюс unrealized P&L открытых позиций (текущая цена - цена входа).
 - Сравнение с `user.risk_daily_loss_pct * account_balance` или `user.risk_daily_loss_fixed`.
 
@@ -2179,9 +2805,15 @@ class CircuitBreakerService:
 | `cleanup_revoked_tokens` | Каждые 24 ч от старта + сразу при старте (S8R-AUDIT-043) | Удаление строк `revoked_tokens` с `expires_at < now`, идемпотентно |
 | `send_daily_stats` | Ежедневно 19:00 MSK (после закрытия фондового) | Дневная статистика в Telegram и email |
 | `refresh_instrument_info` | Еженедельно вс 12:00 | Обновление данных об инструментах (лотность, шаг цены) |
-| `detect_corporate_actions` | Каждые 6 часов | Проверка дивидендов/купонов/сплитов через MOEX ISS (S8R-FIX-008: было описано «ежедневно 08:00 MSK», имя задачи и период приведены к коду — `IntervalTrigger(hours=6)`). Тикеры — `CorporateActionService.detection_tickers()`: сессии `active`/`paused` и сессии любого статуса со сделками в начисляемых статусах (S8R-FIX-129) |
+| `detect_corporate_actions` | Каждые 6 часов | Проверка дивидендов/купонов/сплитов через MOEX ISS (S8R-FIX-008: было описано «ежедневно 08:00 MSK», имя задачи и период приведены к коду — `IntervalTrigger(hours=6)`). Тикеры — `CorporateActionService.detection_tickers()`: сессии `active`/`paused` и сессии любого статуса со сделками в начисляемых статусах (S8R-FIX-129). Тикеров нет — `detect_corporate_actions([])` (A-01, дефект 4): синхронизируются только сплиты (`splits.json`, все бумаги) — ряды свечей читаются с их учётом; раньше без сессий детект не шёл |
 | `reset_ai_daily_usage` | Ежедневно 00:00 MSK | Сброс `usage_today` в `ai_provider_configs` |
 | `reset_ai_monthly_usage` | 1-е число месяца 00:00 MSK | Сброс `usage_month` в `ai_provider_configs` |
+| `sync_trading_schedule` | Ежедневно 00:10 MSK + сразу при старте (`next_run_time`) | A-03: таблица периодов из T-Invest `TradingSchedules` на сегодня + 7 дней (`trading_schedule.sync_from_tinvest`, §5.9.1). Рестарт не оставляет процесс на вчерашней версии |
+| `refresh_weekend_trading_schedule` | Ежечасно 01:00–23:00 MSK (`CronTrigger(minute=0, hour="1-23")`) | A-03: в субботу, воскресенье и праздник (не торговый день календаря) — `sync_trading_schedule`; в торговый будень сразу выход. Расписание выходного дня меняется в тот же день (25.10.2026 биржу отменили за день) |
+| `retry_notification_delivery` | Каждые 10 с (`IntervalTrigger(seconds=10)`, `misfire_grace_time=600`, `max_instances=1`; без `next_run_time` — повтор при старте делает lifespan) | A-05 (ТЗ v4.2): `SchedulerService.retry_notification_delivery` → `NotificationService.retry_due_deliveries()` — повтор недоставленных Telegram/почты по сроку в строке `notification.dispatch` и отметка «не доставлено» (§5.7); без сервиса уведомлений — no-op, сбой прохода — warning `notification_retry_pass_failed`, взятые строки — лог `notification_retry_pass rows=N`. Вставка — между `refresh_backtest_jobs_rate` и `cleanup_revoked_tokens` |
+| `backfill_trading_schedule_iss` | Сразу при старте + раз в сутки (`IntervalTrigger(days=1)`) | A-03: история таблицы периодов из минут ISS SBER с 13.06.2018 (`backfill_from_iss`); заполненные и отмеченные пустыми даты пропускает. Нет ISS-клиента у календаря — warning `trading_schedule_iss_backfill_no_client` |
+| `news_collect` | Каждые 60 с (`IntervalTrigger(seconds=60)`, `misfire_grace_time=600`, `max_instances=1`, `coalesce`; без `next_run_time` — первый проход через минуту после старта) | Б-01 (ТЗ v4.4): `NewsService.run_collect_cycle` — опрос включённых `news_sources` и запись новых новостей (§5.14.1), затем разметка словарём новостей без разметки — и после неудачного сбора (§5.14.2). Клиенты HTTP закрываются в `SchedulerService.shutdown()` |
+| `news_reactions` | Каждые 60 с (параметры — как у `news_collect`) | Б-01: `NewsService.run_reaction_cycle` — заводит реакции для новых пар «новость — бумага» и считает до 20 с наступившим сроком по 1m ISS (§5.14.3). Отдельное задание — запросы свечей не задерживают сбор новостей |
 
 Суммы дневной статистики (`real PnL`, `unreal` по сессиям и итог) форматирует `_signed_rub` (`app/scheduler/service.py`, S8R-FIX-121): `quantize_money` (копейки, половина — вверх), знак, пробел между тысячами; ноль после округления — «0.00 ₽» без знака. Прежний `{:+,.0f}` округлял до рубля и давал «-0 ₽» для −0,04.
 
@@ -2202,6 +2834,26 @@ Fallback-значения (если MOEX ISS недоступен) захард�
 - Решение «торговый день»: исключение из `dailytable` → иначе недельное правило Пн–Пт. **Суббота и воскресенье — неторговые** (прежняя политика терминала; `timetable` ISS, где с 2025 все 7 дней рабочие из-за торгов выходного дня, не используется — открытый вопрос заказчику). Статичный `RUSSIAN_HOLIDAYS` — только fallback, пока данные ISS не загружены.
 - Методы синхронные: `is_trading_day(d)`, `get_market_status()`, `time_until_close()`; `async load_calendar() -> bool` (таймаут 15 с; сбой, пустой ответ, ответ без блока — warning, ранее загруженные данные сохраняются, старт не блокируется; успех — лог `moex_calendar_loaded count=N`).
 - **Один экземпляр на процесс:** lifespan создаёт `MOEXCalendarService(iss_client=MOEXISSClient(settings.MOEX_ISS_BASE_URL))`, регистрирует `set_calendar_service()`, кладёт в `app.state.calendar_service`, грузит на старте; scheduler (DI), `market_data/router`, мультиплексор T-Invest читают `get_calendar_service()`. Часы сессий и проверки CB/pre-check (карточка S8R-AUDIT-072) этим не менялись.
+- **С A-03 (ТЗ v4.1)** календарь отвечает только «торговый ли день» (`is_trading_day`, `is_weekend_session_day`); часов торгов он не хранит. `get_market_status(now=None)` и `time_until_close()` — по фазе таблицы периодов (§5.9.1): `auction` (аукцион открытия), `online` (торги будня), `weekend_session` (торги в не торговый день календаря), `closing_auction`, `evening`, `dealer`, вне периодов — `weekend` в не торговый день, иначе `offline`; `time_until_close` — до конца текущего биржевого периода.
+
+**5.9.1 Таблица периодов расписания — `app/scheduler/trading_schedule.py`, `app/scheduler/models.py` (блок A-03, ТЗ v4.1; ADR 0012).** Требования — ФТ §1.6. Единственный источник часов: правила входа и выхода (`common/trading_hours.py`, §5.4.6), «бар закрыт» (`market_data/bar_close.py`, §5.6.6), Circuit Breaker (§5.8), бэктест (`AuctionAwareBroker`, §5.3) и paper, статус рынка. Модуль — лист: из `app.*` импортирует только календарь и зону МСК, БД и сеть — только в `async`-функциях загрузки (зависимости импортируются лениво).
+
+```
+ T-Invest TradingSchedules ─┐
+ MOEX ISS минуты SBER (фон) ┴▶ trading_schedule_periods ─▶ TradingSchedule (кэш процесса) ─ get_trading_schedule() ─┐
+     ┌───────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+     ▼
+ trading_hours (вход · выход по виду) · bar_close · Circuit Breaker · бэктест и paper · статус рынка
+```
+
+- **Модель:** `PeriodKind` — `opening_auction`, `trading`, `closing_auction`, `evening`, `dealer`; `EXCHANGE_KINDS` — все, кроме `dealer`. `MarketPhase` — те же плюс `closed`. `SchedulePeriod(kind, start, end)` — наивное UTC, конец исключён. `DaySchedule(day, periods, source: "tinvest"|"iss"|"fallback", weekend)`: `phase_at(t)`, `exchange_open` (начало первого биржевого периода), `trading_start` (начало первого `trading`), `trading_end` (конец последнего биржевого), `periods_of(kind)`; `weekend = not calendar.is_trading_day(d)` — торги такого дня (Сб/Вс, праздник с торгами) — торги выходного дня, только для бумаг с `weekend_flag`. Таблицы — §3.24.
+- **Доступ:** `get_trading_schedule()` — синглтон процесса (`set_trading_schedule`, `reset_trading_schedule` для тестов); `TradingSchedule.day(d)`, `phase_at(t)`, `is_opening_auction_bar(tf, bar_start)` (бар внутридневного ТФ целиком до `trading_start` дня и пересекает аукцион открытия: 1h 06:00, 4h 03:00, в выходной 1h 09:00), `is_closing_auction_bar(tf, bar_start)` (начало бара в аукционе закрытия: 5m 18:55), `next_trading_start(moment, *, weekend_flag)` (начало ближайшего `trading` строго после момента; дни `weekend` — только при `weekend_flag is True`; горизонт 10 дней), `trading_day_start(moment)` (для дневных лимитов CB), `trading_days_between(a, b)` (торговые будни в `(a, b]` — свежесть цены D в CB). Чтение синхронное, без БД и сети: его зовут горячие пути.
+- **Загрузка:** lifespan создаёт `TradingSchedule(calendar=calendar_service)`, регистрирует (`set_trading_schedule`, `app.state.trading_schedule`) и `load()`-ит из БД **до** планировщика и `restore_all`; сбой — warning `trading_schedule_startup_load_failed`, работа на запасных константах. После каждой синхронизации — `replace_days`.
+- **Запасной день** `fallback_day(d, *, calendar)` — дата без строки (время МСК, конец исключён): торговый будень (в том числе рабочая суббота) — 06:50–07:00 / 07:00–18:55 / 18:55–18:59:31 / 19:00:01–23:50; Сб/Вс с торгами выходного дня (`is_weekend_session_day`) — дилер 02:00–09:40:01, аукцион 09:50–10:00, торги 10:00–19:00:01, дилер 19:00:01–23:50; Сб/Вс без торгов — дилер 02:00–23:50:01; будничный праздник — периодов нет. Warning `trading_schedule_fallback` раз в сутки; кэш запасных дней — до 4096 дат. Календарь сломан — `_SafeCalendar` в `trading_hours` (Пн–Пт без торгов выходного дня).
+- **T-Invest** — `sync_from_tinvest(session_factory)`: токен — счёт рыночных данных первого активного пользователя (по `users.id`) со счётом T-Invest (`select_market_data_account`, ключ расшифровывается в памяти); `TInvestAdapter.get_trading_schedules(SCHEDULE_EXCHANGE = "moex_mrng_evng_e_wknd_dlr", today, today + 7)`; имя площадки в ответе сравнивается без регистра (`bb8799e`: живой T-Invest отвечает `MOEX_MRNG_EVNG_E_WKND_DLR`, и до исправления стенд работал на запасных часах); `day_from_tinvest` раскладывает интервалы в периоды (конец включителен до секунды — +1 с; обобщённые дубли типов интервалов второго периода не дают, смежные периоды одного вида сливаются — `_merge`); запись `save_days(…, keep_tinvest=False)` через `persist_with_retry_fresh` — строки T-Invest замещают любые строки своих дат; лог `trading_schedule_synced` (`days`, `first`, `last`). Нет счёта (`trading_schedule_sync_no_account`), сбой T-Invest (`trading_schedule_sync_failed`), нет площадки или дней — warning, таблица не меняется.
+- **ISS** — `backfill_from_iss(session_factory, iss_client, *, since=SCHEDULE_HISTORY_SINCE (2018-06-13), until=вчера)`: минуты SBER TQBR (`SCHEDULE_ISS_TICKER`) по дням от поздних к ранним, пауза `ISS_BACKFILL_PAUSE_SEC` = 0,2 с, запись пачками по 50 дней (`keep_tinvest=True` — строки T-Invest не трогаются) и кэш после каждой пачки. Пропускаются даты с любыми строками, будничные праздники, Сб/Вс без торгов выходного дня по календарю и даты из `trading_schedule_empty_days` (ISS ответил без минут — отметка пишется вместе с пачкой и переживает перезапуск). `day_from_iss_minutes`: аукцион открытия — первая минута вида xx:59, за которой без разрыва идут торги (период xx:50–xx+1:00), начало торгов — следующая минута (иначе — первая минута); аукцион закрытия — от минуты после первого разрыва ≥ 2 мин между 18:30 и 19:10 до минуты после второго такого разрыва, или до первой минуты ≥ 19:00, или до конца дня; вечер — от первой минуты ≥ 19:00 после аукциона закрытия до последней минуты + 1 мин. Часов дилера ISS не знает. Сбой дня — warning `trading_schedule_iss_day_failed`, день не пишется и не отмечается (возьмётся следующим проходом); итог — `trading_schedule_iss_backfill_done`. Замер на копии рабочей БД (2026-10-26, остановлен по сроку 40 мин): 1 997 дней запрошено, 0,83 дня/с, записано 1 500 дней (2021-05-12…2026-10-23, 5 615 строк), сбоев 0; полный первый проход 13.06.2018 → вчера — ≈ 2 900 запросов, ≈ 58–60 мин фоном (`deployment_guide.md` §7).
+- **Тесты и фикстуры:** `tests/unit/test_scheduler/` (таблица, загрузка, статус рынка; загрузчики фикстур — `schedule_fixtures.py`), фикстуры — `tests/fixtures/trading_schedule/` (настоящие ответы T-Invest 20–25.10.2026, в том числе расписание 25.10 до и после перемены, и минуты ISS SBER за семь дат; `meta.json`), запись — `backend/scripts/record_schedule_fixtures.py` (не тесты); состояние процесса сбрасывает `tests/conftest.py`.
+- **Ограничения:** расписание одно на все бумаги (выведено по минутам SBER; правила разрыва минут проверены на фикстурах за семь дат — на прочих днях возможна ошибка); ошибка таблицы — вход и выход не в тот час и неверное время закрытия бара; если расписания T-Invest на дату нет, праздничная сессия (23.02, 12.06, 04.11) считается неторговой — `fallback_day` будничного праздника периодов не даёт, ISS-история праздники пропускает; после перезапуска без T-Invest день, на который T-Invest ответил «торгов нет», до следующей синхронизации получает запасные часы; состояние — в памяти одного процесса (один uvicorn-worker).
 
 ### 5.10 AI Service
 
@@ -2430,6 +3082,10 @@ S8R-FIX-067: перед отбором облигаций для `bondization` �
 
 **Дивиденды T-Invest (S8R-FIX-122).** ISS `securities/{secid}/dividends.json` отвечает 200 описанием бумаги (gotcha-70), дивиденды остались только в CCI по подписке — ISS-путь дивидендов удалён (`_iss_dividend_rows`, `iss_dividends_block_missing` больше нет). Адаптер: `TInvestAdapter.get_dividends(figi, from_, to)` — квота `INSTRUMENTS`, дедлайн `_unary`, повтор транзиентных сбоев `_read_with_retry` (только чтение), naive-границы — UTC; разбор `TInvestMapper.dividend_to_dividend_info` → `DividendInfo` (`app/broker/base.py`): `amount_per_share` — `Decimal` из `dividend_net` (`MoneyValue`), валюта в верхнем регистре, даты событий — календарный день МСК (брокер кодирует их полуночью UTC; пустой `Timestamp` → `None`). Детект: `_fetch_tinvest_dividends(tickers, today)` вне единицы записи — для каждого тикера (облигации пропускаются) владельцы сессий по тикеру (`_dividend_targets`: активные/на паузе вперёд, сессии со счётом вперёд) → `select_market_data_account(user, preferred_account_id=счёт сессии)` (production вперёд, gotcha-57; S8R-AUDIT-003 — токены владельцев не смешиваются) → `ensure_figi_lookup` тем же счётом → один адаптер на счёт за прогон (закрывается в `finally`); `_read_dividends` — один запрос. Владельцы перебираются, пока один не ответит (ревью п.3): нет счёта, FIGI или отказ по инструменту — следующий. Окно `_dividend_window`: от 00:00 МСК дня самой ранней сделки по тикеру (статусы `filled/open/closed`) до `today + 367` дней. Нет счёта ни у одного владельца — WARNING `dividends_no_broker_account`; FIGI не найден — `dividends_figi_unresolved`; отказ по инструменту — `detect_dividends_failed`. `TransientBrokerError` (WARNING `detect_tinvest_unavailable` с `broker_account_id`), `AuthBrokerError` и ошибка расшифровки ключа выводят из прогона **счёт** (`unusable`), а не весь прогон (ревью п.2): его тикеры достаются другим владельцам, оставшиеся без ответа — один WARNING `dividends_skipped_account_unavailable` со списком. Ошибки БД (выбор владельцев/счёта) пробрасываются. `_store_dividends(ticker, rows, today)`: `record_date` брокера → `ex_date` и `record_date` (ключ дедупа `uq_corp_action` как у ISS-эпохи), последний день покупки и дата выплаты брокера — в `description`; пропуск без реестра/суммы, `Cancelled` (INFO), не `RUB` и пустая валюта (WARNING `tinvest_dividend_currency_unsupported`; маппер пустую валюту рублями не считает). `_sync_pending_dividends` (ревью п.1): непроведённые дивиденды тикера с `ex_date` в окне ответа (`_DividendAnswer.window_from/to`) сверяются с ним — сумма изменилась → обновление (WARNING `tinvest_dividend_amount_changed`), выплаты нет в ответе (отмена, нулевая сумма, перенос реестра) → `DELETE` без начисления (WARNING `tinvest_dividend_withdrawn`); проведённые не трогаются. Дивиденд с реестром < `today` без получателей (`_has_accrual_recipients`) — `processed=True` (история без уведомления); причитающийся — непроведённым, его начислит `process_pending` (первый прогон после обновления начисляет пропущенные — решение заказчика 2026-10-14). Миграции нет.
 
+**Дробления и ряды свечей (A-01, ТЗ v4.0, дефект 4 тестового стенда; решение заказчика 2026-10-24).** Строки `action_type='split'` — источник пересчёта рядов свечей (`market_data/splits.py`, §3.5): `_store_splits` сохраняет сплиты всех бумаг из `splits.json`, не только с сессиями. Планировщик вызывает детект и без живых сессий — `detect_corporate_actions([])`: синхронизируются только сплиты, потому что ряды свечей читаются с их учётом (раньше без сессий детект не шёл, §5.9). Уборка рядов идёт **до** записи дроблений, в той же сессии: `detect_corporate_actions` после сетевой части вызывает `_forget_bars_before_new_splits(snapshot.split_rows)` — новые (ещё не записанные) сплиты ответа передаются `forget_bars_before_new_splits`: агрегаты бумаги в LRU вытесняются; если граница (`split_opened_before(ex_date)`) уже наступила, строки бумаги до границы в `ohlcv_cache` (1m, D; T-Invest и ISS) и `ohlcv_dealer` удаляются вместе с покрытием (`delete_bars_with_coverage`) и сверками `ohlcv_volume_check` дней до `ex_date`, одним commit (WARNING `split_bars_purged`): источник мог пересчитать их до этого детекта, а записаны они как «как было». Удалённое дозагрузится по запросу и фоновой догрузкой. Затем `_store_detected` пишет дробления. Сбой уборки — `rollback`, ERROR `split_bars_purge_failed`; новые дробления в этот прогон **не записываются** (`skip` для `_store_splits`) и останутся новыми до следующего прогона, детект не падает. Порядок «уборка, затем запись» не оставляет записанного дробления с неубранными рядами. Дробление с ещё не наступившей границей строк не трогает.
+
+**Предупреждение бэктеста о сплите (S8R-AUDIT-091, ФТ §4.2).** `backtest/service.corporate_action_warning` → поле `warning` ответа бэктеста (`backtest/router._build_backtest_response`, один Alert с диагностикой сайзинга). С A-01 бэктест получает ряд с учётом дроблений (`get_candles`, `adjust="splits"`), разрыва в `ratio` раз нет, и текст сообщает об этом: один сплит — `В периоде был сплит DD.MM.YYYY (rf:rt): цены и объёмы до него пересчитаны в текущий масштаб.`; несколько — `В периоде были сплиты DD.MM.YYYY (rf:rt), …: цены и объёмы до них пересчитаны в текущий масштаб.` Прежний текст «цены до сплита не скорректированы» и оговорка «back-adjust — кандидат Sprint 9» сняты решением заказчика: пересчёт сделан.
+
 **Логика обработки:**
 
 ```python
@@ -2476,6 +3132,62 @@ S8R-FIX-043: `_prepare_inputs` до `persist_with_retry`, один раз на �
 - Колонки экспорта: дата сделки, тикер, ISIN, направление, цена покупки, цена продажи, объём (лоты / штуки), комиссия, финансовый результат.
 - Форматы: xlsx (`openpyxl`), csv.
 
+### 5.14 Новости — `app/news/` (v4.4, Б-01)
+
+Требования — ФТ §20; схема — §3.26, API — §4.14, задания — §5.9, страница — §6.10. Решения и их причины — ADR 0101–0104 в репозитории кода (`docs/adr/0101-archive-title-and-link-only.md`, `0102-labels-one-record-per-labeler.md`, `0103-reaction-1m-from-exact-publication-time.md`, `0104-ticker-dictionary-rules.md`); карта модуля — `docs/architecture.md`, глава «Новости (блок Б-01)».
+
+```
+ news_sources (url, kind) ─► FeedFetcher ─► parse_rss | parse_iss_sitenews ─► NewsCollector ─► news_items
+ ISS: акции TQBR (кэш 24 ч) + news_dictionary_terms ─► TickerDictionary.match(title) ─► label_unlabeled ─► news_labels + news_tickers
+ пара «новость — тикер» без реакции ─► news_reactions: pending (due_at = P + 75 мин) ─► ISS get_candles(тикер, 1m) ─► compute_reaction ─► done | failed
+ queries.list_news (курсор) ─► GET /api/v1/news* ─► newsApi.ts ─► newsStore ─► NewsPage (опрос 60 с)
+```
+
+**Файлы:** `constants.py` (коды, интервалы, пороги, `User-Agent`, лимиты — без адресов лент), `models.py`, `feeds.py`, `collector.py`, `dictionary.py`, `labeling.py`, `reactions.py`, `service.py` (единственное место сборки), `queries.py`, `schemas.py`, `router.py`. Общие файлы тронуты точечно: `main.py` (импорт моделей, роутер `/api/v1/news`), `scheduler/service.py` (два задания и закрытие клиентов в `shutdown()`). Модули `market_data` и `broker` только вызываются (из ISS-клиента — `get_json`, `get_candles`, `iss_path`); `app.broker.tinvest`, `app.trading`, `app.sandbox` не импортируются (`test_news_does_not_touch_broker_trading_sandbox`); адреса лент в коде не встречаются (`test_feed_addresses_live_only_in_sources_table`). **Настроек в `config.py` блок не добавил** — всё в константах:
+
+| Константа | Значение | Что |
+|---|---|---|
+| `COLLECT_INTERVAL_SECONDS` / `REACTION_INTERVAL_SECONDS` | 60 / 60 с | период заданий `news_collect` / `news_reactions` |
+| `FEED_TIMEOUT` (`feeds.py`) | connect 5, read 15, write 5, pool 5 с | таймауты httpx на запрос ленты |
+| `FETCH_DEADLINE_SECONDS` | 30 с | общий срок на скачивание одного источника (`asyncio.timeout`; сервер, отдающий тело по байту, не держит проход) |
+| `MAX_FEED_BYTES` | 2 000 000 Б | предел тела — по `Content-Length` и по распакованному потоку |
+| `HTTP_USER_AGENT` | `MoexTerminal-NewsCollector/1.0` | подпись запросов к лентам |
+| `ISS_SITENEWS_LINK_TEMPLATE` | `https://www.moex.com/n{id}` | ссылка сообщения биржи (в ответе ISS её нет) |
+| `MAX_ERROR_TEXT` | 1000 | обрезка `last_error` |
+| `REACTION_DELAY` / `REACTION_WINDOW` | 75 / 60 мин | срок расчёта P + 75 мин / окна «до» и «после» |
+| `REACTION_BATCH` / `REACTION_MAX_ATTEMPTS` | 20 / 10 | реакций за проход / неудач до `failed` |
+| `TQBR_CACHE_TTL` / `TQBR_LOAD_DEADLINE_SECONDS` (`dictionary.py`) | 24 ч / 20 с | кэш списка акций TQBR / срок его загрузки |
+
+**5.14.1 Сборщик** (`feeds.py`, `collector.py`; ADR 0101).
+- `NewsCollector.collect_once()`: включённые источники (`enabled`) опрашиваются параллельно (`asyncio.gather`), каждый ровно один раз; запись — последовательно, своя транзакция на источник (SQLite — один писатель). `received_at` — время после ответа всех источников, общее для прохода: медленный источник сдвигает его всем (таймаут ЦБ через прокси — ≈ 15 с).
+- `FeedFetcher` — один `httpx.AsyncClient` на процесс (создаётся лениво, закрывается в `SchedulerService.shutdown()`), `follow_redirects=True`; транспорт не подменяется — действуют прокси окружения `HTTP_PROXY` / `HTTPS_PROXY` / `NO_PROXY` (gotcha-84). Ответ не 200, таймаут, ошибка сети, превышение срока или размера — `FeedError`, то есть сбой этого источника.
+- **Защита разбора без новых зависимостей** (решение заказчика 2026-10-25): стандартный `ElementTree` с `# nosec B405/B314` и обоснованием рядом, `backend/.bandit` не правился; до разбора — лимит размера, отказ при нулевом байте (UTF-16/32: поиск разметки по байтам там слеп) и при `<!DOCTYPE` / `<!ENTITY` в любом регистре; многобайтовая кодировка, которой нет в expat, — `FeedError`.
+- `parse_rss`: корень `rss`, `channel/item`; берутся `title` (HTML-сущности раскрыты `html.unescape`), `link`, `guid`, `pubDate` (RFC 822 → naive UTC; без смещения — UTC); `description` не читается. Элемент без заголовка, без ссылки, со ссылкой не `http(s)` или с битой датой пропускается (`news_feed_item_skipped`). `external_id` = guid, без него — ссылка.
+- `parse_iss_sitenews`: блок `sitenews` по имени и колонкам `id`, `title`, `published_at` (gotcha-70: на чужой ресурс ISS отвечает 200 другим блоком — это сбой, а не пустая лента); `published_at` — МСК → UTC; `external_id` = id сообщения, ссылка — по шаблону.
+- **Запись:** дубли внутри ответа схлопываются по `external_id`, между проходами — `INSERT … ON CONFLICT (source_id, external_id) DO NOTHING` пачками по 500, число новых — `rowcount`; в той же транзакции источник получает `last_polled_at = last_success_at = now`, `consecutive_failures = 0`. Сбой — `last_polled_at`, `last_error` (≤ 1000 символов), `last_error_at`, `consecutive_failures + 1`. После выздоровления `last_error` остаётся записью о последнем сбое — здоровье источника смотреть по `consecutive_failures` и `last_success_at`.
+- **Логи:** `news_source_collected`, `news_source_failed` (warning, каждый проход упавшего источника), `news_source_unexpected_error`, `news_source_store_failed`, `news_collect_cycle_done`, `news_collect_cycle_failed`; длительность прохода — `timed_event("news.collect_cycle")`.
+
+**5.14.2 Словарь и разметка** (`dictionary.py`, `labeling.py`; ADR 0102, 0104).
+- **Список акций TQBR** — `GET /iss/engines/stock/markets/shares/boards/TQBR/securities` (`iss.only=securities`, колонки `SECID,SHORTNAME,SECTYPE`); берутся SECTYPE `1` и `D` (обыкновенные) и `2` (привилегированные), паи фондов той же доски отброшены (на 2026-10-25 — 261 из 510 строк). `DictionaryProvider` держит список в памяти процесса 24 ч, загрузка — со сроком 20 с; сбой — работа на прежнем списке, прежнего нет — `get()` → `None`, разметка откладывается (`news_labeling_postponed`), новости уже сохранены. На диске список не кэшируется: после перезапуска грузится заново.
+- `TickerDictionary.build(securities, terms)`: имя бумаги — SHORTNAME без пометок вида и формы (`ао`, `ап`, `-п`, `3ао`, `ПАО`, `МКПАО`, префикс `i`, кавычки), нижний регистр, `ё → е`; одно имя у обыкновенной и привилегированной акции — обыкновенной; псевдоним бумаги, которой нет в списке TQBR, не действует. Термины читаются из `news_dictionary_terms` при каждой сборке словаря — правка таблицы действует со следующего прохода без выпуска.
+- `match(title)`: совпадение целыми словами (внутри фразы допустимы пробел, дефис, «+», кавычки, точка без пробела — «ДОМ.РФ», «М.Видео»; двоеточие, запятая, тире — граница фразы); у последнего слова варианта от 4 букв — падежные окончания; исключение гасит совпадение внутри своей фразы (исключение без тикера — любое), кроме имени в кавычках вплотную; из вложенных совпадений разных бумаг остаётся более длинное («Газпром нефть» → SIBN, не GAZP). Результат — отсортированные тикеры без повторов.
+- **Стартовый набор** — `_ALIASES` / `_EXCLUSIONS` ревизии `b01e7a5c3d92` (187 / 30): бренды и полные названия («газпром нефть», «норникель», «сбер», «т-банк», «пятерочка»), латинские тикеры и названия ликвидных бумаг («gazp», «ozon», «vk»), дочерние «Россетей», «glorax» → `GLRX` (SHORTNAME ISS — «ГЛОРАКС», в заголовках — латиницей; пропуск найден на стенде 05.11, `e769c1e`); исключения — «самолет», «лента», «полюс», «система», «газ», «пик спроса», «индекс мосбиржи» и т. п. Набор составлен по общему знанию, а не по эталону D8.
+- `label_unlabeled(session, dictionary, limit=500)` — в задании `news_collect` после сбора (и после неудачного сбора): новостям без строки `labeler = 'dictionary'`, старые первыми, — одна `NewsLabel(labeler='dictionary', news_type='other')` и строки `news_tickers`; ничего не найдено — пустая разметка. Архив при правке терминов не переразмечается.
+- **Замер на эталоне D8** — консольный `backend/scripts/news_benchmark.py` (`python -m scripts.news_benchmark <эталон.json> <фикстура TQBR>`, вне `app/`: терминал его не вызывает): 108 заголовков — найдено 36 пар, верных 36; из 37 верных пар эталона — 36.
+
+**5.14.3 Реакция «до / после»** (`reactions.py`; ADR 0103).
+- `ReactionWorker.run_once()`: (1) заводит `pending` для пар `news_tickers` без строки реакции — `due_at = published_at + REACTION_DELAY`, `ON CONFLICT (news_id, ticker) DO NOTHING` (одна реакция на пару, сколько бы разметок ни назвали бумагу); (2) берёт до 20 строк `pending` с `due_at ≤ now` (`ORDER BY due_at, id`); (3) свечи — `MOEXISSClient.get_candles(ticker, "1m", дата МСК (P − 60 мин), дата МСК (P + 60 мин))`, один запрос на (тикер, даты) за проход, ошибка тоже запоминается на проход.
+- `compute_reaction(candles, published_at)`: цена(t) — `close` последней свечи с `end ≤ t` (свеча 16:59 при публикации 16:59:54 не берётся); окно «до» — свечи с `begin` в [P − 60 мин, P), «после» — в [P, P + 60 мин); в окне нет свечей — `*_no_trades = true`, процент NULL; цены на начало окна нет, а свечи в окне есть (торги открылись внутри окна) — база = `open` первой свечи окна; свечи есть, но к концу окна не закрылась ни одна — процент NULL при `no_trades = false`. Процент = (последняя / база − 1) × 100, `quantize(0.0001, ROUND_HALF_UP)`.
+- **Эталон:** OZON, P = 2026-10-19 16:59:54 МСК, настоящий ответ ISS (`tests/test_news/fixtures/iss_candles_ozon_1m/`) — `before_pct = −0.2118`, `after_pct = −0.8207` («до −0,21 %, после −0,82 %»). Числа плана (−0,28 / −1,15) — 10-минутная сетка исследования; расхождение закреплено тестом (`test_ozon_reaction_matches_customer_reference`).
+- Сбой ISS — `attempts + 1`, `last_error`, повтор в следующем проходе; 10-я неудача — `failed` («реакция недоступна»). Успех — `done`, `computed_at`. Строка обновляется только из `pending`.
+- **Логи:** `news_reaction_failed`, `news_reaction_cycle_done`, `news_reaction_cycle_failed`; `timed_event("news.reaction_cycle")`.
+
+**5.14.4 `NewsService`** (`service.py`) — сборка для планировщика: `FeedFetcher`, `NewsCollector`, свой `MOEXISSClient(settings.MOEX_ISS_BASE_URL)` (общий для словаря и реакций, закрывается в `close()`), `DictionaryProvider`, `ReactionWorker`. `run_collect_cycle()` и `run_reaction_cycle()` глотают любое исключение с логом (соглашение `SchedulerService`).
+
+**Тесты:** `backend/tests/test_news/` — разбор на настоящих сохранённых ответах пяти RSS-лент, ЦБ (`rss_cbr.xml`, UTF-8 с BOM) и ISS `sitenews`, список TQBR, 1m OZON за 19.10.2026; сеть в тестах закрыта, ответы подаются через `httpx.MockTransport`; БД — `alembic upgrade head` один раз на сессию и копия через `sqlite3.Connection.backup` на тест; путь «опрос → архив → API ленты» за один проход — `test_news_published_30s_ago_reaches_the_feed_in_one_collect_pass`. Frontend — vitest (`newsApi`, `newsStore`, `NewsPage`) и E2E `frontend/e2e/b01-news.spec.ts` на моках API.
+
+**Известные ограничения.** ЦБ через прокси окружения не отвечает: `ReadTimeout` каждый проход, warning раз в минуту (≈ 1440 строк в сутки) — лечится `NO_PROXY` (`deployment_guide.md` §7). Повтор пропуска одного и того же элемента ленты тоже логируется каждый проход. `<!DOCTYPE` внутри CDATA заголовка делает сбоем всю ленту (разметка DTD ищется по всему телу, а не только в прологе); неизвестное имя кодировки даёт `LookupError` — сбой источника через ветку неожиданного исключения, а не `FeedError`. Общий срок 30 с на источник тестом не покрыт. Зависший ISS растягивает проход реакций (до ~30 мин); новые пары ищутся по всей таблице связей раз в минуту. Новость в первую минуту торгов может получить «до» без числа и без «нет торгов». Список типов продублирован (`constants.NEWS_TYPES` и `NEWS_TYPES` в `newsApi.ts`), теста синхронности нет. Комментарии `tests/test_news/helpers.py` и докстринг ревизии устарели — считают, что ответа ЦБ нет.
+
 ---
 
 ## 6. FRONTEND-МОДУЛИ: ДЕТАЛЬНАЯ СПЕЦИФИКАЦИЯ
@@ -2485,8 +3197,9 @@ S8R-FIX-043: `_prepare_inputs` до `persist_with_retry`, один раз на �
 ### 6.1 Layout / Shell
 
 - Тёмная тема: CSS-переменные `--bg-primary: #1a1a2e`, `--bg-secondary: #16213e`, `--text-primary: #e0e0e0`, `--accent: #0f3460`, `--green: #00b894`, `--red: #e74c3c`.
-- Left Sidebar (ширина 60px свёрнутая, 240px развёрнутая): иконки + текст для разделов (Дашборд, Стратегии, Бэктесты, Торговля, Счёт, Настройки).
+- Left Sidebar (ширина 60px свёрнутая, 240px развёрнутая): иконки + текст для разделов (Дашборд, Стратегии, Бэктесты, Торговля, Счёт, Настройки). С v4.4 (Б-01) — пункт «Новости» (`sidebarItems.ts`: `IconNews`, путь `/news`, `data-testid="sidebar-news-link"`) сразу после «Графиков» (§6.10).
 - Header (48px): логотип, виджет баланса (компактный), индикатор здоровья (цветной кружок), колокольчик уведомлений (с badge), username.
+- **Подвал `StatusFooter.tsx` — статус рынка (A-03, ТЗ v4.1).** `MarketStatus.status` (`src/api/marketDataApi.ts`) → `STATUS_CONFIG`: `online` «MOEX Online», `evening` «MOEX Вечерняя», `auction` «MOEX Аукцион открытия», `closing_auction` «MOEX Аукцион закрытия — только выходы» (новый), `dealer` «Часы дилера» (новый; вместо отсчёта — «Биржа закрыта, торгует дилер»), `weekend_session` «Торги выходного дня», `weekend` «Выходной», `offline` «MOEX Offline». Отсчёт `COUNTDOWN_LABEL`: «До закрытия вечерней», «До начала торгов» (аукцион открытия), «До конца аукциона закрытия», иначе «До закрытия». Источник — `GET /market-data/market-status` по таблице периодов (§5.9). Раньше 18:40–18:50 подвал показывал «Online» при закрытых входах.
 - Content area: занимает оставшееся пространство.
 - Минимальная поддерживаемая ширина: 1280px.
 - **Узкий экран < `sm` (Mantine по умолчанию 48em = 768 px; S8R-FIX-108, ФТ §13.1).** `AppShell navbar.collapsed.mobile = !uiStore.mobileNavOpened` — ниже `sm` Mantine растягивает навбар на 100 % ширины, и без `collapsed.mobile` он закрывал страницу. Два `Burger` в `Header`: `hiddenFrom="sm"` — `toggleMobileNav` (`aria-label` «Открыть меню» / «Закрыть меню», `aria-expanded`, `data-testid="mobile-nav-burger"`), `visibleFrom="sm"` — прежний `toggleSidebar` (240↔60 px). Смена `location.key` закрывает меню (`AppLayout`, `closeMobileNav`). Строка шапки `wrap="nowrap"`, название скрыто ниже `xs`, поиск `flex: 0 1 400px`. `Sidebar` ниже `sm` всегда с подписями (свёрнутость десктопа там не действует); у каждого `NavLink` — `aria-label={item.label}` (S8R-FIX-099: в свёрнутом виде пункт без подписи не имел доступного имени). Ограничение: пункты — `<a>` без `href`, с клавиатуры не фокусируются (так было и до фикса).
@@ -2536,21 +3249,45 @@ S8R-FIX-043: `_prepare_inputs` до `persist_with_retry`, один раз на �
 - Modal с textarea для вставки + кнопка "Скопировать шаблон" (копирует Приложение A в clipboard).
 - При нажатии "Распознать" -> `POST /api/v1/strategies/{id}/parse-template` -> блоки загружаются в Blockly workspace.
 
+**Отчёт разбора (A-05, ТЗ v4.2; ФТ §3.2, §8.2).**
+- `components/strategy/ParseReportView.tsx` — `ParseReportView({ report })`, один компонент на три места: панель `SharedDescriptionPanel` (контейнер `description-parse-report`, показ при непустом `parseReport`), окно «Режим B» `TemplateModeModal` (после «Проверить»; вместо прежнего `Alert` с `warnings`) и модалка «Просмотреть» `VersionsHistoryDrawer` (контейнер `versions-preview-report` над вкладками кода). `null` — «Отчёт не составлялся»; пустой — «Проблем и заметок нет»; иначе «Проблемы — эти строки не попали в блоки, версия с ними не сохранится» и «Заметки — перенесено с изменением» со счётчиками, в записи — «Строка N» / «Весь текст», фрагмент, «Что делать: …». Testid: `parse-report` (`data-state`), `parse-report-summary`, `parse-report-problems`, `parse-report-notes`, `parse-report-issue` (`data-level`), `parse-report-none`.
+- `strategyStore.parseReport` / `setParseReport` — последний отчёт в общем сторе (панель смонтирована дважды — Blockly и AI-режим, и из AI-режима отчёт раньше терялся). Пишут: «Применить на схеме», «Применить» в «Режиме B», `saveVersion` (отчёт созданной версии), `fetchStrategy` (отчёт последней версии), отказ 422 `description_has_problems`. Сбрасывают: «Пустой шаблон», «Заполнить по схеме».
+- `hooks/useStrategySave.ts`: 422 `description_has_problems` — отчёт в стор, тост «Описание содержит проблемы» / «Версия не сохранена: N проблем(а) в описании» (склонение; считаются только «проблемы»); страница не трогается, признак несохранённых изменений не снимается; у новой стратегии — откат, как при любом 4xx (`createWithFirstVersion`).
+- «Пустой шаблон» панели = `EMPTY_TEMPLATE` модалки (= `EMPTY_TEMPLATE_7`). Логика Blockly — `logic_and` / `logic_or` / `logic_not` (`flatBlocksToWorkspace.ts`), параметры MACD `fast/slow/signal` и Stochastic `%K/%D` доходят до полей блоков; `blocksToTemplate.ts` пишет Volume как `[I1] Volume()`. Мёртвые `StrategyDescription`, `AIModePanel`, `TemplatePanel` не менялись.
+
 ### 6.4 Charts (Графический модуль)
 
-**Маршрут:** `/charts/:ticker` (standalone) или встроен в другие экраны.
+**Маршрут:** `/charts/:ticker` (standalone) или встроен в другие экраны. Фактически — `/chart/:ticker?` (`pages/ChartPage.tsx`); с v4.3 (Б-02) страница собрана из панелей — «Панели графика» ниже.
 
 **Компоненты:**
 - `CandlestickChart` — TradingView Lightweight Charts. `createChart()` с dark theme config.
 - `VolumePane` — отдельная панель внизу (histogram).
 - `IndicatorPanel` — dropdown сверху для добавления индикаторов. Каждый индикатор — отдельная LineSeries/HistogramSeries. Настройки: период, цвет (ColorPicker), толщина.
-- `TimeframeSelector` — кнопки 1м | 5м | 15м | 1ч | 4ч | Д | Н | М.
+- `TimeframeSelector` — кнопки 1м | 5м | 15м | 30м | 1ч | 4ч | Д | Н | М (`30м` — с A-01, ТЗ v4.0; тип `Timeframe` в `src/api/types.ts`, `sequentialIndex.ts`, `marketDataStore.ts` — `INITIAL_PERIOD_DAYS['30m']` = 14, зеркало `market_data/prefetch.py`). Живая свеча любого ТФ принимается через `candle.update`; на Д/Н/М последняя свеча обновляется в течение дня потоком с бэкенда (§5.4.5; фронт-код `useChartLiveData` не менялся, поведение закреплено тестом `useChartLiveData.dailyCandle.test.ts`). С v4.3 (Б-02): `TimeframeSelector({value, onChange, compact?})` стоит в заголовке каждой панели и стор графика не читает (избранные ТФ — кнопками при любой раскладке, в нескольких панелях — `compact-xs`); `useChartLiveData` удалён — живые кадры принимает `useCandleStream`, тесты дневной свечи перенесены в `useCandleStream.test.ts`.
 - `TradeMarkers` — маркеры на графике (треугольник вверх = вход, треугольник вниз = выход) через `chart.addMarkers()`.
 - `DrawingTools` (Should) — toolbar справа: Trendline, Horizontal, Rectangle. Координаты сохраняются через API.
   - **Привязка точек на intraday (sequential-index, S8R-FIX-102).** Бар sequential-серии несёт время свечи в `customValues.barTime` (и `setData`, и live-`update`). `DrawingPoint.t` — время свечи (источник правды), `logical` — номер бара на момент клика; при каждой отрисовке номер бара ищется по `t` в текущем массиве (`coords.ts`, `sequentialIndex.ts`), правее последнего бара — экстраполяция шагом ТФ, левее загруженного окна — точка не рисуется до дозагрузки. Старые точки (`t` — номер бара, разобранный как unix-время, год < 2000) рисуются по `logical`, как раньше; перетаскивание привязывает их к свече. Drag, vline, копия, концы long/short — в барах серии. Раньше в `t` писался индекс (`1969-12-31…`), и рисунок рисовался по `logical` — номер бара указывал на другую свечу при каждом сдвиге скользящего окна (`now − INITIAL_PERIOD_DAYS`) и после подгрузки истории слева. Дневные ТФ не менялись; API не менялся.
   - **Смена набора (тикер:ТФ)** — первая загрузка: `autoScale:true` → начальный вид → фиксация `autoScale:false` в rAF. Раньше `autoScale:false` переживал `setData` нового набора, если его свечи были в кэше (график не перемонтируется), и шкала оставалась от прежнего ТФ (находка qa2 Н-6).
 - `OrderBookPanel` (Could) — выдвижная панель справа с уровнями bid/ask.
 - `TradesStreamPanel` (Could) — лента сделок внизу.
+- `PriceAlertModal` — окно уровневого алерта (A-03, ТЗ v4.1; ФТ §5.8): поля «Условие» («Выше/Ниже») нет — направление ставит сервер; при открытии — `priceAlertApi.getQuote(ticker)` (`GET /price-alerts/quote`): «Текущая цена: …» и подсказка `↑ сработает, когда цена поднимется до 300 (+2,2 %)` / `↓ … опустится до …`, меняется при вводе; `decimalScale` и `step` поля — из `price_decimals`/`price_step` (FEES 0,0605 вводится без округления; без шага — по знакам текущей цены, 2..8, `D04`); `warning` ISS показывается строкой «Цена MOEX ISS: задержка 15 мин»; создание — `priceAlertStore.createAlert` (возвращает `{alert, error}`), отказ сервера (409/422, «уровень равен текущей цене — сдвиньте уровень») — в окне, алерт не создаётся. `CandlestickChart` не менялся: стрелка линии алерта уже берётся из `condition` ответа, маршруты `/price-alerts` — прежний формат.
+- ~~Дилерский канал `dealer:{ticker}:{tf}` (§2.3) фронтенд пока не открывает — показ дилерских свечей и переключатель «внебиржевые часы» — блок Б-02.~~ С v4.3 канал открывает переключатель «Внебиржевые часы» панели — «Панели графика» ниже. Бары аукциона открытия (O=H=L=C у 1h/4h) с A-03 приходят в данных графика (фильтр удалён, §5.6.6).
+
+**Пометка задержки ISS (A-05, E3; ТЗ v4.2; ФТ §5.5).** `marketDataStore.lastSource: DataSource` — источник текущего набора свечей: пишет только успешный `fetchCandles` активного набора, сбрасывается в `setTicker`, `setTimeframe` и при сбое без графика; `fetchOlderCandles` его не меняет; прежнее `dataSource` с 3-секундным сбросом (подпись источника) не тронуто. `CandlestickChart` показывает постоянный элемент `data-testid="chart-source-delay"` «MOEX ISS · задержка 15 мин» (под подписью источника, одной колонкой), если `lastSource === 'moex_iss'`, или `lastSource === 'cache'` и список счетов загружен без активного T-Invest (`broker_type === 'tinvest' && is_active`, боевой или песочница — тот же признак, что backend `_has_active_tinvest_account`); список запрашивается `useSettingsStore.fetchAccounts()` только при `cache`, до ответа (или при ошибке) пометки нет. Источник `cache` backend отдаёт и для строк ISS, и для строк T-Invest — различить можно только по счетам. Опроса ISS для живой свечи нет. Тесты — vitest на `CandlestickChart`/`marketDataStore`, E2E — `frontend/e2e/a05-chart-iss-delay.spec.ts` (моки). **Ограничение:** у пользователя с T-Invest-счётом без рабочего ключа при источнике `cache` пометки нет (ключ фронт не видит). **С v4.3 (Б-02)** общего `marketDataStore.lastSource` нет — поле ряда `SeriesState.lastSource` (пишет только успешная загрузка ряда: первая, «Повторить», обновление ряда без подписки; подгрузка слева и живые кадры его не меняют, сбой без свечей сбрасывает); решение — хук `hooks/useIssDelay.ts` в `ChartPanel` (`useIssDelay(main.lastSource)`; список счетов при `cache` — один общий запрос `fetchAccountsShared` на все панели), график получает проп `issDelay`. Легенда OHLC, 3-секундная подпись источника и пометка — одна абсолютная колонка в левом верхнем углу (`top: 8; left: 12; flex-direction: column`): в узкой панели легенда переносится на вторую строку, и пометка опускается вместе с ней (стенд 2026-11-05, `dad3c68`; раньше блок стоял на фиксированном `top: 28` и закрывал вторую строку легенды). Тесты — `marketDataStore.lastSource.test.ts`, `useIssDelay.test.ts`, `CandlestickChart.sourceDelay.test.tsx`, E2E `a05-chart-iss-delay` «2×2 (Б-02): пометка … под легендой».
+
+**Панели графика (Б-02, ТЗ v4.3; ФТ §5.1, §5.4, §5.5, §19.4; ADR 0024–0029).** Вид — макет А (выбран заказчиком 2026-10-26).
+- **Страница** `pages/ChartPage.tsx`: общая полоса `ChartLayoutBar` (`chart-layout-bar`: «назад», раскладка `layout-kind-1|2h|2v|4`, `Switch` `link-symbol` и `link-crosshair`, справа — кнопка алерта и бейджи для тикера активной панели, `session-banner`, избранное); слева `DrawingToolbar` активной панели; сетка `chart-grid` (`data-kind`, CSS grid по `kind`) из `ChartPanel` (`chart-panel-<id>`: `data-active`, `data-ticker`, `data-timeframe`, `data-style`, `data-scale`, `data-dealer`, `data-adjust`, `data-sync-bar`). Заголовок панели — `ChartPanelHeader` (`chart-panel-header-<id>`, `panel-ticker-<id>`, `TimeframeSelector`, `panel-style-menu` / `panel-style-<style>`, `panel-scale-<scale>`, `panel-dealer-toggle`, `panel-dealer-hint`, `panel-adjust-toggle`; `wrap` — перенос строки). Активация — `onPointerDownCapture` / `onFocusCapture` панели → `setActivePanel`. Узкий экран — `useMediaQuery(max-width < theme.breakpoints.sm)` (48em), значение сразу, без кадра раскладки рабочего стола: только активная панель, `Tabs` `chart-panel-tabs` / `chart-panel-tab-<id>`, тулбар — горизонтально над графиком, `link-symbol` скрыт. Пока раскладка не пришла — `chart-layout-loading`; ни у одной видимой панели нет тикера — `chart-empty-state`; пустая панель — `chart-panel-empty-<id>`. В панели `minHeight: 500` обёртки графика снят CSS-правилом `.b02-chart-panel-body` — высоту задаёт сетка.
+- **Адрес:** `/chart/:ticker` → `setPanelTicker(активная)` (повторный переход на тот же адрес при включённой связи символа и разных тикерах панелей — тоже выбор); адрес следует за активной панелью — `navigate('/chart/<тикер>' + search, {replace: true, state: {fromPanel: true}})`; `/chart` без тикера с сохранённой раскладкой уходит на тикер активной. `?session=N` — тикер и ТФ сессии на активную панель один раз на пару «сессия + ТФ»; сессия на странице одна. Прочие параметры адреса, как и раньше, не читаются.
+- **Раскладка** — `api/chartLayoutApi.ts` (типы §4.13 один в один) и `stores/chartLayoutStore.ts`: `PANEL_COUNT` (1/2/2/4), `defaultLayout(ticker)` (kind `'1'`, `p1` — ticker, `D`, candles/normal, `dealer: false`, `adjust: 'splits'`; связи symbol `false`, crosshair `true`), `normalizeLayout(raw, fallbackTicker)` (битое или неизвестное → умолчание, тикер не по формату → тикер из адреса, `null` — пустая панель, повторный или битый id → новый `p<N>`, панели сверх 4 отбрасываются, недостающие до `kind` — по правилу роста, активная не из видимых → первая видимая), `visiblePanels`. Действия: `load(fallbackTicker)` — один раз за вход, 401/403 — умолчания без уведомления; `setKind` — рост: тикер активной, ТФ — первый из `D, 1h, 5m, 1m, 15m, 4h, W, M, 30m`, не занятый видимыми панелями этого тикера; уменьшение — скрытые остаются в `panels`, активная меняется местами с последней видимой; `setActivePanel` (только видимая), `updatePanel`, `setPanelTicker` (при `links.symbol` — на все видимые), `setLinks`, `clearSaveError`, `reset` (из `authStore.logout`). **Сохранение:** изменение (без разницы с прежним документом — ничего) → таймер `SAVE_DEBOUNCE_MS = 500` → `PUT` всего документа; в полёте не больше одного `PUT` — правки за время запроса уходят следующим с последним состоянием (`saveQueued`); ответ запроса прежнего входа (эпоха `reset`) очередь не трогает; ошибка → `saveError = LAYOUT_SAVE_ERROR` («Раскладка не сохранилась», уведомление `layout-save-error`). **D01 (ADR 0028):** после сбоя `GET` (кроме 401/403) таймер повторяет `GET` вместо `PUT`: раскладки нет → `PUT` текущей; есть → показывается серверная; сбой → `LAYOUT_LOAD_ERROR` («Раскладка не загрузилась с сервера — изменения не сохранятся, пока связь не вернётся»). В localStorage раскладка не пишется (BUG-20).
+- **Ряды свечей** (`stores/marketDataStore.ts`, ADR 0025): `SeriesRef {ticker, timeframe, adjust, source: 'exchange'|'dealer'}`, `seriesKey` = `` `${source}:${ticker}:${timeframe}:${adjust}` ``, `streamKey` = `` `${source}:${ticker}:${timeframe}` ``; `series: Record<seriesKey, SeriesState>` (`candles`, `loading`, `loadingMore`, `noMoreData`, `error`, `errorCode` — `tinvest_required` (409) / `unsupported_timeframe` (422 дилерского ряда), `refreshError`, `dataSource` — сброс через 3 с, `lastSource`, `loaded`), `streamChannels`, `instruments`. `ensureSeries(ref)` — без сети, если ряд загружен и под подпиской или запрос в полёте; ряд с ошибкой — заново; **D02 (ADR 0029)** — ряд, оставшийся без держателя подписки, при следующем показе обновляется одним запросом. `reloadSeries` («Повторить»), `fetchOlderSeries(ref, before?)` (дилерский ряд — за тот же период, что основной, от его первой свечи), `applyLiveFrame(ticker, tf, source, frame)` — во все ряды ключа обоих `adjust`, `ensureInstrumentInfo`. `ChartPanel` зовёт `ensureSeries` только при монтировании и смене ряда (не из эффекта от `series[key]` — иначе цикл запросов на ошибке). Прежние общие `currentTicker`, `currentTimeframe`, `candles`, `fetchCandles`, `upsertLiveCandle`, `crosshairData`, `loading` удалены. Кэш `candlesCache` в localStorage — только у рядов `exchange` + `splits` (ключ `${ticker}:${tf}`, как раньше); ряд «как было» и дилерский при первом показе — со спиннером. Ряды живут в памяти вкладки до её перезагрузки (`MAX_CANDLES = 10 000` на ряд). `api/marketDataApi.ts`: `getCandles(…, adjust = 'splits')`, `getDealerCandles(…, adjust)`, `subscribeCandleStream(ticker, tf, source = 'exchange')`; `DataSource` дополнен `'tinvest_dealer'`.
+- **Поток** — `hooks/useCandleStream.ts`: страница монтирует по одному `CandleStream({ticker, timeframe, source})` на уникальный `streamKey` видимых панелей раскладки (на узком экране — тоже всех видимых, хотя на экране одна). `POST /candles/subscribe` — один при открытии; повтор — по `useWsAuthGeneration` только после переподключения WS (запрос, ушедший при открытом сокете до `auth_ok`, на этом `auth_ok` не повторяется — `isWsAuthed()`). Канал принимается, только если префикс совпадает с источником (`market:` / `dealer:`). Кадр `candle.update` → `applyLiveFrame` с флагами `bar_pending` / `bar_complete` / `stream_gen`; держатель отмечает ключ «под подпиской» (`retainStream`) для D02. REST-отписки нет; WS-отписка — при размонтировании. **`mergeLiveCandle(candles, frame)`:** тот же `timestamp`, что у последней свечи, и `bar_pending` → `{open: прежний, high: max, low: min, close: кадра, volume: max}`; без `bar_pending` — замена целиком; новее — добавление; старее (S8R-FIX-022) — замена или вставка в окне, кадр `bar_pending` старее последней — игнор; время — `toUtcUnix`. `CandlestickChart` доносит поправленные не последние свечи до серии (до `MAX_PATCHED_BARS = 50` — точечно, больше — `setData`).
+- **График панели** — `CandlestickChart` работает только от пропсов (`candles`, `timeframe`, `datasetKey`, `view`, `onScaleChange`, `dealerCandles`, `overlayInfo`, `sessionId`, `sequentialMode`, `alertLines`, `wsChannel`, `loading`, `loadingMore`, `noMoreData`, `dataSource`, `issDelay`, `onLoadOlder`, `onCrosshairTime`, `syncTimeSec`, `onChartReady`); стор графика не читает. `components/charts/priceSeries.ts`: `addPriceSeries(chart, style)` — `CandlestickSeries` (полые — прозрачный `upColor`), `BarSeries`, `LineSeries` и `AreaSeries` по закрытию; `toPriceSeriesData`; `priceScaleModeFor` → `priceScale('right').applyOptions({mode})` (Normal / Logarithmic / Percentage — от первого видимого бара); `LOG_HINT_RATIO = 3`; `visibleRangeRatio(candles, from, to)` = max(high)/min(low) видимых баров. Тип `PriceSeries = ISeriesApi<'Candlestick'|'Bar'|'Line'|'Area'>` — во всех слоях и примитивах; смена вида пересоздаёт серию и зовёт `onChartReady` с новой. Подсказка `log-scale-hint` (`-enable`, `-dismiss`) — только D/W/M, не в лог-шкале, при `visibleRangeRatio > 3`; «×» действует до смены `datasetKey` (тикер, ТФ, `adjust`). Подгрузка слева на D/W/M сравнивает время первой свечи с MSK-сдвигом (раньше не срабатывала). Легенда при полной замене ряда переходит на новую последнюю свечу, если смотрела на прежнюю последнюю или курсора нет.
+- **Перекрестие** — `stores/chartCrosshairStore.ts` (`source: {panelId, timeSec} | null`, `publish(panelId, timeSec | null)`; не сохраняется). Панель публикует настоящее UTC-время начала бара под курсором (`onCrosshairTime`); соседние при `links.crosshair` получают `syncTimeSec` и ставят `setCrosshairPosition` на бар `barIndexForTime(starts, timeSec)` (последний бар с началом ≤ времени; в последовательном режиме — по `customValues.barTime`). Защита от эха: чужое перекрестие дальше не публикуется, а `crosshairMove` без `sourceEvent` (библиотека повторяет сохранённое перекрестие после обновления данных или шкалы) наружу не уходит — иначе перекрестие «залипало» на живых свечах. Подсвеченный бар — `data-sync-bar` (ISO).
+- **Дилерская серия** (ADR 0027): только в последовательном режиме (1m–4h). `sequentialIndex.dealerSequentialData(mainUnix, dealer)` — k-я из m дилерских свечей между барами i и i+1 основного ряда получает `time = i + k/(m+1)` (`timeToBarTime` — для подписей оси `formatSequentialAxisTime` и легенды); вторая `CandlestickSeries` приглушённого цвета (`rgba(…, 0.35)`, без ценовой метки), объём не рисуется. `primitives/coords.ts`: в последовательном режиме X точки — `timeToCoordinate(<номер бара основного ряда>)`, не `logicalToCoordinate` (для дробной позиции lightweight-charts 5.2.1 даёт 0); `clickToDrawingPoint` пишет `logical` — номер бара основного ряда (на дилерской свече — бар слева), `t` — время свечи под курсором. Доступность — `dealerUnavailableReason(tf, settingsStore.hasBrokerConnection)`: не D/W/M («Внебиржевые часы — на ТФ до 4ч»), есть брокер («Подключите T-Invest»); ответ 409 `tinvest_required` → `updatePanel({dealer: false})` и подсказка `panel-dealer-hint` до смены тикера/ТФ или следующего нажатия. В режиме `MARKET_DATA_STREAM_MODE=two_subscriptions` сервер отдаёт `channel: null` — дилерский ряд без живого обновления, только история.
+- **Рисунки** (ADR 0026): `api/chartDrawingsApi.ts` — `list(ticker)`, `create(ticker, timeframe, body)` → `POST {timeframe, ...body}`, `update(id, body)`, `remove(id)`, `clearAll(ticker, timeframe)` → `DELETE ?timeframe=`. `utils/drawingsPersistence.ts`: `DRAWINGS_STORAGE_VERSION = 2`, ключ `drawings:{userId|anon}:{ticker}` → `{version: 2, items}` (у каждого рисунка — `timeframe`), `MAX_DRAWINGS_PER_KEY = 100` на пару «бумага + ТФ», `migrateLocalDrawingKeys(userId)` — ключи v1 `drawings:{u}:{ticker}:{tf}` своего пользователя и `anon` переносятся в v2 (ТФ — из ключа v1; id, уже лежащий в v2, не задваивается; v1 удаляется только после успешной записи v2; битый v1 и нечитаемый v2 не трогаются; повторный вызов ничего не меняет). `stores/chartDrawingsStore.ts`: `byTicker` (ключ `upper(ticker)`), `setUser` (смена — сброс и один `migrateLocalDrawingKeys`), `ensureTicker` (одна загрузка на бумагу: ТФ, о которых знает сервер, — с сервера, остальные — из localStorage), `add` / `clearAll` с контекстом `{ticker, timeframe}`, `selectDrawings(state, ticker, tf)`. `DrawingsLayer {…, ticker, timeframe, isActive}` рисует рисунки своего тикера и ТФ на любой панели, создаёт, двигает и удаляет — только при `isActive`; `DrawingToolbar {ticker, timeframe, horizontal?}` и его клавиши — для активной панели; смена активной панели, её тикера или ТФ сбрасывает инструмент на «курсор» и снимает выделение.
+- **Прочее:** `OpenPositionsLayer {…, livePrice}` — цена последней свечи ряда панели; маркеры сделок (`useTradeMarkers`) — `sessionId` панели только при совпадении её тикера с тикером сессии; линии алертов — по тикеру панели (`sameTicker`); `StatusFooter` не менялся (статус торгов MOEX). Фильтр `filteredCandles` 07–20 UTC удалён вместе с упоминаниями — утро на внутридневных ТФ видно.
+- **Тесты:** vitest — `chartLayoutStore`, `chartCrosshairStore`, `marketDataStore.series`, `useCandleStream`, `useIssDelay`, `ChartPage.panels`, `ChartPanel`, `ChartPanelHeader`, `ChartLayoutBar`, `CandlestickChart.panel`, `priceSeries`, `sequentialIndex`, `coords.dealer`, `DrawingsLayer`, `drawingsPersistence`, `chartDrawingsStore`; фикстуры кадров `src/test/fixtures/live-frames-{W,M}.json`; E2E `frontend/e2e/b02-chart-panels.spec.ts` (моки `e2e/fixtures/chart_panels.ts`, `page.route` + `routeWebSocket`). Backend — `test_chart_layout_router.py`, `test_chart_drawings_crud.py`, `test_market_data_router.py` (`adjust` у дилерского ряда), `test_split_storage.py`, `test_stream_one_subscription_per_ticker.py` (SBER 1m/5m/1h/D — одна подписка обновлений 1m и одна закрытых минут; четыре бумаги — четыре и четыре), `test_migration.py`.
+- **Известные ограничения:** правка раскладки меньше чем за 500 мс до перезагрузки или закрытия вкладки не сохраняется (дебаунс без сброса на `pagehide`); правка, попавшая в `PUT`, ушедший из очереди, ставит своим таймером ещё один `PUT` с тем же документом (лишний одинаковый запрос; в полёте по-прежнему один); перекрестие с D на 1h подсвечивает последний бар предыдущего дня; дилерский ряд не догружается за последний период, если подгрузка основного ряда влево застала дилерский запрос в полёте (`ChartPanel.onLoadOlder`); точка рисунка правее последнего бара, поставленная без дилерских свечей, при их включении встаёт на последний бар основного ряда, а точки «год < 2000» (до S8R-FIX-102) с дилерскими свечами могут сместиться — до Б-04; варианты старых ключей рисунков (верхний регистр, `anon`) для уже занятых ТФ остаются невидимыми; предупреждение «N рисунок(ов) в старом формате» выходит на SBER любого ТФ (рисунки бумаги грузятся всеми ТФ) — уходит в Б-04; тест «одна подписка на тикер» читает внутренности мультиплексора; «Внебиржевые часы» с живым каналом `dealer:` вживую не проверены — разовая проверка на стенде 07–08.11.
 
 **Real-time:**
 При открытии графика: `ws.send({action: "subscribe", channel: "market:SBER:D"})`. При получении candle — `series.update(candle)`. При закрытии — `ws.send({action: "unsubscribe", ...})`.
@@ -2580,6 +3317,8 @@ S8R-FIX-043: `_prepare_inputs` до `persist_with_retry`, один раз на �
 - Фильтр SegmentedControl: Все (N) / Прибыльные (N) / Убыточные (N).
 - Сортировка, пагинация (10 записей/страница). Кнопка "Экспорт CSV".
 
+**Лоты и пометка «лоты штуками» (A-05, C4; ТЗ v4.2; ФТ §4.5).** `backtestApi.ts`: `Backtest.lot_size?: number | null`, `legacy_share_lots?: boolean` (§4.3). `BacktestResultsPage` при `legacy_share_lots` — `Alert` «Лоты штуками» (`data-testid="backtest-legacy-lots"`) и `BacktestTrades legacyShareLots`: объём «N шт.» вместо «N лот», колонка CSV «Акций» вместо «Лоты». `BacktestListPage` и `StrategyBacktestsTable` — значок `components/backtest/LegacyShareLotsBadge.tsx` («лоты штуками», подсказка «Посчитан до перехода на лоты: «N лотов» = N акций. Перезапустите, чтобы посчитать в лотах.», `data-testid="backtest-legacy-lots-badge"`). Тесты — `*.legacyLots.test.tsx`.
+
 **Прогресс бэктеста:**
 Во время выполнения — progress bar + текущая дата через WebSocket `backtest:{id}`.
 
@@ -2594,7 +3333,7 @@ S8R-FIX-043: `_prepare_inputs` до `persist_with_retry`, один раз на �
   - Закрытые сделки (таблица).
   - Статистика: дневной P&L, суммарный P&L, Win Rate, количество сделок.
   - Equity curve сессии.
-- `LaunchSessionModal` — модалка: выбор стратегии (dropdown), брокерский аккаунт (dropdown), счёт (dropdown), инструмент (search), **селектор таймфрейма** (`<Select data-testid="session-timeframe-select">`, 8 значений, `D` по умолчанию, required), режим (Paper/Real toggle), sizing settings. Для Real — confirm-диалог с предупреждением.
+- `LaunchSessionModal` — модалка: выбор стратегии (dropdown), брокерский аккаунт (dropdown), счёт (dropdown), инструмент (search), **селектор таймфрейма** (`<Select data-testid="session-timeframe-select">`, 9 значений с `30m` (A-01, ТЗ v4.0; `SUPPORTED_TIMEFRAMES` в `sessionRequest.ts`), `D` по умолчанию, required), режим (Paper/Real toggle), sizing settings. Для Real — confirm-диалог с предупреждением.
 
 ### 6.7 Account / Settings
 
@@ -2611,8 +3350,8 @@ S8R-FIX-043: `_prepare_inputs` до `persist_with_retry`, один раз на �
 - **Профиль:** смена пароля, email.
 - **Брокеры:** список подключённых, добавление нового (форма: тип, API-ключ, discover → выбор счетов), удаление. Ключ отображается маскированным. Имя счёта для показа — `utils/brokerAccountName(name, id)` (S8R-FIX-107): пустое или из пробелов имя (sandbox-счёт T-Invest приходит с `name=""`) → «№<id>»; используется в списке и модалках счетов, форме подключения, окне запуска, отказах конфликта и «Запустить заново», выборе счёта на «Счёте» (`??` пустую строку не ловил).
 - **Telegram:** привязка (показ токена, QR-код), статус привязки, отвязка.
-- **Уведомления:** матрица event_type × channel (чекбоксы).
-- **Риск-менеджмент:** поля из профиля пользователя (daily loss, max drawdown, position size, trade limit).
+- **Уведомления:** матрица event_type × channel (чекбоксы). С A-03 — строка «Алерт» (`EVENT_TYPE_LABELS.alert`, каналы по умолчанию — от `price_alert`, §5.7).
+- **Риск-менеджмент:** поля из профиля пользователя (daily loss, max drawdown, position size, trade limit). С A-03 умолчания окна часов сессии — `DEFAULT_TRADING_START = '07:00'`, `DEFAULT_TRADING_END = '23:50'` (`src/utils/riskLimits.ts`, зеркало `common/trading_hours.py`; было 10:00–23:50), `RiskSettingsPage.tsx` подписывает их «пусто — 07:00 (начало торгов MOEX)» / «пусто — 23:50 (конец вечерней сессии MOEX)»; E2E — умолчания окна часов. Форма окна часов сессии в интерфейсе CB — блок A-04.
 - **AI-провайдеры:** список подключённых провайдеров (таблица: имя, тип, модель, статус, использование). Добавление нового (форма: тип провайдера [Claude/OpenAI/Custom], API-ключ, модель, base URL для custom). Кнопка «Проверить ключ» (тестовый запрос). Переключение активного провайдера. Ключ отображается маскированным. Счётчик использования (сегодня/месяц) и лимиты.
 - **Система:** директория для бэкапов, ротация, ручной бэкап, логи.
 
@@ -2623,6 +3362,7 @@ S8R-FIX-043: `_prepare_inputs` до `persist_with_retry`, один раз на �
 - `NotificationPanel` — список уведомлений (бесконечный скролл). Каждое: иконка severity, заголовок, время (relative: "5 мин назад"), клик → детали / навигация.
 - `CriticalBanner` — красный баннер на полную ширину для severity = critical. Отображается поверх контента. Кнопка "Закрыть".
 - WebSocket `notifications` канал для push в реальном времени.
+- **Отметка «не доставлено» (A-05, D5; ТЗ v4.2; ФТ §10.2):** `components/notifications/UndeliveredChannels.tsx` — `UndeliveredChannels({ channels })` по `Notification.undelivered_channels`: строка на канал (`telegram` → «не доставлено в Telegram», `email` → «не доставлено на почту», `data-channel`), контейнер `data-testid="notification-undelivered"`; один компонент в обеих копиях строки уведомления — `NotificationList` (страница «Уведомления») и `NotificationDrawer` (колокольчик). Видна при следующей загрузке списка.
 
 ### 6.9 Zustand Stores
 
@@ -2635,7 +3375,34 @@ marketStore:    { subscriptions, candles, orderbook, subscribe(), unsubscribe() 
 notificationStore: { notifications, unreadCount, fetch(), markRead(), markAllRead() }
 healthStore:    { status, components, subscribe() }
 settingsStore:  { profile, brokerAccounts, notifSettings, fetch(), update() }
+
+-- v4.3 (Б-02), §6.4 «Панели графика»:
+marketDataStore:     { series, streamChannels, instruments, marketStatus, favoriteTimeframes,
+                       ensureSeries(), reloadSeries(), fetchOlderSeries(), applyLiveFrame(), ensureInstrumentInfo() }
+                       -- фактическое имя «marketStore»; ряды по seriesKey вместо одного набора candles
+chartLayoutStore:    { layout, loaded, saveError, load(), setKind(), setActivePanel(), updatePanel(),
+                       setPanelTicker(), setLinks(), clearSaveError(), reset() }      -- раскладка на сервере
+chartCrosshairStore: { source, publish() }                                            -- перекрестие между панелями
+chartDrawingsStore:  { userId, byTicker, currentTool, selectedId, warning, setUser(), ensureTicker(),
+                       add(), update(), remove(), clearAll(), bringToFront(), duplicate() }  -- рисунки по бумаге
+
+-- v4.4 (Б-01), §6.10 «Лента новостей»:
+newsStore:           { filters {ticker, source, type}, items, nextCursor, loading, loadingMore, loaded, error,
+                       sources, tickers, load(), loadMore(), refresh(), setFilter(), loadFilterOptions() }
+                       -- курсор «Показать ещё», ответы прежнего «поколения» отбрасываются
 ```
+
+### 6.10 News — лента новостей (v4.4, Б-01)
+
+**Маршрут:** `/news` (`pages/NewsPage.tsx`, маршрут в `App.tsx`), пункт меню «Новости» (`components/layout/sidebarItems.ts`) — сразу после «Графиков». Требования — ФТ §20.5, API — §4.14.
+
+- **API** `src/api/newsApi.ts`: типы `NewsItem`, `NewsLabel`, `NewsReaction`, `NewsPage`; `NEWS_TYPES` и подписи `NEWS_TYPE_LABELS` (report «отчёт», dividends «дивиденды», deal «сделка», sanctions «санкции», regulator «регулятор», management «менеджмент», exchange «биржа», other «прочее») — подписи только во фронтенде, backend отдаёт коды; `getNews(query)` (пустые фильтры и курсор в запрос не попадают), `getSources()`, `getTickers()`; ответ нормализуется — `{}` и неполные элементы страницу не роняют.
+- **Store** `src/stores/newsStore.ts` (§6.9): `NEWS_PAGE_SIZE = 50`; `load()` — первая страница с текущими фильтрами, ответ прежнего «поколения» (фильтр успели сменить) отбрасывается; `loadMore()` — следующая страница по курсору без дублей; `refresh()` — свежая первая страница поверх загруженного (`mergeFresh`: если полная свежая страница не пересекается с загруженным, лента заменяется ею — дыры между ними не остаётся), заодно обновляет список бумаг фильтра, сбой молчит; `setFilter()` — сброс ленты и загрузка; `loadFilterOptions()` — источники и бумаги для фильтров.
+- **Страница:** при монтировании — `load()` и `loadFilterOptions()`, затем `refresh()` раз в 60 с (`NEWS_REFRESH_INTERVAL_MS`), пока страница открыта; три `Select` — «Бумага» (`searchable`, `clearable`, «Нет бумаг с новостями»; выбранная бумага остаётся в списке, даже если список ещё не загружен), «Источник», «Тип»; таблица в `Table.ScrollContainer minWidth={960}`; кнопка «Показать ещё» — пока есть `nextCursor`.
+- **Строка ленты:** время — `formatDateTime` (МСК, §6.1); заголовок — `Anchor target="_blank" rel="noopener noreferrer"` только для `http(s)`, иначе текстом; бумаги — `Badge`; тип — `Badge` с `flexShrink: 0` (в узкой ячейке «прочее» иначе усыхало до «п…») и «кто разметил» (`словарь` / `ИИ: модель, версия`), без разметки — «не размечена»; реакция — строка на бумагу: `done` — «TICKER: до ±x,xx %, после ±y,yy %» (запятая, настоящий минус, плюс у роста), `*_no_trades` — «— нет торгов», `pending` до срока — «посчитается в ЧЧ:ММ» (`due_at` по МСК), после срока — «считается…», `failed` — «реакция недоступна».
+- **Состояния:** загрузка (`news-loading`), пусто (`news-empty`: пустой архив или «ничего не найдено по выбранным фильтрам»), ошибка (`news-error`, кнопка «Повторить»).
+- `data-testid`: `news-page`, `news-filter-ticker`, `news-filter-source`, `news-filter-type`, `news-item`, `news-type`, `news-reaction`, `news-load-more`, `news-empty`, `news-error`, `sidebar-news-link`.
+- **Известные ограничения:** при ширине окна 1024 px таблица (960 px) не помещается — по горизонтали прокручивается вся страница (с 1280 px помещается; не чинится — решение заказчика); на 1280 px знак «%» реакции может перенестись на отдельную строку (между числом и «%» обычный пробел).
 
 ---
 
@@ -3246,7 +4013,7 @@ QA-инженер встроен в процесс разработки с пе�
 |---|---|---|
 | UX: дизайн Trading Panel (Paper vs Real визуализация) | UX | ✅ S5 |
 | Trading Engine: session manager, signal processor, order manager, position tracker | BACK1 | ✅ S5 |
-| Paper Trading Engine (виртуальный портфель, T+1) | BACK1 | ✅ S5 |
+| Paper Trading Engine (виртуальный портфель; T+1 по деньгам не моделируется — ФТ §7.4, уточнено в ТЗ v4.2) | BACK1 | ✅ S5 |
 | Broker Adapter: place_order, cancel_order, subscribe_candles (streaming) | BACK1 | ✅ S5 |
 | Rate limiter для брокерского API | BACK1 | ✅ S5 |
 | Circuit Breaker (все виды лимитов) | SEC | ✅ S5, уточнено в S6 (temporary блокировки) |
@@ -3507,13 +4274,13 @@ class ChatRequest(BaseModel):
 
 | Метод | URL |
 |-------|-----|
-| GET | `/api/v1/charts/{ticker}/{tf}/drawings` |
-| POST | `/api/v1/charts/{ticker}/{tf}/drawings` |
+| GET | ~~`/api/v1/charts/{ticker}/{tf}/drawings`~~ → с v4.3 `/api/v1/charts/{ticker}/drawings` (все ТФ бумаги) |
+| POST | ~~`/api/v1/charts/{ticker}/{tf}/drawings`~~ → с v4.3 `/api/v1/charts/{ticker}/drawings` (ТФ — поле тела `timeframe`) |
 | PATCH | `/api/v1/charts/drawings/{id}` |
 | DELETE | `/api/v1/charts/drawings/{id}` |
-| DELETE | `/api/v1/charts/{ticker}/{tf}/drawings` (clear all) |
+| DELETE | ~~`/api/v1/charts/{ticker}/{tf}/drawings` (clear all)~~ → с v4.3 `/api/v1/charts/{ticker}/drawings?timeframe=<tf>` (очистка одного ТФ) |
 
-Frontend `chartDrawingsApi.ts` совпадает 1:1. Все endpoints проверяют ownership.
+Frontend `chartDrawingsApi.ts` совпадает 1:1. Все endpoints проверяют ownership. С v4.3 (Б-02, ADR 0026) рисунки хранятся по «пользователь + бумага», индекс `idx_drawing_user_ticker` (§3.14); контракт — §4.13.
 
 ### 11.11 users.wizard_completed_at + endpoint (контракт C6)
 

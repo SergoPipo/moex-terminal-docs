@@ -15,6 +15,8 @@ live, единый движок вместо backtrader, 87 индикаторо
 | Файл | Что |
 |---|---|
 | [008_unified_plan.md](008_unified_plan/008_unified_plan.md) | сводный план: сводная таблица (разд. 1), порядок работ (разд. 2), пункты (разд. 3), дефекты (разд. 4), отложено (разд. 5), приложения (разд. 6) |
+| [delivery_blocks.md](008_unified_plan/delivery_blocks.md) | как выполняется: блоки (по одному прогону Autopilot), конвейер «разработка → тестовый стенд → рабочий терминал», выпуски и откат, статусы блоков |
+| [briefs/](008_unified_plan/briefs/) | брифы блоков для Autopilot — первый: [A-01 «Хранилище баров»](008_unified_plan/briefs/A-01_bar_storage.md) |
 | [addendum_dealer_hours.md](008_unified_plan/addendum_dealer_hours.md) | дополнение по дилерским часам к A1, A5, C1 — заготовка, ждёт итога проверки 24–25.10.2026 |
 | [d8_news_labels.json](008_unified_plan/d8_news_labels.json) | эталон ИИ-разметки новостей (108 заголовков) для D8 |
 
